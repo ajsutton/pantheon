@@ -10,6 +10,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.FilterIdGenerator;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.FilterManager;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.AdminPeers;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugStorageRangeAt;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugTraceBlock;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.DebugTraceTransaction;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.EthAccounts;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.EthBlockNumber;
@@ -179,7 +180,8 @@ public class JsonRpcMethodsFactory {
           enabledMethods,
           new DebugTraceTransaction(
               blockchainQueries, new TransactionTracer(blockReplay), parameter),
-          new DebugStorageRangeAt(parameter, blockchainQueries, blockReplay));
+          new DebugStorageRangeAt(parameter, blockchainQueries, blockReplay),
+          new DebugTraceBlock(blockchainQueries, parameter, protocolSchedule));
     }
     if (rpcApis.contains(RpcApis.NET)) {
       addMethods(

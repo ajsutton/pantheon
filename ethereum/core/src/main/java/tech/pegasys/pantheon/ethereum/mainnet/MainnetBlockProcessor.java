@@ -15,6 +15,7 @@ import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.logging.log4j.LogManager;
@@ -90,7 +91,8 @@ public class MainnetBlockProcessor implements BlockProcessor {
       final MutableWorldState worldState,
       final BlockHeader blockHeader,
       final List<Transaction> transactions,
-      final List<BlockHeader> ommers) {
+      final List<BlockHeader> ommers,
+      final Optional<TransactionProcessor> customTransactionProcessor) {
 
     long gasUsed = 0;
     final List<TransactionReceipt> receipts = new ArrayList<>();
@@ -110,13 +112,15 @@ public class MainnetBlockProcessor implements BlockProcessor {
       final Address miningBeneficiary =
           miningBeneficiaryCalculator.calculateBeneficiary(blockHeader);
       final TransactionProcessor.Result result =
-          transactionProcessor.processTransaction(
-              blockchain,
-              worldStateUpdater,
-              blockHeader,
-              transaction,
-              miningBeneficiary,
-              blockHashLookup);
+          customTransactionProcessor
+              .orElse(transactionProcessor)
+              .processTransaction(
+                  blockchain,
+                  worldStateUpdater,
+                  blockHeader,
+                  transaction,
+                  miningBeneficiary,
+                  blockHashLookup);
       if (result.isInvalid()) {
         return Result.failed();
       }

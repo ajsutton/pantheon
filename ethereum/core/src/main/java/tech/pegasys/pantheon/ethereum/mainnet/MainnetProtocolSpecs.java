@@ -14,6 +14,7 @@ import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -283,9 +284,11 @@ public abstract class MainnetProtocolSpecs {
         final MutableWorldState worldState,
         final BlockHeader blockHeader,
         final List<Transaction> transactions,
-        final List<BlockHeader> ommers) {
+        final List<BlockHeader> ommers,
+        final Optional<TransactionProcessor> customTransactionProcessor) {
       updateWorldStateForDao(worldState);
-      return wrapped.processBlock(blockchain, worldState, blockHeader, transactions, ommers);
+      return wrapped.processBlock(
+          blockchain, worldState, blockHeader, transactions, ommers, customTransactionProcessor);
     }
 
     private static final Address DAO_REFUND_CONTRACT_ADDRESS =
