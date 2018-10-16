@@ -28,6 +28,7 @@ import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
@@ -218,13 +219,13 @@ public class JsonRpcHttpService {
     }
   }
 
-  private String serialise(final JsonRpcResponse response) {
+  private Buffer serialise(final JsonRpcResponse response) {
 
     if (response.getType() == JsonRpcResponseType.NONE) {
-      return EMPTY_RESPONSE;
+      return Buffer.buffer(EMPTY_RESPONSE);
     }
 
-    return Json.encodePrettily(response);
+    return Json.encodeToBuffer(response);
   }
 
   @SuppressWarnings("rawtypes")
