@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.rlpx.handshake;
 
 import tech.pegasys.pantheon.crypto.SECP256K1;
@@ -59,7 +71,7 @@ public interface Handshaker {
    * This method must be called by the <em>initiating side</em> of the handshake to provide the
    * initial crypto material for the handshake, before any further methods are called.
    *
-   * <p>This method must throw an <tt>IllegalStateException</tt> exception if the handshake had
+   * <p>This method must throw an {@link IllegalStateException} exception if the handshake had
    * already been prepared before, no matter if under the initiator or the responder role.
    *
    * @param ourKeypair The keypair for our node identity.
@@ -72,7 +84,7 @@ public interface Handshaker {
    * This method must be called by the <em>responding side</em> of the handshake to prepare the
    * initial crypto material for the handshake, before any further methods are called.
    *
-   * <p>This method must throw an <tt>IllegalStateException</tt> exception if the handshake had
+   * <p>This method must throw an {@link IllegalStateException} exception if the handshake had
    * already been prepared before, whether with the initiator or the responder role.
    *
    * @param ourKeypair The keypair for our node identity.
@@ -88,7 +100,7 @@ public interface Handshaker {
    * the initiator is allowed to send the first message in the channel. Future implementations may
    * allow for a concurrent exchange.
    *
-   * <p>This method will throw an <tt>IllegalStateException</tt> if the consumer has prepared this
+   * <p>This method will throw an {@link IllegalStateException} if the consumer has prepared this
    * handshake taking the role of the responder, and the underlying implementation only allows the
    * initiator to send the first message.
    *

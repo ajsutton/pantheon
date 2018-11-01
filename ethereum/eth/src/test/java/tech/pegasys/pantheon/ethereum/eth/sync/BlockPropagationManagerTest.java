@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.sync;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,6 +54,7 @@ public class BlockPropagationManagerTest {
   private EthProtocolManager ethProtocolManager;
   private BlockPropagationManager<Void> blockPropagationManager;
   private SynchronizerConfiguration syncConfig;
+  private final PendingBlocks pendingBlocks = new PendingBlocks();
   private SyncState syncState;
 
   @BeforeClass
@@ -66,14 +79,15 @@ public class BlockPropagationManagerTest {
             .blockPropagationRange(-3, 5)
             .build()
             .validated(blockchain);
-    syncState = new SyncState(blockchain, ethProtocolManager.ethContext(), new PendingBlocks());
+    syncState = new SyncState(blockchain, ethProtocolManager.ethContext().getEthPeers());
     blockPropagationManager =
         new BlockPropagationManager<>(
             syncConfig,
             protocolSchedule,
             protocolContext,
             ethProtocolManager.ethContext(),
-            syncState);
+            syncState,
+            pendingBlocks);
   }
 
   @Test
@@ -447,7 +461,8 @@ public class BlockPropagationManagerTest {
             protocolSchedule,
             protocolContext,
             ethProtocolManager.ethContext(),
-            syncState);
+            syncState,
+            pendingBlocks);
 
     final BlockDataGenerator gen = new BlockDataGenerator();
     // Import some blocks
@@ -467,20 +482,20 @@ public class BlockPropagationManagerTest {
 
     // Check that we pushed our block into the pending collection
     assertThat(blockchain.contains(blockToPurge.getHash())).isFalse();
-    assertThat(syncState.pendingBlocks().contains(blockToPurge.getHash())).isTrue();
+    assertThat(pendingBlocks.contains(blockToPurge.getHash())).isTrue();
 
     // Import blocks until we bury the target block far enough to be cleaned up
     for (int i = 0; i < oldBlocksToImport; i++) {
       blockchainUtil.importBlockAtIndex((int) blockchain.getChainHeadBlockNumber() + 1);
 
       assertThat(blockchain.contains(blockToPurge.getHash())).isFalse();
-      assertThat(syncState.pendingBlocks().contains(blockToPurge.getHash())).isTrue();
+      assertThat(pendingBlocks.contains(blockToPurge.getHash())).isTrue();
     }
 
     // Import again to trigger cleanup
     blockchainUtil.importBlockAtIndex((int) blockchain.getChainHeadBlockNumber() + 1);
     assertThat(blockchain.contains(blockToPurge.getHash())).isFalse();
-    assertThat(syncState.pendingBlocks().contains(blockToPurge.getHash())).isFalse();
+    assertThat(pendingBlocks.contains(blockToPurge.getHash())).isFalse();
   }
 
   @Test

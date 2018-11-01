@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon;
 
 import tech.pegasys.pantheon.controller.PantheonController;
@@ -33,7 +45,7 @@ public class Runner implements AutoCloseable {
   private final Optional<JsonRpcHttpService> jsonRpc;
   private final Optional<WebSocketService> websocketRpc;
 
-  private final PantheonController<?, ?> pantheonController;
+  private final PantheonController<?> pantheonController;
   private final Path dataDir;
 
   Runner(
@@ -41,7 +53,7 @@ public class Runner implements AutoCloseable {
       final NetworkRunner networkRunner,
       final Optional<JsonRpcHttpService> jsonRpc,
       final Optional<WebSocketService> websocketRpc,
-      final PantheonController<?, ?> pantheonController,
+      final PantheonController<?> pantheonController,
       final Path dataDir) {
     this.vertx = vertx;
     this.networkRunner = networkRunner;
@@ -106,7 +118,7 @@ public class Runner implements AutoCloseable {
     final File portsFile = new File(dataDir.toFile(), "pantheon.ports");
     portsFile.deleteOnExit();
 
-    try (FileOutputStream fileOutputStream = new FileOutputStream(portsFile)) {
+    try (final FileOutputStream fileOutputStream = new FileOutputStream(portsFile)) {
       properties.store(
           fileOutputStream,
           "This file contains the ports used by the running instance of Pantheon. This file will be deleted after the node is shutdown.");

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.controller;
 
 import static org.apache.logging.log4j.LogManager.getLogger;
@@ -5,7 +17,6 @@ import static org.apache.logging.log4j.LogManager.getLogger;
 import tech.pegasys.pantheon.consensus.clique.CliqueContext;
 import tech.pegasys.pantheon.consensus.clique.CliqueVoteTallyUpdater;
 import tech.pegasys.pantheon.consensus.clique.VoteTallyCache;
-import tech.pegasys.pantheon.consensus.clique.blockcreation.CliqueBlockMiner;
 import tech.pegasys.pantheon.consensus.clique.blockcreation.CliqueBlockScheduler;
 import tech.pegasys.pantheon.consensus.clique.blockcreation.CliqueMinerExecutor;
 import tech.pegasys.pantheon.consensus.clique.blockcreation.CliqueMiningCoordinator;
@@ -13,34 +24,37 @@ import tech.pegasys.pantheon.consensus.common.EpochManager;
 import tech.pegasys.pantheon.consensus.common.VoteProposer;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
-import tech.pegasys.pantheon.ethereum.blockcreation.AbstractMiningCoordinator;
-import tech.pegasys.pantheon.ethereum.blockcreation.MiningParameters;
+import tech.pegasys.pantheon.ethereum.blockcreation.MiningCoordinator;
 import tech.pegasys.pantheon.ethereum.chain.GenesisConfig;
 import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
 import tech.pegasys.pantheon.ethereum.core.Util;
 import tech.pegasys.pantheon.ethereum.db.DefaultMutableBlockchain;
+import tech.pegasys.pantheon.ethereum.db.KeyValueStoragePrefixedKeyBlockchainStorage;
 import tech.pegasys.pantheon.ethereum.db.WorldStateArchive;
 import tech.pegasys.pantheon.ethereum.eth.EthProtocol;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthProtocolManager;
 import tech.pegasys.pantheon.ethereum.eth.sync.DefaultSynchronizer;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
+import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncState;
 import tech.pegasys.pantheon.ethereum.eth.transactions.TransactionPoolFactory;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHashFunction;
 import tech.pegasys.pantheon.ethereum.p2p.api.ProtocolManager;
 import tech.pegasys.pantheon.ethereum.p2p.config.SubProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.worldstate.KeyValueStorageWorldStateStorage;
+import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
 import tech.pegasys.pantheon.services.kvstore.RocksDbKeyValueStorage;
-import tech.pegasys.pantheon.util.time.SystemClock;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -48,9 +62,8 @@ import java.util.concurrent.TimeUnit;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.Logger;
 
-public class CliquePantheonController
-    implements PantheonController<CliqueContext, CliqueBlockMiner> {
-  public static int RINKEBY_NETWORK_ID = 4;
+public class CliquePantheonController implements PantheonController<CliqueContext> {
+
   private static final Logger LOG = getLogger();
   private final GenesisConfig<CliqueContext> genesisConfig;
   private final ProtocolContext<CliqueContext> context;
@@ -62,6 +75,7 @@ public class CliquePantheonController
 
   private static final long EPOCH_LENGTH_DEFAULT = 30_000L;
   private static final long SECONDS_BETWEEN_BLOCKS_DEFAULT = 15L;
+  private final MiningCoordinator miningCoordinator;
 
   CliquePantheonController(
       final GenesisConfig<CliqueContext> genesisConfig,
@@ -70,6 +84,7 @@ public class CliquePantheonController
       final Synchronizer synchronizer,
       final KeyPair keyPair,
       final TransactionPool transactionPool,
+      final MiningCoordinator miningCoordinator,
       final Runnable closer) {
 
     this.genesisConfig = genesisConfig;
@@ -79,9 +94,10 @@ public class CliquePantheonController
     this.keyPair = keyPair;
     this.transactionPool = transactionPool;
     this.closer = closer;
+    this.miningCoordinator = miningCoordinator;
   }
 
-  public static PantheonController<CliqueContext, CliqueBlockMiner> init(
+  public static PantheonController<CliqueContext> init(
       final Path home,
       final GenesisConfig<CliqueContext> genesisConfig,
       final SynchronizerConfiguration taintedSyncConfig,
@@ -95,13 +111,17 @@ public class CliquePantheonController
         cliqueConfig.getLong("period", SECONDS_BETWEEN_BLOCKS_DEFAULT);
 
     final EpochManager epochManger = new EpochManager(blocksPerEpoch);
-    final RocksDbKeyValueStorage kv =
+    final KeyValueStorage kv =
         RocksDbKeyValueStorage.create(Files.createDirectories(home.resolve(DATABASE_PATH)));
     final ProtocolSchedule<CliqueContext> protocolSchedule = genesisConfig.getProtocolSchedule();
+
     final BlockHashFunction blockHashFunction =
         ScheduleBasedBlockHashFunction.create(protocolSchedule);
+    final KeyValueStoragePrefixedKeyBlockchainStorage blockchainStorage =
+        new KeyValueStoragePrefixedKeyBlockchainStorage(kv, blockHashFunction);
     final MutableBlockchain blockchain =
-        new DefaultMutableBlockchain(genesisConfig.getBlock(), kv, blockHashFunction);
+        new DefaultMutableBlockchain(genesisConfig.getBlock(), blockchainStorage);
+
     final KeyValueStorageWorldStateStorage worldStateStorage =
         new KeyValueStorageWorldStateStorage(kv);
     final WorldStateArchive worldStateArchive = new WorldStateArchive(worldStateStorage);
@@ -125,16 +145,23 @@ public class CliquePantheonController
             genesisConfig.getChainId(),
             fastSyncEnabled,
             networkId);
+    final SyncState syncState =
+        new SyncState(
+            protocolContext.getBlockchain(), ethProtocolManager.ethContext().getEthPeers());
     final Synchronizer synchronizer =
         new DefaultSynchronizer<>(
-            syncConfig, protocolSchedule, protocolContext, ethProtocolManager.ethContext());
+            syncConfig,
+            protocolSchedule,
+            protocolContext,
+            ethProtocolManager.ethContext(),
+            syncState);
 
     final TransactionPool transactionPool =
         TransactionPoolFactory.createTransactionPool(
             protocolSchedule, protocolContext, ethProtocolManager.ethContext());
 
     final ExecutorService minerThreadPool = Executors.newCachedThreadPool();
-    CliqueMinerExecutor miningExecutor =
+    final CliqueMinerExecutor miningExecutor =
         new CliqueMinerExecutor(
             protocolContext,
             minerThreadPool,
@@ -143,13 +170,13 @@ public class CliquePantheonController
             nodeKeys,
             miningParams,
             new CliqueBlockScheduler(
-                new SystemClock(),
+                Clock.systemUTC(),
                 protocolContext.getConsensusState().getVoteTallyCache(),
                 Util.publicKeyToAddress(nodeKeys.getPublicKey()),
                 secondsBetweenBlocks),
             epochManger);
-    CliqueMiningCoordinator miningCoordinator =
-        new CliqueMiningCoordinator(blockchain, miningExecutor);
+    final CliqueMiningCoordinator miningCoordinator =
+        new CliqueMiningCoordinator(blockchain, miningExecutor, syncState);
     miningCoordinator.addMinedBlockObserver(ethProtocolManager);
 
     // Clique mining is implicitly enabled.
@@ -162,6 +189,7 @@ public class CliquePantheonController
         synchronizer,
         nodeKeys,
         transactionPool,
+        miningCoordinator,
         () -> {
           miningCoordinator.disable();
           minerThreadPool.shutdownNow();
@@ -170,7 +198,11 @@ public class CliquePantheonController
           } catch (final InterruptedException e) {
             LOG.error("Failed to shutdown miner executor");
           }
-          kv.close();
+          try {
+            kv.close();
+          } catch (final IOException e) {
+            LOG.error("Failed to close key value storage", e);
+          }
         });
   }
 
@@ -205,8 +237,8 @@ public class CliquePantheonController
   }
 
   @Override
-  public AbstractMiningCoordinator<CliqueContext, CliqueBlockMiner> getMiningCoordinator() {
-    return null;
+  public MiningCoordinator getMiningCoordinator() {
+    return miningCoordinator;
   }
 
   @Override

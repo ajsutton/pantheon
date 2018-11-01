@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.util.bytes;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -13,7 +25,9 @@ class MutableBufferWrappingBytesValue extends AbstractBytesValue implements Muta
 
   MutableBufferWrappingBytesValue(final Buffer buffer, final int offset, final int size) {
     checkArgument(size >= 0, "Invalid negative length provided");
-    checkElementIndex(offset, buffer.length());
+    if (size > 0) {
+      checkElementIndex(offset, buffer.length());
+    }
     checkArgument(
         offset + size <= buffer.length(),
         "Provided length %s is too big: the buffer has size %s and has only %s bytes from %s",
@@ -27,6 +41,10 @@ class MutableBufferWrappingBytesValue extends AbstractBytesValue implements Muta
     this.size = size;
   }
 
+  MutableBufferWrappingBytesValue(final Buffer buffer) {
+    this(buffer, 0, buffer.length());
+  }
+
   @Override
   public int size() {
     return size;
@@ -34,11 +52,13 @@ class MutableBufferWrappingBytesValue extends AbstractBytesValue implements Muta
 
   @Override
   public byte get(final int i) {
+    checkElementIndex(i, size());
     return buffer.getByte(offset + i);
   }
 
   @Override
   public void set(final int i, final byte b) {
+    checkElementIndex(i, size());
     buffer.setByte(offset + i, b);
   }
 

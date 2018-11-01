@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.cli;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -16,11 +28,14 @@ import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.M
 
 import tech.pegasys.pantheon.PantheonInfo;
 import tech.pegasys.pantheon.cli.EthNetworkConfig.Builder;
-import tech.pegasys.pantheon.ethereum.blockcreation.MiningParameters;
+import tech.pegasys.pantheon.consensus.clique.jsonrpc.CliqueRpcApis;
+import tech.pegasys.pantheon.consensus.ibft.jsonrpc.IbftRpcApis;
 import tech.pegasys.pantheon.ethereum.core.Address;
+import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
+import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApis;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
@@ -48,6 +63,20 @@ import org.mockito.ArgumentMatchers;
 public class PantheonCommandTest extends CommandTestAbstract {
 
   @Rule public final TemporaryFolder temp = new TemporaryFolder();
+  private static final JsonRpcConfiguration defaultJsonRpcConfiguration;
+  private static final WebSocketConfiguration defaultWebSocketConfiguration;
+
+  static {
+    final JsonRpcConfiguration rpcConf = JsonRpcConfiguration.createDefault();
+    rpcConf.addRpcApi(CliqueRpcApis.CLIQUE);
+    rpcConf.addRpcApi(IbftRpcApis.IBFT);
+    defaultJsonRpcConfiguration = rpcConf;
+
+    final WebSocketConfiguration websocketConf = WebSocketConfiguration.createDefault();
+    websocketConf.addRpcApi(CliqueRpcApis.CLIQUE);
+    websocketConf.addRpcApi(IbftRpcApis.IBFT);
+    defaultWebSocketConfiguration = websocketConf;
+  }
 
   @Override
   @Before
@@ -77,6 +106,13 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
+  public void callingHelpDisplaysDefaultRpcApisCorrectly() {
+    parseCommand("--help");
+    assertThat(commandOutput.toString()).contains("default: ETH,NET,WEB3,CLIQUE,IBFT");
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
   public void callingVersionDisplayPantheonInfoVersion() {
     parseCommand("--version");
     assertThat(commandOutput.toString()).isEqualToIgnoringWhitespace(PantheonInfo.version());
@@ -97,8 +133,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
             eq("127.0.0.1"),
             eq(30303),
             eq(25),
-            eq(JsonRpcConfiguration.createDefault()),
-            eq(WebSocketConfiguration.createDefault()),
+            eq(defaultJsonRpcConfiguration),
+            eq(defaultWebSocketConfiguration),
             any());
 
     final ArgumentCaptor<MiningParameters> miningArg =
@@ -156,7 +192,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     // We write a config file to prevent an invalid file in resource folder to raise errors in
     // code checks (CI + IDE)
     final File tempConfigFile = temp.newFile("invalid_config.toml");
-    try (Writer fileWriter = Files.newBufferedWriter(tempConfigFile.toPath(), UTF_8)) {
+    try (final Writer fileWriter = Files.newBufferedWriter(tempConfigFile.toPath(), UTF_8)) {
 
       fileWriter.write("."); // an invalid toml content
       fileWriter.flush();
@@ -177,7 +213,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     // We write a config file to prevent an invalid file in resource folder to raise errors in
     // code checks (CI + IDE)
     final File tempConfigFile = temp.newFile("invalid_config.toml");
-    try (Writer fileWriter = Files.newBufferedWriter(tempConfigFile.toPath(), UTF_8)) {
+    try (final Writer fileWriter = Files.newBufferedWriter(tempConfigFile.toPath(), UTF_8)) {
 
       fileWriter.write("tester===========......."); // an invalid toml content
       fileWriter.flush();
@@ -202,12 +238,16 @@ public class PantheonCommandTest extends CommandTestAbstract {
     jsonRpcConfiguration.setPort(5678);
     jsonRpcConfiguration.setCorsAllowedDomains(Collections.emptyList());
     jsonRpcConfiguration.setRpcApis(JsonRpcConfiguration.DEFAULT_JSON_RPC_APIS);
+    jsonRpcConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
+    jsonRpcConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     final WebSocketConfiguration webSocketConfiguration = WebSocketConfiguration.createDefault();
     webSocketConfiguration.setEnabled(false);
     webSocketConfiguration.setHost("9.10.11.12");
     webSocketConfiguration.setPort(9101);
     webSocketConfiguration.setRpcApis(WebSocketConfiguration.DEFAULT_WEBSOCKET_APIS);
+    webSocketConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
+    webSocketConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     parseCommand("--config", configFile);
 
@@ -228,7 +268,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
         asList("enode://001@123:4567", "enode://002@123:4567", "enode://003@123:4567");
     assertThat(stringListArgumentCaptor.getValue()).isEqualTo(nodes);
 
-    EthNetworkConfig networkConfig =
+    final EthNetworkConfig networkConfig =
         new Builder(EthNetworkConfig.mainnet())
             .setGenesisConfig(new File("~/genesys.json").toPath().toUri())
             .setBootNodes(nodes)
@@ -256,6 +296,13 @@ public class PantheonCommandTest extends CommandTestAbstract {
     final String configFile = Resources.getResource("partial_config.toml").getFile();
 
     parseCommand("--config", configFile);
+    final JsonRpcConfiguration jsonRpcConfiguration = JsonRpcConfiguration.createDefault();
+    jsonRpcConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
+    jsonRpcConfiguration.addRpcApi(IbftRpcApis.IBFT);
+
+    final WebSocketConfiguration webSocketConfiguration = WebSocketConfiguration.createDefault();
+    webSocketConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
+    webSocketConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     verify(mockRunnerBuilder)
         .build(
@@ -266,8 +313,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
             eq("127.0.0.1"),
             eq(30303),
             eq(25),
-            eq(JsonRpcConfiguration.createDefault()),
-            eq(WebSocketConfiguration.createDefault()),
+            eq(jsonRpcConfiguration),
+            eq(webSocketConfiguration),
             any());
 
     verify(mockControllerBuilder).build(any(), any(), any(), eq(false), any(), eq(false));
@@ -476,6 +523,30 @@ public class PantheonCommandTest extends CommandTestAbstract {
             any());
 
     assertThat(jsonRpcConfigArgumentCaptor.getValue().isEnabled()).isTrue();
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void rpcApisPropertyMustBeUsed() {
+    parseCommand("--rpc-api", "ETH,NET");
+
+    verify(mockRunnerBuilder)
+        .build(
+            any(),
+            any(),
+            anyBoolean(),
+            any(),
+            anyString(),
+            anyInt(),
+            anyInt(),
+            jsonRpcConfigArgumentCaptor.capture(),
+            any(),
+            any());
+
+    assertThat(jsonRpcConfigArgumentCaptor.getValue().getRpcApis())
+        .containsExactlyInAnyOrder(RpcApis.ETH, RpcApis.NET);
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -696,6 +767,30 @@ public class PantheonCommandTest extends CommandTestAbstract {
             any());
 
     assertThat(wsRpcConfigArgumentCaptor.getValue().isEnabled()).isTrue();
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void wsApiPropertyMustBeUsed() {
+    parseCommand("--ws-api", "ETH, NET");
+
+    verify(mockRunnerBuilder)
+        .build(
+            any(),
+            any(),
+            anyBoolean(),
+            any(),
+            anyString(),
+            anyInt(),
+            anyInt(),
+            any(),
+            wsRpcConfigArgumentCaptor.capture(),
+            any());
+
+    assertThat(wsRpcConfigArgumentCaptor.getValue().getRpcApis())
+        .containsExactlyInAnyOrder(RpcApis.ETH, RpcApis.NET);
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();

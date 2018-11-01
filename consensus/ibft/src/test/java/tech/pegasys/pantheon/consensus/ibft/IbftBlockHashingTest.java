@@ -1,87 +1,105 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.ibft;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static java.util.Collections.emptyList;
+import static org.assertj.core.api.Java6Assertions.assertThat;
 
+import tech.pegasys.pantheon.crypto.SECP256K1;
+import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
+import tech.pegasys.pantheon.crypto.SECP256K1.PrivateKey;
+import tech.pegasys.pantheon.crypto.SECP256K1.Signature;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.BlockHeaderBuilder;
 import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.core.LogsBloomFilter;
+import tech.pegasys.pantheon.ethereum.core.Util;
+import tech.pegasys.pantheon.ethereum.rlp.BytesValueRLPOutput;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.Test;
 
 public class IbftBlockHashingTest {
 
-  private static final Address PROPOSER_IN_HEADER =
-      Address.fromHexString("0x24defc2d149861d3d245749b81fe0e6b28e04f31");
-  private static final List<Address> VALIDATORS_IN_HEADER =
-      Arrays.asList(
-          PROPOSER_IN_HEADER,
-          Address.fromHexString("0x2a813d7db3de19b07f92268b6d4125ed295cbe00"),
-          Address.fromHexString("0x3814f17bd4b7ce47ab8146684b3443c0a4b2fc2c"),
-          Address.fromHexString("0xc332d0db1704d18f89a590e7586811e36d37ce04"));
-  private static final List<Address> COMMITTERS_IN_HEADER =
-      Arrays.asList(
-          Address.fromHexString("0x3814f17bd4b7ce47ab8146684b3443c0a4b2fc2c"),
-          PROPOSER_IN_HEADER,
-          Address.fromHexString("0x2a813d7db3de19b07f92268b6d4125ed295cbe00"));
-  private static final Hash KNOWN_BLOCK_HASH =
-      Hash.fromHexString("0x0d60351c129af309fc8597c81358652d3d0f0e3141b5432888c4aae405ee0184");
+  private static final List<KeyPair> COMMITTERS_KEY_PAIRS = committersKeyPairs();
+  private static final List<Address> VALIDATORS =
+      Arrays.asList(Address.fromHexString("1"), Address.fromHexString("2"));
+  private static final Optional<Vote> VOTE = Optional.of(Vote.authVote(Address.fromHexString("3")));
+  private static final int ROUND = 0x00FEDCBA;
+  private static final BytesValue VANITY_DATA = vanityBytes();
 
-  private final BlockHeader header = createKnownHeaderFromCapturedData();
+  private static final BlockHeader HEADER_TO_BE_HASHED = headerToBeHashed();
+  private static final Hash EXPECTED_HEADER_HASH = expectedHeaderHash();
 
   @Test
-  public void recoverProposerAddressFromSeal() {
-    final IbftExtraData ibftExtraData = IbftExtraData.decode(header.getExtraData());
-    final Address proposerAddress = IbftBlockHashing.recoverProposerAddress(header, ibftExtraData);
-
-    assertThat(proposerAddress).isEqualTo(PROPOSER_IN_HEADER);
+  public void testCalculateHashOfIbft2BlockOnChain() {
+    Hash actualHeaderHash = IbftBlockHashing.calculateHashOfIbftBlockOnChain(HEADER_TO_BE_HASHED);
+    assertThat(actualHeaderHash).isEqualTo(EXPECTED_HEADER_HASH);
   }
 
   @Test
-  public void readValidatorListFromExtraData() {
-    final IbftExtraData ibftExtraData = IbftExtraData.decode(header.getExtraData());
-    assertThat(ibftExtraData.getValidators()).isEqualTo(VALIDATORS_IN_HEADER);
+  public void testRecoverCommitterAddresses() {
+    List<Address> actualCommitterAddresses =
+        IbftBlockHashing.recoverCommitterAddresses(
+            HEADER_TO_BE_HASHED, IbftExtraData.decode(HEADER_TO_BE_HASHED.getExtraData()));
+
+    List<Address> expectedCommitterAddresses =
+        COMMITTERS_KEY_PAIRS
+            .stream()
+            .map(keyPair -> Util.publicKeyToAddress(keyPair.getPublicKey()))
+            .collect(Collectors.toList());
+
+    assertThat(actualCommitterAddresses).isEqualTo(expectedCommitterAddresses);
   }
 
   @Test
-  public void recoverCommitterAddresses() {
-    final IbftExtraData ibftExtraData = IbftExtraData.decode(header.getExtraData());
-    final List<Address> committers =
-        IbftBlockHashing.recoverCommitterAddresses(header, ibftExtraData);
+  public void testCalculateDataHashForCommittedSeal() {
+    Hash dataHahsForCommittedSeal =
+        IbftBlockHashing.calculateDataHashForCommittedSeal(
+            HEADER_TO_BE_HASHED, IbftExtraData.decode(HEADER_TO_BE_HASHED.getExtraData()));
 
-    assertThat(committers).isEqualTo(COMMITTERS_IN_HEADER);
+    BlockHeaderBuilder builder = setHeaderFieldsExceptForExtraData();
+
+    List<Signature> commitSeals =
+        COMMITTERS_KEY_PAIRS
+            .stream()
+            .map(keyPair -> SECP256K1.sign(dataHahsForCommittedSeal, keyPair))
+            .collect(Collectors.toList());
+
+    IbftExtraData extraDataWithCommitSeals =
+        new IbftExtraData(VANITY_DATA, commitSeals, VOTE, ROUND, VALIDATORS);
+
+    builder.extraData(extraDataWithCommitSeals.encode());
+    BlockHeader actualHeader = builder.buildBlockHeader();
+    assertThat(actualHeader).isEqualTo(HEADER_TO_BE_HASHED);
   }
 
-  @Test
-  public void calculateBlockHash() {
-    assertThat(header.getHash()).isEqualTo(KNOWN_BLOCK_HASH);
+  private static List<KeyPair> committersKeyPairs() {
+    return IntStream.rangeClosed(1, 4)
+        .mapToObj(i -> KeyPair.create(PrivateKey.create(UInt256.of(i).getBytes())))
+        .collect(Collectors.toList());
   }
 
-  /*
-  Header information was extracted from a chain export (RLP) from a Quorum IBFT network.
-  The hash was determined by looking at the parentHash of the subsequent block (i.e. not calculated
-  by internal calculations, but rather by Quorum).
-   */
-  private BlockHeader createKnownHeaderFromCapturedData() {
+  private static BlockHeaderBuilder setHeaderFieldsExceptForExtraData() {
     final BlockHeaderBuilder builder = new BlockHeaderBuilder();
-
-    final String extraDataHexString =
-        "0xd783010800846765746887676f312e392e32856c696e757800000"
-            + "00000000000f90164f8549424defc2d149861d3d245749b81fe0e6b28e04f31942a813d7db3de19b07f92268b6d4"
-            + "125ed295cbe00943814f17bd4b7ce47ab8146684b3443c0a4b2fc2c94c332d0db1704d18f89a590e7586811e36d3"
-            + "7ce04b8417480a32e81936a40da3b8b730c28963a80011fdddb70470573675a11c7871873165e213b80b1ed5bf5a"
-            + "59a31874baf1d6e83d55141f719ada73815c8712c4c6501f8c9b8417ba97752c9a3d14ae8c5f6f864c2808b816a0"
-            + "d3ebef9a3b03c3cf9e31311baeb2e32609ccc99f13488e9e8ea192debf1c26f8c70c2332dfbb8456292fd9366110"
-            + "0b841bbf2d1710a41bee7895dadbbbc92713ba9e74129bb665984f349950d7b5275303db99b12ea3483430079dd5"
-            + "d90bcc3962f72217863725f6cd72ab5c10c8c540001b8415df74d9bf9687a3da10a4660cfd6fd6739df59db5535f"
-            + "a3a7c58382ec587f4fe581089a9e3cd4b8c3b77eeabdd756f1f34ffb990cfd47e81bb205bd10be619d001";
-
     builder.parentHash(
         Hash.fromHexString("0xa7762d3307dbf2ae6a1ae1b09cf61c7603722b2379731b6b90409cdb8c8288a0"));
     builder.ommersHash(
@@ -107,12 +125,56 @@ public class IbftBlockHashingTest {
     builder.gasLimit(4704588);
     builder.gasUsed(0);
     builder.timestamp(1530674616);
-    builder.extraData(BytesValue.fromHexString(extraDataHexString));
     builder.mixHash(
         Hash.fromHexString("0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365"));
     builder.nonce(0);
     builder.blockHashFunction(IbftBlockHashing::calculateHashOfIbftBlockOnChain);
+    return builder;
+  }
 
+  private static BytesValue vanityBytes() {
+    final byte[] vanity_bytes = new byte[32];
+    for (int i = 0; i < vanity_bytes.length; i++) {
+      vanity_bytes[i] = (byte) i;
+    }
+    return BytesValue.wrap(vanity_bytes);
+  }
+
+  private static BlockHeader headerToBeHashed() {
+    BlockHeaderBuilder builder = setHeaderFieldsExceptForExtraData();
+
+    builder.extraData(
+        new IbftExtraData(VANITY_DATA, emptyList(), VOTE, ROUND, VALIDATORS)
+            .encodeWithoutCommitSeals());
+
+    BytesValueRLPOutput rlpForHeaderFroCommittersSigning = new BytesValueRLPOutput();
+    builder.buildBlockHeader().writeTo(rlpForHeaderFroCommittersSigning);
+
+    List<Signature> commitSeals =
+        COMMITTERS_KEY_PAIRS
+            .stream()
+            .map(
+                keyPair ->
+                    SECP256K1.sign(Hash.hash(rlpForHeaderFroCommittersSigning.encoded()), keyPair))
+            .collect(Collectors.toList());
+
+    IbftExtraData extraDataWithCommitSeals =
+        new IbftExtraData(VANITY_DATA, commitSeals, VOTE, ROUND, VALIDATORS);
+
+    builder.extraData(extraDataWithCommitSeals.encode());
     return builder.buildBlockHeader();
+  }
+
+  private static Hash expectedHeaderHash() {
+    BlockHeaderBuilder builder = setHeaderFieldsExceptForExtraData();
+
+    builder.extraData(
+        new IbftExtraData(VANITY_DATA, emptyList(), VOTE, 0, VALIDATORS)
+            .encodeWithoutCommitSealsAndRoundNumber());
+
+    BytesValueRLPOutput rlpOutput = new BytesValueRLPOutput();
+    builder.buildBlockHeader().writeTo(rlpOutput);
+
+    return Hash.hash(rlpOutput.encoded());
   }
 }

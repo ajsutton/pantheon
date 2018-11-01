@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.cli;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -39,14 +51,14 @@ class ExportPublicKeySubCommand implements Runnable {
   @Override
   public void run() {
 
-    final PantheonController<?, ?> controller = parentCommand.buildController();
+    final PantheonController<?> controller = parentCommand.buildController();
     final KeyPair keyPair = controller.getLocalNodeKeyPair();
 
     // this publicKeyExportFile can never be null because of Picocli arity requirement
     //noinspection ConstantConditions
     final Path path = publicKeyExportFile.toPath();
 
-    try (BufferedWriter fileWriter = Files.newBufferedWriter(path, UTF_8)) {
+    try (final BufferedWriter fileWriter = Files.newBufferedWriter(path, UTF_8)) {
       fileWriter.write(keyPair.getPublicKey().toString());
     } catch (final IOException e) {
       LOG.error("An error occurred while trying to write the public key", e);

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.discovery.internal;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -69,10 +81,10 @@ import org.apache.logging.log4j.Logger;
  *   <li><em>DROPPED (*):</em> the peer is no longer in our peer table.
  * </ul>
  *
- * <p>(*) It is worthy to note that the <tt>MESSAGE_EXPECTED</tt> and <tt>DROPPED</tt> states are
- * not modelled explicitly in {@link PeerDiscoveryStatus}, but they have been included in the
- * diagram for clarity. These two states define the elimination path for a peer from the underlying
- * table.
+ * <p>(*) It is worthy to note that the <code>MESSAGE_EXPECTED</code> and <code>DROPPED</code>
+ * states are not modelled explicitly in {@link PeerDiscoveryStatus}, but they have been included in
+ * the diagram for clarity. These two states define the elimination path for a peer from the
+ * underlying table.
  *
  * <p>If an expectation to receive a message was unmet, following the evaluation of a failure
  * condition, the peer will be physically dropped (eliminated) from the table.
@@ -171,7 +183,7 @@ public class PeerDiscoveryController {
    * @param sender The sender.
    */
   public void onMessage(final Packet packet, final DiscoveryPeer sender) {
-    LOG.debug(
+    LOG.trace(
         "<<< Received {} discovery packet from {} ({}): {}",
         packet.getType(),
         sender.getEndpoint(),

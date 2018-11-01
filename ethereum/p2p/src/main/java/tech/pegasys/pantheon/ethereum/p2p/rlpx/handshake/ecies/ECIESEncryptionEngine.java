@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.rlpx.handshake.ecies;
 
 import static com.google.common.base.Preconditions.checkArgument;
@@ -38,8 +50,8 @@ import org.bouncycastle.util.Pack;
  * Scheme</a> engine that implements the encryption and decryption logic behind the ECIES crypto
  * handshake during the RLPx connection establishment.
  *
- * <p>This class has been inspired by the <tt>IESEngine</tt> implementation in Bouncy Castle. It has
- * been modified heavily to accommodate our usage, yet the core logic remains unchanged. It
+ * <p>This class has been inspired by the <code>IESEngine</code> implementation in Bouncy Castle. It
+ * has been modified heavily to accommodate our usage, yet the core logic remains unchanged. It
  * implements a peculiarity of the Ethereum encryption protocol: updating the encryption MAC with
  * the IV.
  */
@@ -153,10 +165,10 @@ public class ECIESEncryptionEngine {
 
   private byte[] encrypt(final byte[] in, final int inOff, final int inLen, final byte[] macData)
       throws InvalidCipherTextException {
-    byte[] C;
-    byte[] K;
-    byte[] K1;
-    byte[] K2;
+    final byte[] C;
+    final byte[] K;
+    final byte[] K1;
+    final byte[] K2;
 
     int len;
 
@@ -233,10 +245,10 @@ public class ECIESEncryptionEngine {
   private byte[] decrypt(
       final byte[] inEnc, final int inOff, final int inLen, final byte[] commonMac)
       throws InvalidCipherTextException {
-    byte[] M;
-    byte[] K;
-    byte[] K1;
-    byte[] K2;
+    final byte[] M;
+    final byte[] K;
+    final byte[] K1;
+    final byte[] K2;
 
     int len;
 
@@ -329,8 +341,8 @@ public class ECIESEncryptionEngine {
    * Key generation function as defined in NIST SP 800-56A, but swapping the order of the digested
    * values (counter first, shared secret second) to comply with Ethereum's approach.
    *
-   * <p>This class has been adapted from the <tt>BaseKDFBytesGenerator</tt> implementation of Bouncy
-   * Castle.
+   * <p>This class has been adapted from the <code>BaseKDFBytesGenerator</code> implementation of
+   * Bouncy Castle.
    */
   private static class ECIESHandshakeKDFFunction implements DigestDerivationFunction {
     private static final int COUNTER_START = 1;
@@ -359,7 +371,7 @@ public class ECIESEncryptionEngine {
     }
 
     /**
-     * Fills <tt>len</tt> bytes of the output buffer with bytes generated from the derivation
+     * Fills <code>len</code> bytes of the output buffer with bytes generated from the derivation
      * function.
      *
      * @throws IllegalArgumentException If the size of the request will cause an overflow.

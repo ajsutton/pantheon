@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.common;
 
 import tech.pegasys.pantheon.ethereum.core.Address;
@@ -42,15 +54,16 @@ public class VoteTally implements ValidatorProvider {
    *
    * @param proposer the address of the validator casting the vote via block proposal
    * @param subject the validator the vote is about
-   * @param voteType the type of vote, either add or drop
+   * @param validatorVote the type of vote, either add or drop
    */
-  public void addVote(final Address proposer, final Address subject, final VoteType voteType) {
+  public void addVote(
+      final Address proposer, final Address subject, final ValidatorVote validatorVote) {
     final Set<Address> addVotesForSubject =
         addVotesBySubject.computeIfAbsent(subject, target -> new HashSet<>());
     final Set<Address> removeVotesForSubject =
         removeVotesBySubject.computeIfAbsent(subject, target -> new HashSet<>());
 
-    if (voteType == VoteType.ADD) {
+    if (validatorVote.isAddVote()) {
       addVotesForSubject.add(proposer);
       removeVotesForSubject.remove(proposer);
     } else {

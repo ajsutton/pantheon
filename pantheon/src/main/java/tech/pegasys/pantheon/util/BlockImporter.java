@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.util;
 
 import static org.apache.logging.log4j.LogManager.getLogger;
@@ -40,7 +52,7 @@ public class BlockImporter {
    */
   public <C, M extends BlockMiner<C, ? extends AbstractBlockCreator<C>>>
       BlockImporter.ImportResult importBlockchain(
-          final Path blocks, final PantheonController<C, M> pantheonController) throws IOException {
+          final Path blocks, final PantheonController<C> pantheonController) throws IOException {
     final ProtocolSchedule<C> protocolSchedule = pantheonController.getProtocolSchedule();
     final ProtocolContext<C> context = pantheonController.getProtocolContext();
     final GenesisConfig<C> genesis = pantheonController.getGenesisConfig();

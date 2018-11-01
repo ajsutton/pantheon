@@ -1,8 +1,20 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
+
 import net.ltgt.gradle.errorprone.CheckSeverity
 
 plugins {
   id 'com.diffplug.gradle.spotless' version '3.13.0'
-  id 'com.palantir.git-version' version '0.10.0'
   id 'io.spring.dependency-management' version '1.0.4.RELEASE'
   id 'com.github.hierynomus.license' version '0.14.0'
   id 'net.ltgt.errorprone' version '0.6'
@@ -67,9 +79,13 @@ allprojects {
   targetCompatibility = '1.8'
 
   repositories {
-    jcenter()
-    mavenCentral()
-    maven { url  "https://consensys.bintray.com/pegasys-repo" }
+    if ("$System.env.JENKINS_URL" == 'https://jenkins.pegasys.tech/') {
+      maven { url "https://nexus.int.pegasys.tech/repository/jcenter/" }
+    } else {
+      jcenter()
+      mavenCentral()
+      maven { url  "https://consensys.bintray.com/pegasys-repo" }
+    }
   }
 
   dependencies {
@@ -88,6 +104,7 @@ allprojects {
         exclude '**/generalstate/GeneralStateReferenceTest*.java'
         exclude '**/generalstate/GeneralStateRegressionReferenceTest*.java'
         exclude '**/blockchain/BlockchainReferenceTest*.java'
+        exclude '**/pantheon/PantheonInfo.java'
         exclude '**/.gradle/**'
       }
       removeUnusedImports()
@@ -95,12 +112,33 @@ allprojects {
       importOrder 'tech.pegasys', 'java', ''
       trimTrailingWhitespace()
       endWithNewline()
+      licenseHeaderFile "${rootDir}/gradle/spotless.java.license"
     }
     groovyGradle {
       target '*.gradle'
       greclipse().configFile(rootProject.file('gradle/formatter.properties'))
       endWithNewline()
     }
+
+    // Below this line are currently only license header tasks
+    format 'groovy', {
+      target '**/*.groovy'
+      licenseHeaderFile "${rootDir}/gradle/spotless.java.license", 'import'
+    }
+
+    // Currently disabled due to referencetest issues
+
+    //  format 'bash', {
+    //    target fileTree('.') {
+    //      include '**/*.sh'
+    //     exclude '**/ansible/**'
+    //    }
+    //   licenseHeaderFile "${rootDir}/gradle/spotless.bash.license", '#!/bin'
+    //  }
+    //  format 'sol', {
+    //    target fileTree('.') { include '**/*.sol' }
+    //   licenseHeaderFile "${rootDir}/gradle/spotless.java.license", '^(pragma|contract)'
+    //  }
   }
 
   tasks.withType(JavaCompile) {
@@ -169,6 +207,11 @@ allprojects {
   // Normalise Xdoclint behaviour across JDKs (OpenJDK 8 is more lenient than Oracle JDK by default).
   javadoc {
     options.addStringOption('Xdoclint:all', '-quiet')
+    if (JavaVersion.current() == JavaVersion.VERSION_1_8) {
+      options.addStringOption('Xwerror', '-quiet')
+    } else {
+      options.addStringOption('Xwerror', '-html5')
+    }
     options.encoding = 'UTF-8'
   }
 
@@ -285,16 +328,8 @@ startScripts {
 }
 
 dependencies {
-  compile project(':ethereum:evmtool')
   compile project(':pantheon')
   errorprone 'com.google.errorprone:error_prone_core:2.3.1'
-}
-
-task createEVMToolApp(type: CreateStartScripts) {
-  outputDir = startScripts.outputDir
-  mainClassName = 'tech.pegasys.pantheon.EVMTool'
-  applicationName = 'evm'
-  classpath = startScripts.classpath
 }
 
 distributions {
@@ -302,6 +337,8 @@ distributions {
     contents {
       from("./LICENSE") { into "." }
       from("build/reports/license/license-dependency.html") { into "." }
+      from("./docs/GettingStartedBinaries.md") { into "." }
+      from("./docs/DocsArchive0.8.0.html") { into "." }
     }
   }
 }
@@ -355,12 +392,6 @@ configure(subprojects.findAll {it.name != 'errorprone-checks'}) {
   }
 }
 
-
-if (!file("ethereum/referencetests/src/test/resources/README.md").exists()) {
-  throw new GradleException("ethereum/referencetests/src/test/resources/README.md missing: please clone submodules (git submodule update --init --recursive)")
-}
-
-
 apply plugin: 'net.researchgate.release'
 
 task releaseIntegrationTest(type: Test){
@@ -373,7 +404,11 @@ task releaseIntegrationTest(type: Test){
   }
 }
 
-task releaseReferenceTest(type: Test, dependsOn : ':ethereum:core:referenceTests'){
+task releaseReferenceTest(type: Test, dependsOn : [
+  ':ethereum:core:referenceTests',
+  ':ethereum:rlp:referenceTests',
+  ':ethereum:trie:referenceTests'
+]){
 }
 
 task releaseAcceptanceTest(type: Test, dependsOn : ':acceptance-tests:acceptanceTest') {}
@@ -382,8 +417,6 @@ release {
   preTagCommitMessage = '[Gradle Release Plugin] - pre tag commit: '
   tagCommitMessage = '[Gradle Release Plugin] - creating tag: '
   newVersionCommitMessage = '[Gradle Release Plugin] - new version commit: '
-  tagTemplate = '${version}'
-  versionPropertyFile = 'gradle.properties'
   buildTasks = [
     'build',
     'releaseIntegrationTest',
@@ -394,8 +427,7 @@ release {
   ]
 
   git {
-    requireBranch = 'release-pipeline'
-    pushToRemote = 'origin'
+    requireBranch = project.hasProperty('release.branch') ? project.property('release.branch') : 'master'
   }
 }
 
@@ -404,17 +436,24 @@ apply plugin: 'com.jfrog.bintray'
 bintray {
   user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
   key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_KEY')
+
   filesSpec {
     from distTar.destinationDir.path
     from distZip.destinationDir.path
     into '.'
   }
+
+  publish = true
+
   pkg {
-    repo = "pegasys-repo"
-    name = "pantheon"
-    userOrg = "consensys"
-    licenses = ["Apache-2.0"]
-    vcsUrl = "https://github.com/PegaSysEng/pantheon"
+    repo = 'pegasys-repo'
+    name = 'pantheon'
+    userOrg = 'consensys'
+    licenses = ['Apache-2.0']
+    websiteUrl = 'https://github.com/PegaSysEng/pantheon'
+    issueTrackerUrl = 'https://github.com/PegaSysEng/pantheon/issues'
+    vcsUrl = 'https://github.com/PegaSysEng/pantheon.git'
+
     version {
       name = project.version
       released  = new Date()

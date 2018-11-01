@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.cli;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -5,17 +17,21 @@ import static com.google.common.base.Preconditions.checkNotNull;
 import tech.pegasys.pantheon.Runner;
 import tech.pegasys.pantheon.RunnerBuilder;
 import tech.pegasys.pantheon.cli.custom.CorsAllowedOriginsProperty;
+import tech.pegasys.pantheon.consensus.clique.jsonrpc.CliqueRpcApis;
+import tech.pegasys.pantheon.consensus.ibft.jsonrpc.IbftRpcApis;
 import tech.pegasys.pantheon.controller.PantheonController;
-import tech.pegasys.pantheon.ethereum.blockcreation.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.Address;
+import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration.Builder;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
-import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration.RpcApis;
+import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApi;
+import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApis;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.peers.DefaultPeer;
+import tech.pegasys.pantheon.ethereum.util.InvalidConfigurationException;
 import tech.pegasys.pantheon.util.BlockImporter;
 import tech.pegasys.pantheon.util.BlockchainImporter;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
@@ -28,14 +44,16 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import com.google.common.net.HostAndPort;
 import io.vertx.core.Vertx;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 import picocli.CommandLine;
 import picocli.CommandLine.AbstractParseResultHandler;
 import picocli.CommandLine.Command;
@@ -60,7 +78,6 @@ import picocli.CommandLine.ParameterException;
   footer = "Pantheon is licensed under the Apache License 2.0"
 )
 public class PantheonCommand implements Runnable {
-  private static final Logger LOG = LogManager.getLogger();
 
   private static final int DEFAULT_MAX_PEERS = 25;
 
@@ -81,19 +98,23 @@ public class PantheonCommand implements Runnable {
 
   private static final String CONFIG_FILE_OPTION_NAME = "--config";
 
-  public static class RpcApisEnumConverter implements ITypeConverter<RpcApis> {
+  public static class RpcApisConverter implements ITypeConverter<RpcApi> {
     @Override
-    public RpcApis convert(final String s) throws RpcApisEnumConvertionException {
-      try {
-        return RpcApis.valueOf(s.trim().toUpperCase());
-      } catch (final IllegalArgumentException e) {
-        throw new RpcApisEnumConvertionException("Invalid value: " + s);
-      }
+    public RpcApi convert(final String name) throws RpcApisConversionException {
+      final String uppercaseName = name.trim().toUpperCase();
+
+      return Stream.<Function<String, Optional<RpcApi>>>of(
+              RpcApis::valueOf, CliqueRpcApis::valueOf, IbftRpcApis::valueOf)
+          .map(f -> f.apply(uppercaseName))
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .findFirst()
+          .orElseThrow(() -> new RpcApisConversionException("Invalid value: " + name));
     }
   }
 
-  public static class RpcApisEnumConvertionException extends Exception {
-    RpcApisEnumConvertionException(final String s) {
+  public static class RpcApisConversionException extends Exception {
+    RpcApisConversionException(final String s) {
       super(s);
     }
   }
@@ -121,7 +142,7 @@ public class PantheonCommand implements Runnable {
   @Option(
     names = {"--datadir"},
     paramLabel = MANDATORY_PATH_FORMAT_HELP,
-    description = "the path to Pantheon data directory (default: ${DEFAULT-VALUE})"
+    description = "the path to Pantheon data directory"
   )
   private final Path dataDir = getDefaultPantheonDataDir();
 
@@ -168,8 +189,7 @@ public class PantheonCommand implements Runnable {
   @Option(
     names = {"--max-peers"},
     paramLabel = MANDATORY_INTEGER_FORMAT_HELP,
-    description =
-        "Maximium p2p peer connections that can be established (default: ${DEFAULT-VALUE})"
+    description = "Maximum p2p peer connections that can be established (default: ${DEFAULT-VALUE})"
   )
   private final Integer maxPeers = DEFAULT_MAX_PEERS;
 
@@ -205,9 +225,15 @@ public class PantheonCommand implements Runnable {
     names = {"--rinkeby"},
     description =
         "Use the Rinkeby test network"
-            + "- see https://github.com/ethereum/EIPs/issues/225 (default: ${DEFAULT-VALUE})"
+            + " - see https://github.com/ethereum/EIPs/issues/225 (default: ${DEFAULT-VALUE})"
   )
   private final Boolean rinkeby = false;
+
+  @Option(
+    names = {"--ropsten"},
+    description = "Use the Ropsten test network (default: ${DEFAULT-VALUE})"
+  )
+  private final Boolean ropsten = false;
 
   @Option(
     names = {"--p2p-listen"},
@@ -253,10 +279,11 @@ public class PantheonCommand implements Runnable {
     paramLabel = "<api name>",
     split = ",",
     arity = "1..*",
-    converter = RpcApisEnumConverter.class,
-    description = "Comma separated APIs to enable on JSON-RPC channel. default: ${DEFAULT-VALUE}"
+    converter = RpcApisConverter.class,
+    description = "Comma separated APIs to enable on JSON-RPC channel. default: ${DEFAULT-VALUE}",
+    defaultValue = "ETH,NET,WEB3,CLIQUE,IBFT"
   )
-  private final Collection<RpcApis> rpcApis = Arrays.asList(RpcApis.ETH, RpcApis.NET, RpcApis.WEB3);
+  private final Collection<RpcApi> rpcApis = null;
 
   @Option(
     names = {"--ws-enabled"},
@@ -279,10 +306,11 @@ public class PantheonCommand implements Runnable {
     paramLabel = "<api name>",
     split = ",",
     arity = "1..*",
-    converter = RpcApisEnumConverter.class,
-    description = "Comma separated APIs to enable on WebSocket channel. default: ${DEFAULT-VALUE}"
+    converter = RpcApisConverter.class,
+    description = "Comma separated APIs to enable on WebSocket channel. default: ${DEFAULT-VALUE}",
+    defaultValue = "ETH,NET,WEB3,CLIQUE,IBFT"
   )
-  private final Collection<RpcApis> wsApis = Arrays.asList(RpcApis.ETH, RpcApis.NET, RpcApis.WEB3);
+  private final Collection<RpcApi> wsApis = null;
 
   @Option(
     names = {"--dev-mode"},
@@ -291,6 +319,12 @@ public class PantheonCommand implements Runnable {
             + "and reduced difficulty to enable CPU mining (default: ${DEFAULT-VALUE})."
   )
   private final Boolean isDevMode = false;
+
+  @Option(
+    names = {"--logging", "-l"},
+    description = "Logging verbosity: OFF, FATAL, WARN, INFO, DEBUG, TRACE, ALL (default: INFO)."
+  )
+  private final Level logLevel = null;
 
   @Option(
     names = {"--miner-enabled"},
@@ -351,10 +385,11 @@ public class PantheonCommand implements Runnable {
     commandLine.addSubcommand("import-blockchain", importBlockchainSubCommand);
     commandLine.addSubcommand("export-pub-key", new ExportPublicKeySubCommand());
 
-    commandLine.registerConverter(HostAndPort.class, HostAndPort::fromString);
-    commandLine.registerConverter(SyncMode.class, SyncMode::fromString);
     commandLine.registerConverter(Address.class, Address::fromHexString);
     commandLine.registerConverter(BytesValue.class, BytesValue::fromHexString);
+    commandLine.registerConverter(HostAndPort.class, HostAndPort::fromString);
+    commandLine.registerConverter(Level.class, Level::valueOf);
+    commandLine.registerConverter(SyncMode.class, SyncMode::fromString);
     commandLine.registerConverter(Wei.class, (arg) -> Wei.of(Long.parseUnsignedLong(arg)));
 
     // Create a handler that will search for a config file option and use it for default values
@@ -367,11 +402,22 @@ public class PantheonCommand implements Runnable {
 
   @Override
   public void run() {
+    // set log level per CLI flags
+    if (logLevel != null) {
+      System.out.println("Setting logging level to " + logLevel.name());
+      Configurator.setAllLevels("", logLevel);
+    }
+
     //noinspection ConstantConditions
     if (isMiningEnabled && coinbase == null) {
       System.out.println(
           "Unable to mine without a valid coinbase. Either disable mining (remove --miner-enabled)"
               + "or specify the beneficiary of mining (via --miner-coinbase <Address>)");
+      return;
+    }
+    if (ropsten && rinkeby) {
+      System.out.println(
+          "Unable to connect to multiple networks simultaneously. Remove one of --ropsten or --rinkeby");
       return;
     }
     final EthNetworkConfig ethNetworkConfig = ethNetworkConfig();
@@ -385,7 +431,7 @@ public class PantheonCommand implements Runnable {
         webSocketConfiguration());
   }
 
-  PantheonController<?, ?> buildController() {
+  PantheonController<?> buildController() {
     try {
       return controllerBuilder.build(
           buildSyncConfig(syncMode),
@@ -394,6 +440,8 @@ public class PantheonCommand implements Runnable {
           syncWithOttoman,
           new MiningParameters(coinbase, minTransactionGasPrice, extraData, isMiningEnabled),
           isDevMode);
+    } catch (final InvalidConfigurationException e) {
+      throw new ExecutionException(new CommandLine(this), e.getMessage());
     } catch (final IOException e) {
       throw new ExecutionException(new CommandLine(this), "Invalid path", e);
     }
@@ -414,7 +462,7 @@ public class PantheonCommand implements Runnable {
     webSocketConfiguration.setEnabled(isWsRpcEnabled);
     webSocketConfiguration.setHost(wsHostAndPort.getHost());
     webSocketConfiguration.setPort(wsHostAndPort.getPort());
-    webSocketConfiguration.setRpcApis(rpcApis);
+    webSocketConfiguration.setRpcApis(wsApis);
     return webSocketConfiguration;
   }
 
@@ -427,7 +475,7 @@ public class PantheonCommand implements Runnable {
 
   // Blockchain synchronisation from peers.
   private void synchronize(
-      final PantheonController<?, ?> controller,
+      final PantheonController<?> controller,
       final boolean noPeerDiscovery,
       final Collection<?> bootstrapNodes,
       final int maxPeers,
@@ -475,7 +523,7 @@ public class PantheonCommand implements Runnable {
   private Path getDefaultPantheonDataDir() {
     // this property is retrieved from Gradle tasks or Pantheon running shell script.
     final String pantheonHomeProperty = System.getProperty(PANTHEON_HOME_PROPERTY_NAME);
-    Path pantheonHome;
+    final Path pantheonHome;
 
     // If prop is found, then use it
     if (pantheonHomeProperty != null) {
@@ -524,13 +572,19 @@ public class PantheonCommand implements Runnable {
   }
 
   private EthNetworkConfig ethNetworkConfig() {
-    final EthNetworkConfig predefinedNetworkConfig =
-        rinkeby ? EthNetworkConfig.rinkeby() : EthNetworkConfig.mainnet();
+    final EthNetworkConfig predefinedNetworkConfig;
+    if (rinkeby) {
+      predefinedNetworkConfig = EthNetworkConfig.rinkeby();
+    } else if (ropsten) {
+      predefinedNetworkConfig = EthNetworkConfig.ropsten();
+    } else {
+      predefinedNetworkConfig = EthNetworkConfig.mainnet();
+    }
     return updateNetworkConfig(predefinedNetworkConfig);
   }
 
   private EthNetworkConfig updateNetworkConfig(final EthNetworkConfig ethNetworkConfig) {
-    EthNetworkConfig.Builder builder = new EthNetworkConfig.Builder(ethNetworkConfig);
+    final EthNetworkConfig.Builder builder = new EthNetworkConfig.Builder(ethNetworkConfig);
     if (genesisFile != null) {
       builder.setGenesisConfig(genesisFile.toPath().toUri());
     }

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.ibft.headervalidationrules;
 
 import static tech.pegasys.pantheon.consensus.ibft.IbftHelpers.calculateRequiredValidatorQuorum;
@@ -26,7 +38,7 @@ import org.apache.logging.log4j.Logger;
  */
 public class IbftExtraDataValidationRule implements AttachedBlockHeaderValidationRule<IbftContext> {
 
-  private static final Logger LOG = LogManager.getLogger();
+  private static final Logger LOGGER = LogManager.getLogger(IbftExtraDataValidationRule.class);
 
   private final boolean validateCommitSeals;
 
@@ -61,14 +73,7 @@ public class IbftExtraDataValidationRule implements AttachedBlockHeaderValidatio
       final ValidatorProvider validatorProvider = context.getConsensusState().getVoteTally();
       final IbftExtraData ibftExtraData = IbftExtraData.decode(header.getExtraData());
 
-      final Address proposer = IbftBlockHashing.recoverProposerAddress(header, ibftExtraData);
-
       final Collection<Address> storedValidators = validatorProvider.getCurrentValidators();
-
-      if (!storedValidators.contains(proposer)) {
-        LOG.trace("Proposer sealing block is not a member of the validators.");
-        return false;
-      }
 
       if (validateCommitSeals) {
         final List<Address> committers =
@@ -79,7 +84,7 @@ public class IbftExtraDataValidationRule implements AttachedBlockHeaderValidatio
       }
 
       if (!Iterables.elementsEqual(ibftExtraData.getValidators(), storedValidators)) {
-        LOG.trace(
+        LOGGER.trace(
             "Incorrect validators. Expected {} but got {}.",
             storedValidators,
             ibftExtraData.getValidators());
@@ -87,10 +92,10 @@ public class IbftExtraDataValidationRule implements AttachedBlockHeaderValidatio
       }
 
     } catch (final RLPException ex) {
-      LOG.trace("ExtraData field was unable to be deserialised into an IBFT Struct.", ex);
+      LOGGER.trace("ExtraData field was unable to be deserialised into an IBFT Struct.", ex);
       return false;
     } catch (final IllegalArgumentException ex) {
-      LOG.trace("Failed to verify extra data", ex);
+      LOGGER.trace("Failed to verify extra data", ex);
       return false;
     }
 
@@ -102,7 +107,7 @@ public class IbftExtraDataValidationRule implements AttachedBlockHeaderValidatio
 
     final int minimumSealsRequired = calculateRequiredValidatorQuorum(storedValidators.size());
     if (committers.size() < minimumSealsRequired) {
-      LOG.trace(
+      LOGGER.trace(
           "Insufficient committers to seal block. (Required {}, received {})",
           minimumSealsRequired,
           committers.size());
@@ -110,7 +115,7 @@ public class IbftExtraDataValidationRule implements AttachedBlockHeaderValidatio
     }
 
     if (!storedValidators.containsAll(committers)) {
-      LOG.trace("Not all committers are in the locally maintained validator list.");
+      LOGGER.trace("Not all committers are in the locally maintained validator list.");
       return false;
     }
 

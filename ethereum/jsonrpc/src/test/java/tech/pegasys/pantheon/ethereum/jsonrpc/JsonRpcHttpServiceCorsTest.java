@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.jsonrpc;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,9 +24,12 @@ import okhttp3.Request.Builder;
 import okhttp3.Response;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 
 public class JsonRpcHttpServiceCorsTest {
+  @Rule public final TemporaryFolder folder = new TemporaryFolder();
 
   private final Vertx vertx = Vertx.vertx();
   private final OkHttpClient client = new OkHttpClient();
@@ -38,7 +53,7 @@ public class JsonRpcHttpServiceCorsTest {
     final Request request =
         new Builder().url(jsonRpcHttpService.url()).header("Origin", "http://bar.me").build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isFalse();
     }
   }
@@ -50,7 +65,7 @@ public class JsonRpcHttpServiceCorsTest {
     final Request request =
         new Builder().url(jsonRpcHttpService.url()).header("Origin", "http://foo.io").build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
   }
@@ -63,7 +78,7 @@ public class JsonRpcHttpServiceCorsTest {
     final Request request =
         new Builder().url(jsonRpcHttpService.url()).header("Origin", "http://bar.me").build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
   }
@@ -76,7 +91,7 @@ public class JsonRpcHttpServiceCorsTest {
     final Request request =
         new Builder().url(jsonRpcHttpService.url()).header("Origin", "http://hel.lo").build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isFalse();
     }
   }
@@ -87,7 +102,7 @@ public class JsonRpcHttpServiceCorsTest {
 
     final Request request = new Builder().url(jsonRpcHttpService.url()).build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
   }
@@ -98,7 +113,7 @@ public class JsonRpcHttpServiceCorsTest {
 
     final Request request = new Builder().url(jsonRpcHttpService.url()).build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
   }
@@ -110,7 +125,7 @@ public class JsonRpcHttpServiceCorsTest {
     final Request request =
         new Builder().url(jsonRpcHttpService.url()).header("Origin", "http://bar.me").build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isFalse();
     }
   }
@@ -122,7 +137,7 @@ public class JsonRpcHttpServiceCorsTest {
     final Request request =
         new Builder().url(jsonRpcHttpService.url()).header("Origin", "http://bar.me").build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.isSuccessful()).isTrue();
     }
   }
@@ -139,13 +154,13 @@ public class JsonRpcHttpServiceCorsTest {
             .header("Origin", "http://foo.io")
             .build();
 
-    try (Response response = client.newCall(request).execute()) {
+    try (final Response response = client.newCall(request).execute()) {
       assertThat(response.header("Access-Control-Allow-Headers")).contains("*", "content-type");
     }
   }
 
   private JsonRpcHttpService createJsonRpcHttpServiceWithAllowedDomains(
-      final String... corsAllowedDomains) {
+      final String... corsAllowedDomains) throws Exception {
     final JsonRpcConfiguration config = JsonRpcConfiguration.createDefault();
     config.setPort(0);
     if (corsAllowedDomains != null) {
@@ -153,7 +168,7 @@ public class JsonRpcHttpServiceCorsTest {
     }
 
     final JsonRpcHttpService jsonRpcHttpService =
-        new JsonRpcHttpService(vertx, config, new HashMap<>());
+        new JsonRpcHttpService(vertx, folder.newFolder().toPath(), config, new HashMap<>());
     jsonRpcHttpService.start().join();
 
     return jsonRpcHttpService;

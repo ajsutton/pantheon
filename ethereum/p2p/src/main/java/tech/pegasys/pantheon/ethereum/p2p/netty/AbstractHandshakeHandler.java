@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.netty;
 
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
@@ -70,7 +82,7 @@ abstract class AbstractHandshakeHandler extends SimpleChannelInboundHandler<Byte
 
       final BytesValue nodeId = handshaker.partyPubKey().getEncodedBytes();
       if (peerConnectionRegistry.isAlreadyConnected(nodeId)) {
-        LOG.info("Rejecting connection from already connected client {}", nodeId);
+        LOG.debug("Rejecting connection from already connected client {}", nodeId);
         ctx.writeAndFlush(
                 new OutboundMessage(
                     null, DisconnectMessage.create(DisconnectReason.ALREADY_CONNECTED)))
@@ -110,7 +122,7 @@ abstract class AbstractHandshakeHandler extends SimpleChannelInboundHandler<Byte
 
   @Override
   public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable throwable) {
-    LOG.warn("Handshake error:", throwable.getMessage());
+    LOG.debug("Handshake error:", throwable);
     connectionFuture.completeExceptionally(throwable);
     ctx.close();
   }
@@ -132,7 +144,7 @@ abstract class AbstractHandshakeHandler extends SimpleChannelInboundHandler<Byte
           || outboundMessage.getData().getCode() != WireMessageCodes.HELLO) {
         throw new IllegalStateException("First wire message sent wasn't a HELLO.");
       }
-      out.writeBytes(framer.frame(outboundMessage.getData()));
+      framer.frame(outboundMessage.getData(), out);
       context.pipeline().remove(this);
     }
   }

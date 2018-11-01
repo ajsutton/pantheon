@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.jsonrpc;
 
 import static java.util.Collections.singletonList;
@@ -9,7 +21,6 @@ import tech.pegasys.pantheon.ethereum.blockcreation.EthHashMiningCoordinator;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
 import tech.pegasys.pantheon.ethereum.eth.EthProtocol;
-import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration.RpcApis;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.FilterManager;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.JsonRpcMethod;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
@@ -33,13 +44,16 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class JsonRpcHttpServiceRpcApisTest {
+  @Rule public final TemporaryFolder folder = new TemporaryFolder();
 
   private final Vertx vertx = Vertx.vertx();
   private final OkHttpClient client = new OkHttpClient();
@@ -47,7 +61,7 @@ public class JsonRpcHttpServiceRpcApisTest {
   private static String baseUrl;
   private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
   private static final String CLIENT_VERSION = "TestClientVersion/0.1.0";
-  private static final String NET_VERSION = "6986785976597";
+  private static final int NET_VERSION = 123;
   private JsonRpcConfiguration configuration;
 
   @Mock protected static BlockchainQueries blockchainQueries;
@@ -75,7 +89,7 @@ public class JsonRpcHttpServiceRpcApisTest {
             "{\"jsonrpc\":\"2.0\",\"id\":" + Json.encode(id) + ",\"method\":\"net_version\"}");
     final Request request = new Request.Builder().post(body).url(baseUrl).build();
 
-    try (Response resp = client.newCall(request).execute()) {
+    try (final Response resp = client.newCall(request).execute()) {
       assertThat(resp.code()).isEqualTo(200);
     }
   }
@@ -90,7 +104,7 @@ public class JsonRpcHttpServiceRpcApisTest {
             "{\"jsonrpc\":\"2.0\",\"id\":" + Json.encode(id) + ",\"method\":\"net_version\"}");
     final Request request = new Request.Builder().post(body).url(baseUrl).build();
 
-    try (Response resp = client.newCall(request).execute()) {
+    try (final Response resp = client.newCall(request).execute()) {
       assertThat(resp.code()).isEqualTo(200);
     }
   }
@@ -105,7 +119,7 @@ public class JsonRpcHttpServiceRpcApisTest {
             "{\"jsonrpc\":\"2.0\",\"id\":" + Json.encode(id) + ",\"method\":\"net_version\"}");
     final Request request = new Request.Builder().post(body).url(baseUrl).build();
 
-    try (Response resp = client.newCall(request).execute()) {
+    try (final Response resp = client.newCall(request).execute()) {
       assertThat(resp.code()).isEqualTo(400);
       // Check general format of result
       final JsonObject json = new JsonObject(resp.body().string());
@@ -125,12 +139,12 @@ public class JsonRpcHttpServiceRpcApisTest {
             "{\"jsonrpc\":\"2.0\",\"id\":" + Json.encode(id) + ",\"method\":\"net_version\"}");
     final Request request = new Request.Builder().post(body).url(baseUrl).build();
 
-    try (Response resp = client.newCall(request).execute()) {
+    try (final Response resp = client.newCall(request).execute()) {
       assertThat(resp.code()).isEqualTo(200);
     }
   }
 
-  private JsonRpcConfiguration createJsonRpcConfigurationWithRpcApis(final RpcApis... rpcApis) {
+  private JsonRpcConfiguration createJsonRpcConfigurationWithRpcApis(final RpcApi... rpcApis) {
     final JsonRpcConfiguration config = JsonRpcConfiguration.createDefault();
     config.setCorsAllowedDomains(singletonList("*"));
     config.setPort(0);
@@ -140,12 +154,13 @@ public class JsonRpcHttpServiceRpcApisTest {
     return config;
   }
 
-  private JsonRpcHttpService createJsonRpcHttpServiceWithRpcApis(final RpcApis... rpcApis) {
+  private JsonRpcHttpService createJsonRpcHttpServiceWithRpcApis(final RpcApi... rpcApis)
+      throws Exception {
     return createJsonRpcHttpServiceWithRpcApis(createJsonRpcConfigurationWithRpcApis(rpcApis));
   }
 
-  private JsonRpcHttpService createJsonRpcHttpServiceWithRpcApis(
-      final JsonRpcConfiguration config) {
+  private JsonRpcHttpService createJsonRpcHttpServiceWithRpcApis(final JsonRpcConfiguration config)
+      throws Exception {
     final Set<Capability> supportedCapabilities = new HashSet<>();
     supportedCapabilities.add(EthProtocol.ETH62);
     supportedCapabilities.add(EthProtocol.ETH63);
@@ -165,7 +180,8 @@ public class JsonRpcHttpServiceRpcApisTest {
                     mock(EthHashMiningCoordinator.class),
                     supportedCapabilities,
                     config.getRpcApis()));
-    final JsonRpcHttpService jsonRpcHttpService = new JsonRpcHttpService(vertx, config, rpcMethods);
+    final JsonRpcHttpService jsonRpcHttpService =
+        new JsonRpcHttpService(vertx, folder.newFolder().toPath(), config, rpcMethods);
     jsonRpcHttpService.start().join();
 
     baseUrl = jsonRpcHttpService.url();

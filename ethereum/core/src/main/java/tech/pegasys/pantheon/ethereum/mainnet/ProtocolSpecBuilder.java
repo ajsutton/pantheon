@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.mainnet;
 
 import static com.google.common.base.Preconditions.checkNotNull;
@@ -22,6 +34,7 @@ public class ProtocolSpecBuilder<T> {
   private Function<GasCalculator, EVM> evmBuilder;
   private Function<GasCalculator, TransactionValidator> transactionValidatorBuilder;
   private Function<DifficultyCalculator<T>, BlockHeaderValidator<T>> blockHeaderValidatorBuilder;
+  private Function<DifficultyCalculator<T>, BlockHeaderValidator<T>> ommerHeaderValidatorBuilder;
   private Function<ProtocolSchedule<T>, BlockBodyValidator<T>> blockBodyValidatorBuilder;
   private BiFunction<GasCalculator, EVM, AbstractMessageProcessor> contractCreationProcessorBuilder;
   private Function<GasCalculator, PrecompileContractRegistry> precompileContractRegistryBuilder;
@@ -76,6 +89,13 @@ public class ProtocolSpecBuilder<T> {
       final Function<DifficultyCalculator<T>, BlockHeaderValidator<T>>
           blockHeaderValidatorBuilder) {
     this.blockHeaderValidatorBuilder = blockHeaderValidatorBuilder;
+    return this;
+  }
+
+  public ProtocolSpecBuilder<T> ommerHeaderValidatorBuilder(
+      final Function<DifficultyCalculator<T>, BlockHeaderValidator<T>>
+          ommerHeaderValidatorBuilder) {
+    this.ommerHeaderValidatorBuilder = ommerHeaderValidatorBuilder;
     return this;
   }
 
@@ -142,6 +162,7 @@ public class ProtocolSpecBuilder<T> {
 
   public <R> ProtocolSpecBuilder<R> changeConsensusContextType(
       final Function<DifficultyCalculator<R>, BlockHeaderValidator<R>> blockHeaderValidatorBuilder,
+      final Function<DifficultyCalculator<R>, BlockHeaderValidator<R>> ommerHeaderValidatorBuilder,
       final Function<ProtocolSchedule<R>, BlockBodyValidator<R>> blockBodyValidatorBuilder,
       final BlockImporterBuilder<R> blockImporterBuilder,
       final DifficultyCalculator<R> difficultyCalculator) {
@@ -154,6 +175,7 @@ public class ProtocolSpecBuilder<T> {
         .messageCallProcessorBuilder(messageCallProcessorBuilder)
         .transactionProcessorBuilder(transactionProcessorBuilder)
         .blockHeaderValidatorBuilder(blockHeaderValidatorBuilder)
+        .ommerHeaderValidatorBuilder(ommerHeaderValidatorBuilder)
         .blockBodyValidatorBuilder(blockBodyValidatorBuilder)
         .blockProcessorBuilder(blockProcessorBuilder)
         .blockImporterBuilder(blockImporterBuilder)
@@ -202,6 +224,8 @@ public class ProtocolSpecBuilder<T> {
             gasCalculator, transactionValidator, contractCreationProcessor, messageCallProcessor);
     final BlockHeaderValidator<T> blockHeaderValidator =
         blockHeaderValidatorBuilder.apply(difficultyCalculator);
+    final BlockHeaderValidator<T> ommerHeaderValidator =
+        ommerHeaderValidatorBuilder.apply(difficultyCalculator);
     final BlockBodyValidator<T> blockBodyValidator =
         blockBodyValidatorBuilder.apply(protocolSchedule);
     final BlockProcessor blockProcessor =
@@ -218,6 +242,7 @@ public class ProtocolSpecBuilder<T> {
         transactionValidator,
         transactionProcessor,
         blockHeaderValidator,
+        ommerHeaderValidator,
         blockBodyValidator,
         blockProcessor,
         blockImporter,

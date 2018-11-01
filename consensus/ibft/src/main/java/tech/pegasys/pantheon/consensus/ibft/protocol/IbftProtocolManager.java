@@ -1,8 +1,21 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.ibft.protocol;
 
 import tech.pegasys.pantheon.consensus.ibft.IbftEvent;
 import tech.pegasys.pantheon.consensus.ibft.IbftEventQueue;
 import tech.pegasys.pantheon.consensus.ibft.IbftEvents;
+import tech.pegasys.pantheon.consensus.ibft.network.IbftNetworkPeers;
 import tech.pegasys.pantheon.ethereum.p2p.api.Message;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.ethereum.p2p.api.ProtocolManager;
@@ -19,14 +32,17 @@ public class IbftProtocolManager implements ProtocolManager {
   private final IbftEventQueue ibftEventQueue;
 
   private final Logger LOG = LogManager.getLogger();
+  private final IbftNetworkPeers peers;
 
   /**
    * Constructor for the ibft protocol manager
    *
    * @param ibftEventQueue Entry point into the ibft event processor
+   * @param peers iBFT network peers
    */
-  public IbftProtocolManager(final IbftEventQueue ibftEventQueue) {
+  public IbftProtocolManager(final IbftEventQueue ibftEventQueue, final IbftNetworkPeers peers) {
     this.ibftEventQueue = ibftEventQueue;
+    this.peers = peers;
   }
 
   @Override
@@ -67,13 +83,17 @@ public class IbftProtocolManager implements ProtocolManager {
   }
 
   @Override
-  public void handleNewConnection(final PeerConnection peerConnection) {}
+  public void handleNewConnection(final PeerConnection peerConnection) {
+    peers.peerAdded(peerConnection);
+  }
 
   @Override
   public void handleDisconnect(
       final PeerConnection peerConnection,
       final DisconnectReason disconnectReason,
-      final boolean initiatedByPeer) {}
+      final boolean initiatedByPeer) {
+    peers.peerRemoved(peerConnection);
+  }
 
   @Override
   public boolean hasSufficientPeers() {

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.sync;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
@@ -30,6 +42,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeoutException;
@@ -91,7 +104,14 @@ public class Downloader<C> {
             .whenComplete(
                 (r, t) -> {
                   if (t != null) {
-                    LOG.error("Error encountered while downloading", t);
+                    final Throwable rootCause = ExceptionUtils.rootCause(t);
+                    if (rootCause instanceof CancellationException) {
+                      LOG.trace("Download cancelled", t);
+                    } else if (rootCause instanceof InvalidBlockException) {
+                      LOG.debug("Invalid block downloaded", t);
+                    } else {
+                      LOG.error("Error encountered while downloading", t);
+                    }
                     // On error, wait a bit before retrying
                     ethContext
                         .getScheduler()
@@ -148,8 +168,8 @@ public class Downloader<C> {
                   return waitForPeerAndThenSetSyncTarget();
                 }
                 final SyncTarget syncTarget = syncState.setSyncTarget(bestPeer, target);
-                LOG.info("Found common ancestor with sync target at block {}", target.getNumber());
-                LOG.info("Set sync target: {}.", syncTarget);
+                LOG.info(
+                    "Found common ancestor with peer {} at block {}", bestPeer, target.getNumber());
                 syncTargetDisconnectListenerId =
                     bestPeer.subscribeDisconnect(this::onSyncTargetPeerDisconnect);
                 return CompletableFuture.completedFuture(syncTarget);
@@ -288,7 +308,7 @@ public class Downloader<C> {
               } else {
                 checkpointTimeouts = 0;
                 checkpointHeaders.addAll(headers);
-                LOG.info("Tracking {} checkpoint headers", checkpointHeaders.size());
+                LOG.debug("Tracking {} checkpoint headers", checkpointHeaders.size());
               }
               return r;
             });
@@ -298,7 +318,7 @@ public class Downloader<C> {
       final SyncTarget syncTarget) {
     final BlockHeader lastHeader =
         checkpointHeaders.size() > 0 ? checkpointHeaders.getLast() : syncTarget.commonAncestor();
-    LOG.info("Requesting checkpoint headers from {}", lastHeader.getNumber());
+    LOG.debug("Requesting checkpoint headers from {}", lastHeader.getNumber());
     return GetHeadersFromPeerByHashTask.startingAtHash(
             protocolSchedule,
             ethContext,
@@ -315,7 +335,7 @@ public class Downloader<C> {
       return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
-    CompletableFuture<List<Block>> importedBlocks;
+    final CompletableFuture<List<Block>> importedBlocks;
     if (checkpointHeaders.size() < 2) {
       // Download blocks without constraining the end block
       final ImportBlocksTask<C> importTask =
@@ -370,9 +390,7 @@ public class Downloader<C> {
             chainSegmentTimeouts = 0;
             final BlockHeader lastImportedCheckpoint = checkpointHeaders.getLast();
             checkpointHeaders.clear();
-            syncState
-                .syncTarget()
-                .ifPresent(target -> target.setCommonAncestor(lastImportedCheckpoint));
+            syncState.setCommonAncestor(lastImportedCheckpoint);
           }
         });
   }
@@ -388,9 +406,7 @@ public class Downloader<C> {
     final BlockHeader lastImportedCheckpointHeader = imported.get(imported.size() - 1);
     // The first checkpoint header is always present in the blockchain.
     checkpointHeaders.addFirst(lastImportedCheckpointHeader);
-    syncState
-        .syncTarget()
-        .ifPresent(target -> target.setCommonAncestor(lastImportedCheckpointHeader));
+    syncState.setCommonAncestor(lastImportedCheckpointHeader);
     return imported.size() > 1;
   }
 }

@@ -1,7 +1,21 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.util.bytes;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
+
+import java.nio.ByteBuffer;
 
 import io.netty.buffer.ByteBuf;
 import io.vertx.core.buffer.Buffer;
@@ -46,6 +60,39 @@ public interface MutableBytesValue extends BytesValue {
   }
 
   /**
+   * /** Wraps a byte array as a mutable byte value.
+   *
+   * <p>This method behave exactly as {@link BytesValue#wrap(byte[],int,int)} except that the result
+   * is mutable.
+   *
+   * @param value The value to wrap.
+   * @param offset The index (inclusive) in {@code value} of the first byte exposed by the returned
+   *     value. In other words, you will have {@code wrap(value, o, l).get(0) == value[o]}.
+   * @param length The length of the resulting value.
+   * @return A {@link BytesValue} that expose the bytes of {@code value} from {@code offset}
+   *     (inclusive) to {@code offset + length} (exclusive).
+   * @throws IndexOutOfBoundsException if {@code offset &lt; 0 || (value.length > 0 && offset >=
+   *     value.length)}.
+   * @throws IllegalArgumentException if {@code length &lt; 0 || offset + length > value.length}.
+   */
+  static MutableBytesValue wrap(final byte[] value, final int offset, final int length) {
+    return new MutableArrayWrappingBytesValue(value, offset, length);
+  }
+
+  /**
+   * Wraps a full Vert.x {@link Buffer} as a {@link BytesValue}.
+   *
+   * <p>Note that as the buffer is wrapped, any change to the content of that buffer may be
+   * reflected in the returned value.
+   *
+   * @param buffer The buffer to wrap.
+   * @return A {@link BytesValue} that exposes the bytes of {@code buffer}.
+   */
+  static BytesValue wrapBuffer(final Buffer buffer) {
+    return wrapBuffer(buffer, 0, buffer.length());
+  }
+
+  /**
    * Wraps a slice of a Vert.x {@link Buffer} as a {@link MutableBytesValue}.
    *
    * <p>Note that as the buffer is wrapped, any change to the content of that buffer may be
@@ -67,6 +114,16 @@ public interface MutableBytesValue extends BytesValue {
   }
 
   /**
+   * Wraps a full Netty {@link ByteBuf} as a {@link BytesValue}.
+   *
+   * @param buffer The buffer to wrap.
+   * @return A {@link BytesValue} that exposes the bytes of {@code buffer}.
+   */
+  static BytesValue wrapBuffer(final ByteBuf buffer) {
+    return wrapBuffer(buffer, buffer.readerIndex(), buffer.readableBytes());
+  }
+
+  /**
    * Wraps a slice of a Netty {@link ByteBuf} as a {@link MutableBytesValue}.
    *
    * @param buffer The buffer to wrap.
@@ -81,6 +138,40 @@ public interface MutableBytesValue extends BytesValue {
       return EMPTY;
     }
     return new MutableByteBufWrappingBytesValue(buffer, offset, size);
+  }
+
+  /**
+   * Wraps a {@link ByteBuffer} as a {@link BytesValue}.
+   *
+   * <p>Note that as the buffer is wrapped, any change to the content of that buffer may be
+   * reflected in the returned value.
+   *
+   * @param buffer The buffer to wrap.
+   * @return A {@link BytesValue} that exposes the bytes of {@code buffer}.
+   */
+  static BytesValue wrapBuffer(final ByteBuffer buffer) {
+    return MutableBytesValue.wrapBuffer(buffer, 0, buffer.capacity());
+  }
+
+  /**
+   * Wraps a slice of a {@link ByteBuffer} as a {@link MutableBytesValue}.
+   *
+   * <p>Note that as the buffer is wrapped, any change to the content of that buffer may be
+   * reflected in the returned value, and any change to the returned value will be reflected in the
+   * buffer.
+   *
+   * @param buffer The buffer to wrap.
+   * @param offset The offset in {@code buffer} from which to expose the bytes in the returned
+   *     value. That is, {@code wrapBuffer(buffer, i, 1).get(0) == buffer.getByte(i)}.
+   * @param size The size of the returned value.
+   * @return A {@link MutableBytesValue} that exposes (reading and writing) the bytes in {@code
+   *     buffer} from {@code offset} (inclusive) to {@code offset + size} (exclusive).
+   */
+  static MutableBytesValue wrapBuffer(final ByteBuffer buffer, final int offset, final int size) {
+    if (size == 0) {
+      return EMPTY;
+    }
+    return new MutableByteBufferWrappingBytesValue(buffer, offset, size);
   }
 
   /**

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.response;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -17,6 +29,7 @@ public enum JsonRpcError {
   // Filter & Subscription Errors
   FILTER_NOT_FOUND(-32000, "Filter not found"),
   SUBSCRIPTION_NOT_FOUND(-32000, "Subscription not found"),
+  NO_MINING_WORK_FOUND(-32000, "No mining work available yet"),
 
   // Transaction validation failures
   NONCE_TOO_LOW(-32001, "Nonce too low"),

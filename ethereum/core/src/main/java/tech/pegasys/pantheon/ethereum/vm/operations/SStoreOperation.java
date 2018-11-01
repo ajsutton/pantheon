@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.vm.operations;
 
 import tech.pegasys.pantheon.ethereum.core.Account;
@@ -25,12 +37,7 @@ public class SStoreOperation extends AbstractOperation {
     final UInt256 newValue = frame.getStackItem(1).asUInt256();
 
     final Account account = frame.getWorldState().get(frame.getRecipientAddress());
-    // Setting storage value to non-zero from zero (i.e. nothing currently at this location) vs.
-    // resetting an existing value.
-    final UInt256 currentValue = account.getStorageValue(key);
-
-    return gasCalculator()
-        .calculateStorageCost(() -> getOriginalValue(frame, key), currentValue, newValue);
+    return gasCalculator().calculateStorageCost(account, key, newValue);
   }
 
   @Override
@@ -42,11 +49,7 @@ public class SStoreOperation extends AbstractOperation {
     assert account != null : "VM account should exists";
 
     // Increment the refund counter.
-    final UInt256 originalValue = getOriginalValue(frame, key);
-    final UInt256 currentValue = account.getStorageValue(key);
-    frame.incrementGasRefund(
-        gasCalculator()
-            .calculateStorageRefundAmount(() -> getOriginalValue(frame, key), currentValue, value));
+    frame.incrementGasRefund(gasCalculator().calculateStorageRefundAmount(account, key, value));
 
     account.setStorageValue(key.copy(), value.copy());
   }
@@ -59,11 +62,5 @@ public class SStoreOperation extends AbstractOperation {
     return frame.isStatic()
         ? Optional.of(ExceptionalHaltReason.ILLEGAL_STATE_CHANGE)
         : Optional.empty();
-  }
-
-  private UInt256 getOriginalValue(final MessageFrame frame, final UInt256 key) {
-    final Account originalAccount =
-        frame.getWorldState().getOriginalAccount(frame.getRecipientAddress());
-    return originalAccount != null ? originalAccount.getStorageValue(key) : UInt256.ZERO;
   }
 }

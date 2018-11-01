@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.discovery.internal;
 
 import static java.util.Collections.unmodifiableList;
@@ -78,8 +90,8 @@ public class PeerTable {
   }
 
   /**
-   * Attempts to add the provided peer to the peer table, and returns a struct signalling one of
-   * three outcomes.
+   * Attempts to add the provided peer to the peer table, and returns an {@link AddResult}
+   * signalling one of three outcomes.
    *
    * <h3>Possible outcomes:</h3>
    *
@@ -110,7 +122,7 @@ public class PeerTable {
     // and an eviction
     // candidate is proposed. The Bucket#add method will raise an exception if the peer already
     // existed.
-    Optional<DiscoveryPeer> res;
+    final Optional<DiscoveryPeer> res;
     try {
       res = bucket.add(peer);
     } catch (final IllegalArgumentException ex) {
@@ -157,12 +169,12 @@ public class PeerTable {
   }
 
   /**
-   * Returns the <tt>limit</tt> peers (at most) closest to the provided target, based on the XOR
+   * Returns the <code>limit</code> peers (at most) closest to the provided target, based on the XOR
    * distance between the keccak-256 hash of the ID and the keccak-256 hash of the target.
    *
    * @param target The target node ID.
    * @param limit The amount of results to return.
-   * @return The <tt>limit</tt> closest peers, at most.
+   * @return The <code>limit</code> closest peers, at most.
    */
   public List<DiscoveryPeer> nearestPeers(final BytesValue target, final int limit) {
     final BytesValue keccak256 = Hash.keccak256(target);
@@ -223,7 +235,7 @@ public class PeerTable {
     return distance;
   }
 
-  /** A struct that encapsulates the result of a peer addition to the table. */
+  /** A class that encapsulates the result of a peer addition to the table. */
   public static class AddResult {
     /** The outcome of the operation. */
     public enum Outcome {

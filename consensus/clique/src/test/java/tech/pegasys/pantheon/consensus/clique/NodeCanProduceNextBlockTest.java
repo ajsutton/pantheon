@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.clique;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,6 +23,7 @@ import tech.pegasys.pantheon.consensus.common.VoteProposer;
 import tech.pegasys.pantheon.consensus.common.VoteTally;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
+import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.AddressHelpers;
 import tech.pegasys.pantheon.ethereum.core.Block;
@@ -18,11 +31,8 @@ import tech.pegasys.pantheon.ethereum.core.BlockBody;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.InMemoryTestFixture;
 import tech.pegasys.pantheon.ethereum.core.Util;
-import tech.pegasys.pantheon.ethereum.db.DefaultMutableBlockchain;
-import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockHashFunction;
-import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
-import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
 
 import java.util.List;
 
@@ -39,7 +49,7 @@ public class NodeCanProduceNextBlockTest {
   private final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
   private ProtocolContext<CliqueContext> cliqueProtocolContext;
 
-  DefaultMutableBlockchain blockChain;
+  MutableBlockchain blockChain;
   private Block genesisBlock;
 
   private Block createEmptyBlock(final KeyPair blockSigner) {
@@ -60,10 +70,7 @@ public class NodeCanProduceNextBlockTest {
 
     genesisBlock = createEmptyBlock(proposerKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));
@@ -88,10 +95,7 @@ public class NodeCanProduceNextBlockTest {
 
     genesisBlock = createEmptyBlock(otherNodeKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));
@@ -125,10 +129,7 @@ public class NodeCanProduceNextBlockTest {
 
     genesisBlock = createEmptyBlock(proposerKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));
@@ -158,10 +159,7 @@ public class NodeCanProduceNextBlockTest {
 
     genesisBlock = createEmptyBlock(proposerKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));
@@ -206,10 +204,7 @@ public class NodeCanProduceNextBlockTest {
 
     genesisBlock = createEmptyBlock(proposerKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));
@@ -238,10 +233,7 @@ public class NodeCanProduceNextBlockTest {
 
     genesisBlock = createEmptyBlock(proposerKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));
@@ -265,10 +257,7 @@ public class NodeCanProduceNextBlockTest {
   public void nonValidatorIsNotAllowedToCreateABlock() {
     genesisBlock = createEmptyBlock(otherNodeKeyPair);
 
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     final VoteTallyCache voteTallyCache = mock(VoteTallyCache.class);
     when(voteTallyCache.getVoteTallyAtBlock(any())).thenReturn(new VoteTally(validatorList));

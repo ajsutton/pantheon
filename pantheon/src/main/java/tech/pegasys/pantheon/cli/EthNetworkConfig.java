@@ -1,9 +1,20 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.cli;
 
-import static tech.pegasys.pantheon.controller.CliquePantheonController.RINKEBY_NETWORK_ID;
-import static tech.pegasys.pantheon.controller.MainnetPantheonController.MAINNET_NETWORK_ID;
 import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.MAINNET_BOOTSTRAP_NODES;
 import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.RINKEBY_BOOTSTRAP_NODES;
+import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.ROPSTEN_BOOTSTRAP_NODES;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -14,8 +25,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Resources;
 
 public class EthNetworkConfig {
+  private static final int MAINNET_NETWORK_ID = 1;
+  private static final int RINKEBY_NETWORK_ID = 4;
+  private static final int ROPSTEN_NETWORK_ID = 3;
   private static final String MAINNET_GENESIS = "mainnet.json";
   private static final String RINKEBY_GENESIS = "rinkeby.json";
+  private static final String ROPSTEN_GENESIS = "ropsten.json";
   private final URI genesisConfig;
   private final int networkId;
   private final Collection<?> bootNodes;
@@ -49,7 +64,7 @@ public class EthNetworkConfig {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    EthNetworkConfig that = (EthNetworkConfig) o;
+    final EthNetworkConfig that = (EthNetworkConfig) o;
     return networkId == that.networkId
         && Objects.equals(genesisConfig, that.genesisConfig)
         && Objects.equals(bootNodes, that.bootNodes);
@@ -82,10 +97,15 @@ public class EthNetworkConfig {
     return new EthNetworkConfig(genesisConfig, RINKEBY_NETWORK_ID, RINKEBY_BOOTSTRAP_NODES);
   }
 
+  public static EthNetworkConfig ropsten() {
+    final URI genesisConfig = jsonConfigURI(ROPSTEN_GENESIS);
+    return new EthNetworkConfig(genesisConfig, ROPSTEN_NETWORK_ID, ROPSTEN_BOOTSTRAP_NODES);
+  }
+
   private static URI jsonConfigURI(final String resourceName) {
     try {
       return Resources.getResource(resourceName).toURI();
-    } catch (URISyntaxException e) {
+    } catch (final URISyntaxException e) {
       throw new IllegalStateException(e);
     }
   }

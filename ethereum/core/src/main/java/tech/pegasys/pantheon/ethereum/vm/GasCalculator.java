@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.vm;
 
 import tech.pegasys.pantheon.ethereum.core.Account;
@@ -25,8 +37,6 @@ import tech.pegasys.pantheon.ethereum.vm.operations.SelfDestructOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.Sha3Operation;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
-
-import java.util.function.Supplier;
 
 /**
  * Provides various gas cost lookups and calculations used during block processing.
@@ -342,23 +352,22 @@ public interface GasCalculator {
   /**
    * Returns the cost for an SSTORE operation.
    *
-   * @param originalValue supplies the value from prior to this transaction
-   * @param currentValue the current value in the affected storage location
+   * @param account the account that storage will be changed in
+   * @param key the key the new value is to be stored under
    * @param newValue the new value to be stored
    * @return the gas cost for the SSTORE operation
    */
-  Gas calculateStorageCost(Supplier<UInt256> originalValue, UInt256 currentValue, UInt256 newValue);
+  Gas calculateStorageCost(Account account, UInt256 key, UInt256 newValue);
 
   /**
    * Returns the refund amount for an SSTORE operation.
    *
-   * @param originalValue supplies the value from prior to this transaction
-   * @param currentValue the current value in the affected storage location
+   * @param account the account that storage will be changed in
+   * @param key the key the new value is to be stored under
    * @param newValue the new value to be stored
    * @return the gas refund for the SSTORE operation
    */
-  Gas calculateStorageRefundAmount(
-      Supplier<UInt256> originalValue, UInt256 currentValue, UInt256 newValue);
+  Gas calculateStorageRefundAmount(Account account, UInt256 key, UInt256 newValue);
 
   /**
    * Returns the refund amount for deleting an account in a {@link SelfDestructOperation}.

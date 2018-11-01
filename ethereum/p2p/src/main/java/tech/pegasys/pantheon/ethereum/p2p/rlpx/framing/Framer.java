@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.rlpx.framing;
 
 import static io.netty.buffer.ByteBufUtil.hexDump;
@@ -99,12 +111,12 @@ public class Framer {
    * Deframes a full message from the byte buffer, if possible.
    *
    * <p>If the byte buffer contains insufficient bytes to extract a full message, this method
-   * returns <tt>null</tt>.
+   * returns <code>null</code>.
    *
    * <p>If the buffer contains at least a header, it offloads it and processes it, setting an
    * internal expectation to subsequently receive as many bytes for the frame as the header
-   * specified. In this case, this method also returns <tt>null</tt> to inform the caller that it
-   * requires more bytes before it can produce an output.
+   * specified. In this case, this method also returns <code>null</code> to inform the caller that
+   * it requires more bytes before it can produce an output.
    *
    * <p>This method can be called repetitively whenever new bytes appear in the buffer. It is worthy
    * to note that the byte buffer is not consumed unless the next expected amount of bytes appears.
@@ -117,7 +129,7 @@ public class Framer {
    * connection, as the digests and stream ciphers could have become corrupted.
    *
    * @param buf The buffer containing no messages, partial messages or multiple messages.
-   * @return The first fully extracted message from this buffer, or <tt>null</tt> if no message
+   * @return The first fully extracted message from this buffer, or <code>null</code> if no message
    *     could be extracted yet.
    * @throws FramingException Thrown when a decryption or internal error occurs.
    */
@@ -276,9 +288,9 @@ public class Framer {
    * MACs.
    *
    * @param message The message to frame.
-   * @return The framed message, as byte buffer.
+   * @param output The {@link ByteBuf} to write framed data to.
    */
-  public synchronized ByteBuf frame(final MessageData message) {
+  public synchronized void frame(final MessageData message, final ByteBuf output) {
     Preconditions.checkArgument(
         message.getSize() < LENGTH_MAX_MESSAGE_FRAME, "Message size in excess of maximum length.");
     // Compress message
@@ -294,24 +306,22 @@ public class Framer {
         // Construct new, compressed message
         final ByteBuf compressedBuf = NetworkMemoryPool.allocate(compressed.length);
         compressedBuf.writeBytes(compressed);
-        return frameAndReleaseMessage(new RawMessage(message.getCode(), compressedBuf));
+        frameAndReleaseMessage(new RawMessage(message.getCode(), compressedBuf), output);
       } finally {
         // We have to release the original message because frameAndRelease only released the
         // compressed copy.
         message.release();
       }
     } else {
-      return frameAndReleaseMessage(message);
+      frameAndReleaseMessage(message, output);
     }
   }
 
   @VisibleForTesting
-  ByteBuf frameAndReleaseMessage(final MessageData message) {
+  void frameAndReleaseMessage(final MessageData message, final ByteBuf buf) {
     try {
       final int frameSize = message.getSize() + LENGTH_MESSAGE_ID;
       final int pad = padding16(frameSize);
-      final int bufSize = LENGTH_FULL_HEADER + (frameSize + pad + LENGTH_MAC);
-      final ByteBuf buf = NetworkMemoryPool.allocate(bufSize);
 
       final byte id = (byte) message.getCode();
 
@@ -330,9 +340,6 @@ public class Framer {
       hMac = secrets.updateEgress(xor(h, hMac)).getEgressMac();
       hMac = Arrays.copyOf(hMac, LENGTH_MAC);
       buf.writeBytes(h).writeBytes(hMac);
-
-      // Sanity check.
-      assert buf.writerIndex() == LENGTH_FULL_HEADER;
 
       // Encrypt payload.
       final byte[] f = new byte[frameSize + pad];
@@ -355,11 +362,6 @@ public class Framer {
       fMac = Arrays.copyOf(secrets.updateEgress(xor(fMac, fMacSeed)).getEgressMac(), LENGTH_MAC);
 
       buf.writeBytes(f).writeBytes(fMac);
-
-      // Sanity check: all expected bytes are written.
-      assert buf.writerIndex() == LENGTH_FULL_HEADER + (frameSize + pad + LENGTH_MAC);
-
-      return buf;
     } finally {
       message.release();
     }

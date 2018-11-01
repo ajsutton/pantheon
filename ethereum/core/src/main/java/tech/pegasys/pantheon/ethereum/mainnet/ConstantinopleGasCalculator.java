@@ -1,11 +1,22 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.mainnet;
 
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Gas;
 import tech.pegasys.pantheon.ethereum.vm.MessageFrame;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.uint.UInt256;
-
-import java.util.function.Supplier;
 
 public class ConstantinopleGasCalculator extends SpuriousDragonGasCalculator {
 
@@ -31,14 +42,13 @@ public class ConstantinopleGasCalculator extends SpuriousDragonGasCalculator {
   @Override
   // As per https://eips.ethereum.org/EIPS/eip-1283
   public Gas calculateStorageCost(
-      final Supplier<UInt256> originalValueSupplier,
-      final UInt256 currentValue,
-      final UInt256 newValue) {
+      final Account account, final UInt256 key, final UInt256 newValue) {
 
+    final UInt256 currentValue = account.getStorageValue(key);
     if (currentValue.equals(newValue)) {
       return SSTORE_NO_OP_COST;
     } else {
-      final UInt256 originalValue = originalValueSupplier.get();
+      final UInt256 originalValue = account.getOriginalStorageValue(key);
       if (originalValue.equals(currentValue)) {
         return originalValue.isZero()
             ? SSTORE_FIRST_DIRTY_NEW_STORAGE_COST
@@ -52,14 +62,13 @@ public class ConstantinopleGasCalculator extends SpuriousDragonGasCalculator {
   @Override
   // As per https://eips.ethereum.org/EIPS/eip-1283
   public Gas calculateStorageRefundAmount(
-      final Supplier<UInt256> originalValueSupplier,
-      final UInt256 currentValue,
-      final UInt256 newValue) {
+      final Account account, final UInt256 key, final UInt256 newValue) {
 
+    final UInt256 currentValue = account.getStorageValue(key);
     if (currentValue.equals(newValue)) {
       return Gas.ZERO;
     } else {
-      final UInt256 originalValue = originalValueSupplier.get();
+      final UInt256 originalValue = account.getOriginalStorageValue(key);
       if (originalValue.equals(currentValue)) {
         if (originalValue.isZero()) {
           return Gas.ZERO;

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.sync.tasks;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -8,13 +20,14 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static tech.pegasys.pantheon.ethereum.core.InMemoryWorldState.createInMemoryWorldStateArchive;
+import static tech.pegasys.pantheon.ethereum.core.InMemoryTestFixture.createInMemoryBlockchain;
+import static tech.pegasys.pantheon.ethereum.core.InMemoryTestFixture.createInMemoryWorldStateArchive;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
+import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.TransactionReceipt;
-import tech.pegasys.pantheon.ethereum.db.DefaultMutableBlockchain;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthProtocolManager;
@@ -28,8 +41,6 @@ import tech.pegasys.pantheon.ethereum.mainnet.MainnetProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason;
 import tech.pegasys.pantheon.ethereum.testutil.BlockDataGenerator;
-import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
-import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
 import tech.pegasys.pantheon.util.ExceptionUtils;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
@@ -45,8 +56,7 @@ public class DetermineCommonAncestorTaskTest {
 
   private final ProtocolSchedule<Void> protocolSchedule = MainnetProtocolSchedule.create();
   private final BlockDataGenerator blockDataGenerator = new BlockDataGenerator();
-  private KeyValueStorage localKvStore;
-  private DefaultMutableBlockchain localBlockchain;
+  private MutableBlockchain localBlockchain;
   private final int defaultHeaderRequestSize = 10;
   Block genesisBlock;
   private EthProtocolManager ethProtocolManager;
@@ -56,10 +66,7 @@ public class DetermineCommonAncestorTaskTest {
   @Before
   public void setup() {
     genesisBlock = blockDataGenerator.genesisBlock();
-    localKvStore = new InMemoryKeyValueStorage();
-    localBlockchain =
-        new DefaultMutableBlockchain(
-            genesisBlock, localKvStore, MainnetBlockHashFunction::createHash);
+    localBlockchain = createInMemoryBlockchain(genesisBlock);
     ethProtocolManager = EthProtocolManagerTestUtil.create(localBlockchain);
     ethContext = ethProtocolManager.ethContext();
     protocolContext =
@@ -81,11 +88,7 @@ public class DetermineCommonAncestorTaskTest {
 
     // Populate remote chain
     final Block remoteGenesisBlock = blockDataGenerator.genesisBlock();
-    final DefaultMutableBlockchain remoteBlockchain =
-        new DefaultMutableBlockchain(
-            remoteGenesisBlock,
-            new InMemoryKeyValueStorage(),
-            MainnetBlockHashFunction::createHash);
+    final MutableBlockchain remoteBlockchain = createInMemoryBlockchain(remoteGenesisBlock);
     for (long i = 1; i <= 9; i++) {
       final BlockDataGenerator.BlockOptions options01 =
           new BlockDataGenerator.BlockOptions()
@@ -190,11 +193,7 @@ public class DetermineCommonAncestorTaskTest {
 
     // Populate remote chain
     final Block remoteGenesisBlock = blockDataGenerator.genesisBlock();
-    final DefaultMutableBlockchain remoteBlockchain =
-        new DefaultMutableBlockchain(
-            remoteGenesisBlock,
-            new InMemoryKeyValueStorage(),
-            MainnetBlockHashFunction::createHash);
+    final MutableBlockchain remoteBlockchain = createInMemoryBlockchain(remoteGenesisBlock);
     for (long i = 1; i <= 99; i++) {
       final BlockDataGenerator.BlockOptions options01 =
           new BlockDataGenerator.BlockOptions()
@@ -250,9 +249,7 @@ public class DetermineCommonAncestorTaskTest {
     }
 
     // Populate remote chain
-    final DefaultMutableBlockchain remoteBlockchain =
-        new DefaultMutableBlockchain(
-            genesisBlock, new InMemoryKeyValueStorage(), MainnetBlockHashFunction::createHash);
+    final MutableBlockchain remoteBlockchain = createInMemoryBlockchain(genesisBlock);
     for (long i = 1; i <= 100; i++) {
       final BlockDataGenerator.BlockOptions options01 =
           new BlockDataGenerator.BlockOptions()
@@ -296,64 +293,64 @@ public class DetermineCommonAncestorTaskTest {
 
   @Test
   public void shouldShortCircuitOnHeaderInInitialRequest() {
-    DefaultMutableBlockchain remoteBlockchain =
-        new DefaultMutableBlockchain(
-            genesisBlock, new InMemoryKeyValueStorage(), MainnetBlockHashFunction::createHash);
+    final MutableBlockchain remoteBlockchain = createInMemoryBlockchain(genesisBlock);
 
     Block commonBlock = null;
 
     // Populate common chain
     for (long i = 1; i <= 95; i++) {
-      BlockDataGenerator.BlockOptions options =
+      final BlockDataGenerator.BlockOptions options =
           new BlockDataGenerator.BlockOptions()
               .setBlockNumber(i)
               .setParentHash(localBlockchain.getBlockHashByNumber(i - 1).get());
       commonBlock = blockDataGenerator.block(options);
-      List<TransactionReceipt> receipts = blockDataGenerator.receipts(commonBlock);
+      final List<TransactionReceipt> receipts = blockDataGenerator.receipts(commonBlock);
       localBlockchain.appendBlock(commonBlock, receipts);
       remoteBlockchain.appendBlock(commonBlock, receipts);
     }
 
     // Populate local chain
     for (long i = 96; i <= 99; i++) {
-      BlockDataGenerator.BlockOptions options00 =
+      final BlockDataGenerator.BlockOptions options00 =
           new BlockDataGenerator.BlockOptions()
               .setBlockNumber(i)
               .setParentHash(localBlockchain.getBlockHashByNumber(i - 1).get());
-      Block block00 = blockDataGenerator.block(options00);
-      List<TransactionReceipt> receipts00 = blockDataGenerator.receipts(block00);
+      final Block block00 = blockDataGenerator.block(options00);
+      final List<TransactionReceipt> receipts00 = blockDataGenerator.receipts(block00);
       localBlockchain.appendBlock(block00, receipts00);
     }
 
     // Populate remote chain
     for (long i = 96; i <= 99; i++) {
-      BlockDataGenerator.BlockOptions options01 =
+      final BlockDataGenerator.BlockOptions options01 =
           new BlockDataGenerator.BlockOptions()
               .setDifficulty(UInt256.ONE)
               .setBlockNumber(i)
               .setParentHash(remoteBlockchain.getBlockHashByNumber(i - 1).get());
-      Block block01 = blockDataGenerator.block(options01);
-      List<TransactionReceipt> receipts01 = blockDataGenerator.receipts(block01);
+      final Block block01 = blockDataGenerator.block(options01);
+      final List<TransactionReceipt> receipts01 = blockDataGenerator.receipts(block01);
       remoteBlockchain.appendBlock(block01, receipts01);
     }
 
-    RespondingEthPeer.Responder responder = RespondingEthPeer.blockchainResponder(remoteBlockchain);
-    RespondingEthPeer respondingEthPeer = EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
+    final RespondingEthPeer.Responder responder =
+        RespondingEthPeer.blockchainResponder(remoteBlockchain);
+    final RespondingEthPeer respondingEthPeer =
+        EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
 
-    DetermineCommonAncestorTask<Void> task =
+    final DetermineCommonAncestorTask<Void> task =
         DetermineCommonAncestorTask.create(
             protocolSchedule,
             protocolContext,
             ethContext,
             respondingEthPeer.getEthPeer(),
             defaultHeaderRequestSize);
-    DetermineCommonAncestorTask<Void> spy = spy(task);
+    final DetermineCommonAncestorTask<Void> spy = spy(task);
 
     // Execute task
-    CompletableFuture<BlockHeader> future = spy.run();
+    final CompletableFuture<BlockHeader> future = spy.run();
     respondingEthPeer.respondWhile(responder, () -> !future.isDone());
 
-    AtomicReference<BlockHeader> result = new AtomicReference<>();
+    final AtomicReference<BlockHeader> result = new AtomicReference<>();
     future.whenComplete(
         (response, error) -> {
           result.set(response);
@@ -379,8 +376,8 @@ public class DetermineCommonAncestorTaskTest {
     assertThat(result).isCompletedWithValue(genesisBlock.getHeader());
 
     // Make sure we didn't ask for any headers
-    verify(peer, times(0)).getHeadersByHash(any(), anyInt(), anyBoolean(), anyInt());
-    verify(peer, times(0)).getHeadersByNumber(anyLong(), anyInt(), anyBoolean(), anyInt());
+    verify(peer, times(0)).getHeadersByHash(any(), anyInt(), anyInt(), anyBoolean());
+    verify(peer, times(0)).getHeadersByNumber(anyLong(), anyInt(), anyInt(), anyBoolean());
     verify(peer, times(0)).send(any());
   }
 }

@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.trie;
 
 import static java.lang.String.format;
@@ -107,7 +119,7 @@ class StoredNodeFactory<V> implements NodeFactory<V> {
 
         case 2:
           final BytesValue encodedPath = nodeRLPs.readBytesValue();
-          BytesValue path;
+          final BytesValue path;
           try {
             path = CompactEncoding.decode(encodedPath);
           } catch (final IllegalArgumentException ex) {
@@ -163,7 +175,7 @@ class StoredNodeFactory<V> implements NodeFactory<V> {
       }
     }
 
-    Optional<V> value;
+    final Optional<V> value;
     if (nodeRLPs.nextIsNull()) {
       nodeRLPs.skipNext();
       value = Optional.empty();
@@ -193,7 +205,7 @@ class StoredNodeFactory<V> implements NodeFactory<V> {
   }
 
   private V decodeValue(final RLPInput valueRlp, final Supplier<String> errMessage) {
-    BytesValue bytes;
+    final BytesValue bytes;
     try {
       bytes = valueRlp.readBytesValue();
     } catch (final RLPException ex) {
@@ -204,7 +216,7 @@ class StoredNodeFactory<V> implements NodeFactory<V> {
   }
 
   private V deserializeValue(final Supplier<String> errMessage, final BytesValue bytes) {
-    V value;
+    final V value;
     try {
       value = valueDeserializer.apply(bytes);
     } catch (final IllegalArgumentException ex) {

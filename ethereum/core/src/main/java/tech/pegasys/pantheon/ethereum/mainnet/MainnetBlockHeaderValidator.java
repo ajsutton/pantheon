@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.mainnet;
 
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
@@ -8,7 +20,8 @@ import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.ExtraDataMax
 import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.GasLimitRangeAndDeltaValidationRule;
 import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.GasUsageValidationRule;
 import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.ProofOfWorkValidationRule;
-import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.TimestampValidationRule;
+import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.TimestampBoundedByFutureParameter;
+import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.TimestampMoreRecentThanParent;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 public final class MainnetBlockHeaderValidator {
@@ -34,6 +47,19 @@ public final class MainnetBlockHeaderValidator {
         .build();
   }
 
+  static BlockHeaderValidator<Void> createOmmerValidator(
+      final DifficultyCalculator<Void> difficultyCalculator) {
+    return new BlockHeaderValidator.Builder<Void>()
+        .addRule(new CalculatedDifficultyValidationRule<>(difficultyCalculator))
+        .addRule(new AncestryValidationRule())
+        .addRule(new GasLimitRangeAndDeltaValidationRule(MIN_GAS_LIMIT, MAX_GAS_LIMIT))
+        .addRule(new GasUsageValidationRule())
+        .addRule(new TimestampMoreRecentThanParent(MINIMUM_SECONDS_SINCE_PARENT))
+        .addRule(new ExtraDataMaxLengthValidationRule(BlockHeader.MAX_EXTRA_DATA_BYTES))
+        .addRule(new ProofOfWorkValidationRule())
+        .build();
+  }
+
   private static BlockHeaderValidator.Builder<Void> createValidator(
       final DifficultyCalculator<Void> difficultyCalculator) {
     return new BlockHeaderValidator.Builder<Void>()
@@ -41,7 +67,8 @@ public final class MainnetBlockHeaderValidator {
         .addRule(new AncestryValidationRule())
         .addRule(new GasLimitRangeAndDeltaValidationRule(MIN_GAS_LIMIT, MAX_GAS_LIMIT))
         .addRule(new GasUsageValidationRule())
-        .addRule(new TimestampValidationRule(TIMESTAMP_TOLERANCE_S, MINIMUM_SECONDS_SINCE_PARENT))
+        .addRule(new TimestampMoreRecentThanParent(MINIMUM_SECONDS_SINCE_PARENT))
+        .addRule(new TimestampBoundedByFutureParameter(TIMESTAMP_TOLERANCE_S))
         .addRule(new ExtraDataMaxLengthValidationRule(BlockHeader.MAX_EXTRA_DATA_BYTES))
         .addRule(new ProofOfWorkValidationRule());
   }

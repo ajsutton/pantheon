@@ -1,14 +1,24 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.controller;
 
 import tech.pegasys.pantheon.consensus.clique.CliqueProtocolSchedule;
-import tech.pegasys.pantheon.consensus.ibft.IbftProtocolSchedule;
+import tech.pegasys.pantheon.consensus.ibftlegacy.IbftProtocolSchedule;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
-import tech.pegasys.pantheon.ethereum.blockcreation.AbstractBlockCreator;
-import tech.pegasys.pantheon.ethereum.blockcreation.AbstractMiningCoordinator;
-import tech.pegasys.pantheon.ethereum.blockcreation.BlockMiner;
-import tech.pegasys.pantheon.ethereum.blockcreation.MiningParameters;
+import tech.pegasys.pantheon.ethereum.blockcreation.MiningCoordinator;
 import tech.pegasys.pantheon.ethereum.chain.GenesisConfig;
+import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
@@ -22,12 +32,11 @@ import java.nio.file.Path;
 
 import io.vertx.core.json.JsonObject;
 
-public interface PantheonController<C, M extends BlockMiner<C, ? extends AbstractBlockCreator<C>>>
-    extends Closeable {
+public interface PantheonController<C> extends Closeable {
 
   String DATABASE_PATH = "database";
 
-  static PantheonController<?, ?> fromConfig(
+  static PantheonController<?> fromConfig(
       final SynchronizerConfiguration syncConfig,
       final String configContents,
       final Path pantheonHome,
@@ -46,7 +55,6 @@ public interface PantheonController<C, M extends BlockMiner<C, ? extends Abstrac
           GenesisConfig.fromConfig(config, MainnetProtocolSchedule.fromConfig(configOptions)),
           syncConfig,
           miningParameters,
-          networkId,
           nodeKeys);
     } else if (configOptions.containsKey("ibft")) {
       return IbftPantheonController.init(
@@ -87,5 +95,5 @@ public interface PantheonController<C, M extends BlockMiner<C, ? extends Abstrac
 
   TransactionPool getTransactionPool();
 
-  AbstractMiningCoordinator<C, M> getMiningCoordinator();
+  MiningCoordinator getMiningCoordinator();
 }

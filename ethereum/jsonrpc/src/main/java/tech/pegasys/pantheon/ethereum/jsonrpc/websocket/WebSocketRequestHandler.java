@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.jsonrpc.websocket;
 
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.JsonRpcMethod;
@@ -28,10 +40,10 @@ public class WebSocketRequestHandler {
   public void handle(final String id, final Buffer buffer) {
     vertx.executeBlocking(
         future -> {
-          WebSocketRpcRequest request;
+          final WebSocketRpcRequest request;
           try {
             request = buffer.toJsonObject().mapTo(WebSocketRpcRequest.class);
-          } catch (IllegalArgumentException | DecodeException e) {
+          } catch (final IllegalArgumentException | DecodeException e) {
             LOG.debug("Error mapping json to WebSocketRpcRequest", e);
             future.complete(JsonRpcError.INVALID_REQUEST);
             return;
@@ -44,7 +56,7 @@ public class WebSocketRequestHandler {
           }
           final JsonRpcMethod method = methods.get(request.getMethod());
           try {
-            LOG.info("WS-RPC request -> {}", request.getMethod());
+            LOG.debug("WS-RPC request -> {}", request.getMethod());
             request.setConnectionId(id);
             future.complete(method.response(request));
           } catch (final Exception e) {

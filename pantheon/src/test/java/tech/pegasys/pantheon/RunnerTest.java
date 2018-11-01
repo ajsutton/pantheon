@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -7,7 +19,6 @@ import tech.pegasys.pantheon.controller.MainnetPantheonController;
 import tech.pegasys.pantheon.controller.PantheonController;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
-import tech.pegasys.pantheon.ethereum.blockcreation.EthHashBlockMiner;
 import tech.pegasys.pantheon.ethereum.chain.GenesisConfig;
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.BlockImporter;
@@ -79,25 +90,23 @@ public final class RunnerTest {
             .build();
 
     // Setup state with block data
-    try (final PantheonController<Void, EthHashBlockMiner> controller =
+    try (final PantheonController<Void> controller =
         MainnetPantheonController.init(
             dbAhead,
             GenesisConfig.mainnet(),
             fastSyncConfig,
             new MiningParametersTestBuilder().enabled(false).build(),
-            NETWORK_ID,
             aheadDbNodeKeys)) {
       setupState(blockCount, controller.getProtocolSchedule(), controller.getProtocolContext());
     }
 
     // Setup Runner with blocks
-    final PantheonController<Void, EthHashBlockMiner> controllerAhead =
+    final PantheonController<Void> controllerAhead =
         MainnetPantheonController.init(
             dbAhead,
             GenesisConfig.mainnet(),
             fastSyncConfig,
             new MiningParametersTestBuilder().enabled(false).build(),
-            NETWORK_ID,
             aheadDbNodeKeys);
     final String listenHost = InetAddress.getLoopbackAddress().getHostAddress();
     final ExecutorService executorService = Executors.newFixedThreadPool(2);
@@ -125,13 +134,12 @@ public final class RunnerTest {
       // Setup runner with no block data
       final Path dbBehind = temp.newFolder().toPath();
       final KeyPair behindDbNodeKeys = loadKeyPair(dbBehind);
-      final PantheonController<Void, EthHashBlockMiner> controllerBehind =
+      final PantheonController<Void> controllerBehind =
           MainnetPantheonController.init(
               temp.newFolder().toPath(),
               GenesisConfig.mainnet(),
               fastSyncConfig,
               new MiningParametersTestBuilder().enabled(false).build(),
-              NETWORK_ID,
               behindDbNodeKeys);
       final Runner runnerBehind =
           runnerBuilder.build(

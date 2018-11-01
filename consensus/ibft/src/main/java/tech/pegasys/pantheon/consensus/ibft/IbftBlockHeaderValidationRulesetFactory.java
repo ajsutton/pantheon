@@ -1,6 +1,18 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.ibft;
 
-import tech.pegasys.pantheon.consensus.common.headervalidationrules.VoteValidationRule;
+import tech.pegasys.pantheon.consensus.ibft.headervalidationrules.IbftCoinbaseValidationRule;
 import tech.pegasys.pantheon.consensus.ibft.headervalidationrules.IbftExtraDataValidationRule;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.Hash;
@@ -9,7 +21,8 @@ import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.AncestryVali
 import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.ConstantFieldValidationRule;
 import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.GasLimitRangeAndDeltaValidationRule;
 import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.GasUsageValidationRule;
-import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.TimestampValidationRule;
+import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.TimestampBoundedByFutureParameter;
+import tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules.TimestampMoreRecentThanParent;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
 public class IbftBlockHeaderValidationRulesetFactory {
@@ -44,7 +57,8 @@ public class IbftBlockHeaderValidationRulesetFactory {
         .addRule(new AncestryValidationRule())
         .addRule(new GasUsageValidationRule())
         .addRule(new GasLimitRangeAndDeltaValidationRule(5000, 0x7fffffffffffffffL))
-        .addRule(new TimestampValidationRule(1, secondsBetweenBlocks))
+        .addRule(new TimestampBoundedByFutureParameter(1))
+        .addRule(new TimestampMoreRecentThanParent(secondsBetweenBlocks))
         .addRule(
             new ConstantFieldValidationRule<>(
                 "MixHash", BlockHeader::getMixHash, IbftHelpers.EXPECTED_MIX_HASH))
@@ -54,8 +68,9 @@ public class IbftBlockHeaderValidationRulesetFactory {
         .addRule(
             new ConstantFieldValidationRule<>(
                 "Difficulty", BlockHeader::getDifficulty, UInt256.ONE))
-        .addRule(new VoteValidationRule())
+        .addRule(new ConstantFieldValidationRule<>("Nonce", BlockHeader::getNonce, 0L))
         .addRule(new IbftExtraDataValidationRule(validateCommitSeals))
+        .addRule(new IbftCoinbaseValidationRule())
         .build();
   }
 }

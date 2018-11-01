@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.rlp;
 
 import tech.pegasys.pantheon.util.bytes.Bytes32;
@@ -98,7 +110,8 @@ public interface RLPInput {
   /**
    * Exits the current list after all its items have been consumed.
    *
-   * <p>This method is equivalent to calling {@link #leaveList(boolean)} with value <tt>false</tt>.
+   * <p>This method is equivalent to calling {@link #leaveList(boolean)} with value <code>false
+   * </code>.
    *
    * <p>Note that this method technically doesn't consume any input but must be called after having
    * read the last element of a list. This allow to ensure the structure of the input is indeed the
@@ -116,9 +129,9 @@ public interface RLPInput {
    * one expected.
    *
    * @param ignoreRest Whether to ignore any remaining elements in the list. If elements remain and
-   *     this parameter is <tt>false</tt>, an exception will be thrown.
-   * @throws RLPException if the current list is not finished (it has more items), if
-   *     <tt>ignoreRest</tt> is <tt>false</tt>.
+   *     this parameter is <code>false</code>, an exception will be thrown.
+   * @throws RLPException if the current list is not finished (it has more items), if <code>
+   *     ignoreRest</code> is <code>false</code>.
    */
   void leaveList(boolean ignoreRest);
 

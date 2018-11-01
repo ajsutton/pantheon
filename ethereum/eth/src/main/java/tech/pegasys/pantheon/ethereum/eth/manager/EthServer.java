@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.manager;
 
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
@@ -53,7 +65,7 @@ class EthServer {
   }
 
   private void handleGetBlockHeaders(final EthMessage message) {
-    LOG.info("Responding to GET_BLOCK_HEADERS request");
+    LOG.trace("Responding to GET_BLOCK_HEADERS request");
     try {
       final MessageData response =
           constructGetHeadersResponse(blockchain, message.getData(), requestLimit);
@@ -66,7 +78,7 @@ class EthServer {
   }
 
   private void handleGetBlockBodies(final EthMessage message) {
-    LOG.info("Responding to GET_BLOCK_BODIES request");
+    LOG.trace("Responding to GET_BLOCK_BODIES request");
     try {
       final MessageData response =
           constructGetBodiesResponse(blockchain, message.getData(), requestLimit);
@@ -79,7 +91,7 @@ class EthServer {
   }
 
   private void handleGetReceipts(final EthMessage message) {
-    LOG.info("Responding to GET_RECEIPTS request");
+    LOG.trace("Responding to GET_RECEIPTS request");
     try {
       final MessageData response =
           constructGetReceiptsResponse(blockchain, message.getData(), requestLimit);
@@ -92,7 +104,7 @@ class EthServer {
   }
 
   private void handleGetNodeData(final EthMessage message) {
-    LOG.info("Responding to GET_NODE_DATA request");
+    LOG.trace("Responding to GET_NODE_DATA request");
     try {
       final MessageData response = constructGetNodeDataResponse(message.getData(), requestLimit);
       message.getPeer().send(response);
@@ -111,7 +123,7 @@ class EthServer {
       final int skip = getHeaders.skip();
       final int maxHeaders = Math.min(requestLimit, getHeaders.maxHeaders());
       final boolean reversed = getHeaders.reverse();
-      BlockHeader firstHeader;
+      final BlockHeader firstHeader;
       if (hash.isPresent()) {
         final Hash startHash = hash.get();
         firstHeader = blockchain.getBlockHeader(startHash).orElse(null);

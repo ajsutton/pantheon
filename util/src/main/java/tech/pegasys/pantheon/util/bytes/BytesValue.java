@@ -1,8 +1,21 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.util.bytes;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkElementIndex;
 
+import java.nio.ByteBuffer;
 import java.security.MessageDigest;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -169,6 +182,36 @@ public interface BytesValue extends Comparable<BytesValue> {
   }
 
   /**
+   * Wraps a {@link ByteBuffer} as a {@link BytesValue}.
+   *
+   * <p>Note that as the buffer is wrapped, any change to the content of that buffer may be
+   * reflected in the returned value.
+   *
+   * @param buffer The buffer to wrap.
+   * @return A {@link BytesValue} that exposes the bytes of {@code buffer}.
+   */
+  static BytesValue wrapBuffer(final ByteBuffer buffer) {
+    return MutableBytesValue.wrapBuffer(buffer, 0, buffer.capacity());
+  }
+
+  /**
+   * Wraps a {@link ByteBuffer} as a {@link BytesValue}.
+   *
+   * <p>Note that as the buffer is wrapped, any change to the content of that buffer may be
+   * reflected in the returned value.
+   *
+   * @param buffer The buffer to wrap.
+   * @param offset The offset in {@code buffer} from which to expose the bytes in the returned
+   *     value. That is, {@code wrapBuffer(buffer, i, 1).get(0) == buffer.getByte(i)}.
+   * @param size The size of the returned value.
+   * @return A {@link BytesValue} that exposes the equivalent of {@code buffer.getBytes(offset,
+   *     offset + size)} (but without copying said bytes).
+   */
+  static BytesValue wrapBuffer(final ByteBuffer buffer, final int offset, final int size) {
+    return MutableBytesValue.wrapBuffer(buffer, offset, size);
+  }
+
+  /**
    * Creates a newly allocated value that contains the provided bytes in their provided order.
    *
    * @param bytes The bytes that must compose the returned value.
@@ -280,6 +323,17 @@ public interface BytesValue extends Comparable<BytesValue> {
    * @throws IndexOutOfBoundsException if {@code i &lt; 0} or {i &gt;= size()}.
    */
   byte get(int i);
+
+  /**
+   * Retrieves a byte in this value.
+   *
+   * @param i The index of the byte to fetch within the value (0-indexed).
+   * @return The byte at index {@code i} in this value.
+   * @throws IndexOutOfBoundsException if {@code i &lt; 0} or {i &gt;= size()}.
+   */
+  default byte get(final long i) {
+    return get(Math.toIntExact(i));
+  }
 
   /**
    * Retrieves the 4 bytes starting at the provided index in this value as an integer.

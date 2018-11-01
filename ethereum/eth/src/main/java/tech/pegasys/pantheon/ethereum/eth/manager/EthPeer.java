@@ -1,8 +1,21 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.manager;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.eth.manager.ChainState.EstimatedHeightListener;
 import tech.pegasys.pantheon.ethereum.eth.manager.RequestManager.ResponseStream;
 import tech.pegasys.pantheon.ethereum.eth.messages.EthPV62;
 import tech.pegasys.pantheon.ethereum.eth.messages.EthPV63;
@@ -69,6 +82,14 @@ public class EthPeer {
     this.onStatusesExchanged.set(onStatusesExchanged);
   }
 
+  public long addChainEstimatedHeightListener(final EstimatedHeightListener listener) {
+    return chainHeadState.addEstimatedHeightListener(listener);
+  }
+
+  public void removeChainEstimatedHeightListener(final long listenerId) {
+    chainHeadState.removeEstimatedHeightListener(listenerId);
+  }
+
   public void recordRequestTimeout(final int requestCode) {
     LOG.debug("Timed out while waiting for response from peer {}", this);
     reputation.recordRequestTimeout(requestCode).ifPresent(this::disconnect);
@@ -106,18 +127,18 @@ public class EthPeer {
   }
 
   public ResponseStream getHeadersByHash(
-      final Hash hash, final int maxHeaders, final boolean reverse, final int skip)
+      final Hash hash, final int maxHeaders, final int skip, final boolean reverse)
       throws PeerNotConnected {
     final GetBlockHeadersMessage message =
-        GetBlockHeadersMessage.create(hash, maxHeaders, reverse, skip);
+        GetBlockHeadersMessage.create(hash, maxHeaders, skip, reverse);
     return sendHeadersRequest(message);
   }
 
   public ResponseStream getHeadersByNumber(
-      final long blockNumber, final int maxHeaders, final boolean reverse, final int skip)
+      final long blockNumber, final int maxHeaders, final int skip, final boolean reverse)
       throws PeerNotConnected {
     final GetBlockHeadersMessage message =
-        GetBlockHeadersMessage.create(blockNumber, maxHeaders, reverse, skip);
+        GetBlockHeadersMessage.create(blockNumber, maxHeaders, skip, reverse);
     return sendHeadersRequest(message);
   }
 

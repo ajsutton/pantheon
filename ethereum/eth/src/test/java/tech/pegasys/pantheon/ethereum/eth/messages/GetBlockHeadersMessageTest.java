@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.messages;
 
 import tech.pegasys.pantheon.ethereum.core.Hash;
@@ -21,7 +33,7 @@ public final class GetBlockHeadersMessageTest {
       final int skip = 10;
       final int maxHeaders = 128;
       final GetBlockHeadersMessage initialMessage =
-          GetBlockHeadersMessage.create(hash, maxHeaders, reverse, skip);
+          GetBlockHeadersMessage.create(hash, maxHeaders, skip, reverse);
       final ByteBuf rawBuffer = NetworkMemoryPool.allocate(initialMessage.getSize());
       initialMessage.writeTo(rawBuffer);
       final MessageData raw = new RawMessage(EthPV62.GET_BLOCK_HEADERS, rawBuffer);
@@ -47,7 +59,7 @@ public final class GetBlockHeadersMessageTest {
       final int skip = 10;
       final int maxHeaders = 128;
       final GetBlockHeadersMessage initialMessage =
-          GetBlockHeadersMessage.create(blockNum, maxHeaders, reverse, skip);
+          GetBlockHeadersMessage.create(blockNum, maxHeaders, skip, reverse);
       final ByteBuf rawBuffer = NetworkMemoryPool.allocate(initialMessage.getSize());
       final MessageData raw = new RawMessage(EthPV62.GET_BLOCK_HEADERS, rawBuffer);
       final GetBlockHeadersMessage message = GetBlockHeadersMessage.readFrom(raw);

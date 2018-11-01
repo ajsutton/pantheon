@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.clique;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -11,16 +23,14 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 
 import tech.pegasys.pantheon.consensus.common.EpochManager;
 import tech.pegasys.pantheon.crypto.SECP256K1.Signature;
+import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.core.AddressHelpers;
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.BlockBody;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
 import tech.pegasys.pantheon.ethereum.core.Hash;
-import tech.pegasys.pantheon.ethereum.db.DefaultMutableBlockchain;
-import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockHashFunction;
-import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
-import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
+import tech.pegasys.pantheon.ethereum.core.InMemoryTestFixture;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.math.BigInteger;
@@ -42,7 +52,7 @@ public class VoteTallyCacheTest {
         headerBuilder.buildHeader(), new BlockBody(Lists.emptyList(), Lists.emptyList()));
   }
 
-  DefaultMutableBlockchain blockChain;
+  MutableBlockchain blockChain;
   private Block genesisBlock;
   private Block block_1;
   private Block block_2;
@@ -57,11 +67,8 @@ public class VoteTallyCacheTest {
             .encode());
 
     genesisBlock = createEmptyBlock(0, Hash.ZERO);
-    final KeyValueStorage keyValueStorage = new InMemoryKeyValueStorage();
 
-    blockChain =
-        new DefaultMutableBlockchain(
-            genesisBlock, keyValueStorage, MainnetBlockHashFunction::createHash);
+    blockChain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     block_1 = createEmptyBlock(1, genesisBlock.getHeader().getHash());
     block_2 = createEmptyBlock(1, block_1.getHeader().getHash());

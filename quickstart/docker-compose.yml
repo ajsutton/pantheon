@@ -4,6 +4,8 @@ services:
     build:
       context: ../
       dockerfile: quickstart/pantheon/Dockerfile
+      args:
+        - JENKINS_URL=${JENKINS_URL:-null}
     image: quickstart/pantheon:latest
     entrypoint: /opt/pantheon/bootnode_start.sh --dev-mode
     volumes:
@@ -43,11 +45,12 @@ services:
       - "8546"
   explorer:
     build:
-      context: explorer
-    image: ethereum-explorer:latest
+      context: block-explorer-light
+      dockerfile: Dockerfile
+    image: quickstart/block-explorer-light:latest
     depends_on:
       - rpcnode
     ports:
-      - "3000"
+      - "${EXPLORER_PORT_MAPPING}80"
 volumes:
   public-keys:

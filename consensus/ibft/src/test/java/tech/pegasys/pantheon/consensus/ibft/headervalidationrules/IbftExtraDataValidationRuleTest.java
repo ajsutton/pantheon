@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.ibft.headervalidationrules;
 
 import static java.util.Collections.emptyList;
@@ -5,119 +17,85 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import tech.pegasys.pantheon.consensus.common.VoteTally;
-import tech.pegasys.pantheon.consensus.ibft.IbftBlockHashing;
 import tech.pegasys.pantheon.consensus.ibft.IbftContext;
 import tech.pegasys.pantheon.consensus.ibft.IbftExtraData;
-import tech.pegasys.pantheon.crypto.SECP256K1;
+import tech.pegasys.pantheon.consensus.ibft.IbftExtraDataFixture;
+import tech.pegasys.pantheon.consensus.ibft.Vote;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
-import tech.pegasys.pantheon.crypto.SECP256K1.Signature;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
 import tech.pegasys.pantheon.ethereum.core.Address;
-import tech.pegasys.pantheon.ethereum.core.AddressHelpers;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.Util;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import com.google.common.collect.Lists;
 import org.junit.Test;
 
 public class IbftExtraDataValidationRuleTest {
 
-  private BlockHeader createProposedBlockHeader(
-      final KeyPair proposerKeyPair, final List<Address> validators) {
+  public static BlockHeader createProposedBlockHeader(
+      final List<Address> validators,
+      final List<KeyPair> committerKeyPairs,
+      final boolean useDifferentRoundNumbersForCommittedSeals) {
+    final int BASE_ROUND_NUMBER = 5;
     final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
     builder.number(1); // must NOT be block 0, as that should not contain seals at all
 
-    // Construct an extraData block and add to a header
-    final IbftExtraData initialIbftExtraData =
-        new IbftExtraData(
-            BytesValue.wrap(new byte[IbftExtraData.EXTRA_VANITY_LENGTH]),
-            emptyList(),
-            null,
-            validators);
-    builder.extraData(initialIbftExtraData.encode());
     final BlockHeader header = builder.buildHeader();
 
-    // Hash the header (ignoring committer and proposer seals), and create signature
-    final Hash proposerSealHash =
-        IbftBlockHashing.calculateDataHashForProposerSeal(header, initialIbftExtraData);
-    final Signature proposerSignature = SECP256K1.sign(proposerSealHash, proposerKeyPair);
-
-    // Construct a new extraData block, containing the constructed proposer signature
-    final IbftExtraData proposedData =
-        new IbftExtraData(
+    final IbftExtraData ibftExtraData =
+        IbftExtraDataFixture.createExtraData(
+            header,
             BytesValue.wrap(new byte[IbftExtraData.EXTRA_VANITY_LENGTH]),
-            emptyList(),
-            proposerSignature,
-            validators);
+            Optional.of(Vote.authVote(Address.fromHexString("1"))),
+            validators,
+            committerKeyPairs,
+            BASE_ROUND_NUMBER,
+            useDifferentRoundNumbersForCommittedSeals);
 
-    // insert the signed ExtraData into the block
-    builder.extraData(proposedData.encode());
+    builder.extraData(ibftExtraData.encode());
     return builder.buildHeader();
-  }
-
-  private IbftExtraData createExtraDataWithCommitSeals(
-      final BlockHeader header, final Collection<KeyPair> committerKeyPairs) {
-    final IbftExtraData extraDataInHeader = IbftExtraData.decode(header.getExtraData());
-
-    final Hash headerHashForCommitters =
-        IbftBlockHashing.calculateDataHashForCommittedSeal(header, extraDataInHeader);
-
-    final List<Signature> commitSeals =
-        committerKeyPairs
-            .stream()
-            .map(keys -> SECP256K1.sign(headerHashForCommitters, keys))
-            .collect(Collectors.toList());
-
-    return new IbftExtraData(
-        extraDataInHeader.getVanityData(),
-        commitSeals,
-        extraDataInHeader.getProposerSeal(),
-        extraDataInHeader.getValidators());
   }
 
   @Test
   public void correctlyConstructedHeaderPassesValidation() {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
+    final List<KeyPair> committerKeyPairs =
+        IntStream.range(0, 2).mapToObj(i -> KeyPair.generate()).collect(Collectors.toList());
 
-    final List<Address> validators = singletonList(proposerAddress);
-    final VoteTally voteTally = new VoteTally(validators);
+    final List<Address> committerAddresses =
+        committerKeyPairs
+            .stream()
+            .map(keyPair -> Util.publicKeyToAddress(keyPair.getPublicKey()))
+            .sorted()
+            .collect(Collectors.toList());
+
+    final VoteTally voteTally = new VoteTally(committerAddresses);
     final ProtocolContext<IbftContext> context =
         new ProtocolContext<>(null, null, new IbftContext(voteTally, null));
 
     final IbftExtraDataValidationRule extraDataValidationRule =
         new IbftExtraDataValidationRule(true);
 
-    BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
-
-    // Insert an extraData block with committer seals.
-    final IbftExtraData commitedExtraData =
-        createExtraDataWithCommitSeals(header, singletonList(proposerKeyPair));
-    builder.extraData(commitedExtraData.encode());
-    header = builder.buildHeader();
+    BlockHeader header = createProposedBlockHeader(committerAddresses, committerKeyPairs, false);
 
     assertThat(extraDataValidationRule.validate(header, null, context)).isTrue();
   }
 
   @Test
   public void insufficientCommitSealsFailsValidation() {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
+    final KeyPair committerKeyPair = KeyPair.generate();
+    final Address committerAddress =
+        Address.extract(Hash.hash(committerKeyPair.getPublicKey().getEncodedBytes()));
 
-    final List<Address> validators = singletonList(proposerAddress);
+    final List<Address> validators = singletonList(committerAddress);
     final VoteTally voteTally = new VoteTally(validators);
     final ProtocolContext<IbftContext> context =
         new ProtocolContext<>(null, null, new IbftContext(voteTally, null));
@@ -125,7 +103,7 @@ public class IbftExtraDataValidationRuleTest {
     final IbftExtraDataValidationRule extraDataValidationRule =
         new IbftExtraDataValidationRule(true);
 
-    final BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
+    final BlockHeader header = createProposedBlockHeader(validators, emptyList(), false);
 
     // Note that no committer seals are in the header's IBFT extra data.
     final IbftExtraData headerExtraData = IbftExtraData.decode(header.getExtraData());
@@ -136,45 +114,17 @@ public class IbftExtraDataValidationRuleTest {
 
   @Test
   public void outOfOrderValidatorListFailsValidation() {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
+    final List<KeyPair> committerKeyPairs =
+        IntStream.range(0, 2).mapToObj(i -> KeyPair.generate()).collect(Collectors.toList());
 
-    final List<Address> validators =
-        Lists.newArrayList(
-            AddressHelpers.calculateAddressWithRespectTo(proposerAddress, 1), proposerAddress);
+    final List<Address> committerAddresses =
+        committerKeyPairs
+            .stream()
+            .map(keyPair -> Util.publicKeyToAddress(keyPair.getPublicKey()))
+            .sorted()
+            .collect(Collectors.toList());
 
-    final VoteTally voteTally = new VoteTally(validators);
-    final ProtocolContext<IbftContext> context =
-        new ProtocolContext<>(null, null, new IbftContext(voteTally, null));
-
-    final IbftExtraDataValidationRule extraDataValidationRule =
-        new IbftExtraDataValidationRule(true);
-
-    BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
-
-    // Insert an extraData block with committer seals.
-    final IbftExtraData commitedExtraData =
-        createExtraDataWithCommitSeals(header, singletonList(proposerKeyPair));
-    builder.extraData(commitedExtraData.encode());
-    header = builder.buildHeader();
-
-    assertThat(extraDataValidationRule.validate(header, null, context)).isFalse();
-  }
-
-  @Test
-  public void proposerNotInValidatorListFailsValidation() {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
-
-    final List<Address> validators =
-        Lists.newArrayList(
-            AddressHelpers.calculateAddressWithRespectTo(proposerAddress, 1), proposerAddress);
+    final List<Address> validators = Lists.reverse(committerAddresses);
 
     final VoteTally voteTally = new VoteTally(validators);
     final ProtocolContext<IbftContext> context =
@@ -183,26 +133,20 @@ public class IbftExtraDataValidationRuleTest {
     final IbftExtraDataValidationRule extraDataValidationRule =
         new IbftExtraDataValidationRule(true);
 
-    BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
-
-    // Insert an extraData block with committer seals.
-    final IbftExtraData commitedExtraData =
-        createExtraDataWithCommitSeals(header, singletonList(proposerKeyPair));
-    builder.extraData(commitedExtraData.encode());
-    header = builder.buildHeader();
+    BlockHeader header = createProposedBlockHeader(validators, committerKeyPairs, false);
 
     assertThat(extraDataValidationRule.validate(header, null, context)).isFalse();
   }
 
   @Test
   public void mismatchingReportedValidatorsVsLocallyStoredListFailsValidation() {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
+    final List<KeyPair> committerKeyPairs =
+        IntStream.range(0, 2).mapToObj(i -> KeyPair.generate()).collect(Collectors.toList());
 
-    final List<Address> validators = Lists.newArrayList(proposerAddress);
+    final List<Address> validators =
+        IntStream.range(0, 2)
+            .mapToObj(i -> Util.publicKeyToAddress(KeyPair.generate().getPublicKey()))
+            .collect(Collectors.toList());
 
     final VoteTally voteTally = new VoteTally(validators);
     final ProtocolContext<IbftContext> context =
@@ -211,38 +155,24 @@ public class IbftExtraDataValidationRuleTest {
     final IbftExtraDataValidationRule extraDataValidationRule =
         new IbftExtraDataValidationRule(true);
 
-    // Add another validator to the list reported in the IbftExtraData (note, as the
-    validators.add(AddressHelpers.calculateAddressWithRespectTo(proposerAddress, 1));
-    BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
-
-    // Insert an extraData block with committer seals.
-    final IbftExtraData commitedExtraData =
-        createExtraDataWithCommitSeals(header, singletonList(proposerKeyPair));
-    builder.extraData(commitedExtraData.encode());
-    header = builder.buildHeader();
+    BlockHeader header = createProposedBlockHeader(validators, committerKeyPairs, false);
 
     assertThat(extraDataValidationRule.validate(header, null, context)).isFalse();
   }
 
   @Test
   public void committerNotInValidatorListFailsValidation() {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
+    final KeyPair committerKeyPair = KeyPair.generate();
+    final Address committerAddress = Util.publicKeyToAddress(committerKeyPair.getPublicKey());
 
-    final List<Address> validators = singletonList(proposerAddress);
+    final List<Address> validators = singletonList(committerAddress);
     final VoteTally voteTally = new VoteTally(validators);
-
-    BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
 
     // Insert an extraData block with committer seals.
     final KeyPair nonValidatorKeyPair = KeyPair.generate();
-    final IbftExtraData commitedExtraData =
-        createExtraDataWithCommitSeals(header, singletonList(nonValidatorKeyPair));
-    builder.extraData(commitedExtraData.encode());
-    header = builder.buildHeader();
+
+    BlockHeader header =
+        createProposedBlockHeader(validators, singletonList(nonValidatorKeyPair), false);
 
     final ProtocolContext<IbftContext> context =
         new ProtocolContext<>(null, null, new IbftContext(voteTally, null));
@@ -254,48 +184,52 @@ public class IbftExtraDataValidationRuleTest {
 
   @Test
   public void ratioOfCommittersToValidatorsAffectValidation() {
-    assertThat(subExecution(4, 4)).isEqualTo(true);
-    assertThat(subExecution(4, 3)).isEqualTo(true);
-    assertThat(subExecution(4, 2)).isEqualTo(false);
+    assertThat(subExecution(4, 4, false)).isEqualTo(true);
+    assertThat(subExecution(4, 3, false)).isEqualTo(true);
+    assertThat(subExecution(4, 2, false)).isEqualTo(false);
 
-    assertThat(subExecution(5, 3)).isEqualTo(true);
-    assertThat(subExecution(5, 2)).isEqualTo(false);
+    assertThat(subExecution(5, 4, false)).isEqualTo(true);
+    assertThat(subExecution(5, 3, false)).isEqualTo(false);
+    assertThat(subExecution(5, 2, false)).isEqualTo(false);
 
-    assertThat(subExecution(6, 4)).isEqualTo(true);
-    assertThat(subExecution(6, 3)).isEqualTo(true);
-    assertThat(subExecution(6, 2)).isEqualTo(false);
+    assertThat(subExecution(6, 4, false)).isEqualTo(true);
+    assertThat(subExecution(6, 3, false)).isEqualTo(false);
+    assertThat(subExecution(6, 2, false)).isEqualTo(false);
 
-    assertThat(subExecution(7, 5)).isEqualTo(true);
-    assertThat(subExecution(7, 4)).isEqualTo(false);
+    assertThat(subExecution(7, 5, false)).isEqualTo(true);
+    assertThat(subExecution(7, 4, false)).isEqualTo(false);
 
-    assertThat(subExecution(9, 5)).isEqualTo(true);
-    assertThat(subExecution(9, 4)).isEqualTo(false);
+    assertThat(subExecution(8, 6, false)).isEqualTo(true);
+    assertThat(subExecution(8, 5, false)).isEqualTo(false);
+    assertThat(subExecution(8, 4, false)).isEqualTo(false);
 
-    assertThat(subExecution(10, 7)).isEqualTo(true);
-    assertThat(subExecution(10, 6)).isEqualTo(false);
+    assertThat(subExecution(9, 6, false)).isEqualTo(true);
+    assertThat(subExecution(9, 5, false)).isEqualTo(false);
+    assertThat(subExecution(9, 4, false)).isEqualTo(false);
 
-    assertThat(subExecution(12, 7)).isEqualTo(true);
-    assertThat(subExecution(12, 6)).isEqualTo(false);
+    assertThat(subExecution(10, 7, false)).isEqualTo(true);
+    assertThat(subExecution(10, 6, false)).isEqualTo(false);
 
-    // The concern in the above is that when using 6 validators, only 1/2 the validators are
-    // required to seal a block. All other combinations appear to be safe they always have >50%
-    // validators sealing the block.
-
+    assertThat(subExecution(12, 8, false)).isEqualTo(true);
+    assertThat(subExecution(12, 7, false)).isEqualTo(false);
+    assertThat(subExecution(12, 6, false)).isEqualTo(false);
   }
 
-  private boolean subExecution(final int validatorCount, final int committerCount) {
-    final BlockHeaderTestFixture builder = new BlockHeaderTestFixture();
-    builder.number(1); // must NOT be block 0, as that should not contain seals at all
-    final KeyPair proposerKeyPair = KeyPair.generate();
+  @Test
+  public void validationFailsIfCommittedSealsAreForDifferentRounds() {
+    assertThat(subExecution(2, 2, true)).isEqualTo(false);
+    assertThat(subExecution(4, 4, true)).isEqualTo(false);
+  }
 
-    final Address proposerAddress =
-        Address.extract(Hash.hash(proposerKeyPair.getPublicKey().getEncodedBytes()));
+  private boolean subExecution(
+      final int validatorCount,
+      final int committerCount,
+      final boolean useDifferentRoundNumbersForCommittedSeals) {
 
     final List<Address> validators = Lists.newArrayList();
     final List<KeyPair> committerKeys = Lists.newArrayList();
-    validators.add(proposerAddress);
-    committerKeys.add(proposerKeyPair);
-    for (int i = 0; i < validatorCount - 1; i++) { // need -1 to account for proposer
+
+    for (int i = 0; i < validatorCount; i++) { // need -1 to account for proposer
       final KeyPair committerKeyPair = KeyPair.generate();
       committerKeys.add(committerKeyPair);
       validators.add(Address.extract(Hash.hash(committerKeyPair.getPublicKey().getEncodedBytes())));
@@ -303,12 +237,11 @@ public class IbftExtraDataValidationRuleTest {
 
     Collections.sort(validators);
     final VoteTally voteTally = new VoteTally(validators);
-    BlockHeader header = createProposedBlockHeader(proposerKeyPair, validators);
-    final IbftExtraData commitedExtraData =
-        createExtraDataWithCommitSeals(header, committerKeys.subList(0, committerCount));
-
-    builder.extraData(commitedExtraData.encode());
-    header = builder.buildHeader();
+    BlockHeader header =
+        createProposedBlockHeader(
+            validators,
+            committerKeys.subList(0, committerCount),
+            useDifferentRoundNumbersForCommittedSeals);
 
     final ProtocolContext<IbftContext> context =
         new ProtocolContext<>(null, null, new IbftContext(voteTally, null));

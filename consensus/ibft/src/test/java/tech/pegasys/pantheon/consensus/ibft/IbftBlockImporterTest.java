@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.consensus.ibft;
 
 import static java.util.Collections.emptyList;
@@ -16,8 +28,6 @@ import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
 import tech.pegasys.pantheon.ethereum.core.BlockImporter;
 import tech.pegasys.pantheon.ethereum.db.WorldStateArchive;
 import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
-
-import java.util.Collections;
 
 import org.junit.Test;
 
@@ -42,9 +52,7 @@ public class IbftBlockImporterTest {
   public void voteTallyNotUpdatedWhenBlockImportFails() {
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
     final Block block =
-        new Block(
-            headerBuilder.buildHeader(),
-            new BlockBody(Collections.emptyList(), Collections.emptyList()));
+        new Block(headerBuilder.buildHeader(), new BlockBody(emptyList(), emptyList()));
 
     when(delegate.importBlock(context, block, HeaderValidationMode.FULL, HeaderValidationMode.FULL))
         .thenReturn(false);
@@ -58,14 +66,12 @@ public class IbftBlockImporterTest {
   public void voteTallyNotUpdatedWhenFastBlockImportFails() {
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
     final Block block =
-        new Block(
-            headerBuilder.buildHeader(),
-            new BlockBody(Collections.emptyList(), Collections.emptyList()));
+        new Block(headerBuilder.buildHeader(), new BlockBody(emptyList(), emptyList()));
 
     when(delegate.fastImportBlock(context, block, emptyList(), HeaderValidationMode.LIGHT))
         .thenReturn(false);
 
-    importer.fastImportBlock(context, block, Collections.emptyList(), HeaderValidationMode.LIGHT);
+    importer.fastImportBlock(context, block, emptyList(), HeaderValidationMode.LIGHT);
 
     verifyZeroInteractions(voteTallyUpdater);
   }
@@ -74,8 +80,7 @@ public class IbftBlockImporterTest {
   public void voteTallyUpdatedWhenBlockImportSucceeds() {
     final Block block =
         new Block(
-            new BlockHeaderTestFixture().buildHeader(),
-            new BlockBody(Collections.emptyList(), Collections.emptyList()));
+            new BlockHeaderTestFixture().buildHeader(), new BlockBody(emptyList(), emptyList()));
 
     when(delegate.importBlock(context, block, HeaderValidationMode.FULL, HeaderValidationMode.FULL))
         .thenReturn(true);
@@ -89,13 +94,12 @@ public class IbftBlockImporterTest {
   public void voteTallyUpdatedWhenFastBlockImportSucceeds() {
     final Block block =
         new Block(
-            new BlockHeaderTestFixture().buildHeader(),
-            new BlockBody(Collections.emptyList(), Collections.emptyList()));
+            new BlockHeaderTestFixture().buildHeader(), new BlockBody(emptyList(), emptyList()));
 
     when(delegate.fastImportBlock(context, block, emptyList(), HeaderValidationMode.LIGHT))
         .thenReturn(true);
 
-    importer.fastImportBlock(context, block, Collections.emptyList(), HeaderValidationMode.LIGHT);
+    importer.fastImportBlock(context, block, emptyList(), HeaderValidationMode.LIGHT);
 
     verify(voteTallyUpdater).updateForBlock(block.getHeader(), voteTally);
   }

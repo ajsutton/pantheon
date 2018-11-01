@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon;
 
 import tech.pegasys.pantheon.consensus.clique.CliqueContext;
@@ -7,15 +19,18 @@ import tech.pegasys.pantheon.consensus.ibft.jsonrpc.IbftJsonRpcMethodsFactory;
 import tech.pegasys.pantheon.controller.PantheonController;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
-import tech.pegasys.pantheon.ethereum.blockcreation.AbstractMiningCoordinator;
+import tech.pegasys.pantheon.ethereum.blockcreation.MiningCoordinator;
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
 import tech.pegasys.pantheon.ethereum.db.WorldStateArchive;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
-import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration.RpcApis;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcHttpService;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcMethodsFactory;
+import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApi;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.FilterIdGenerator;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.FilterManager;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.FilterRepository;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.JsonRpcMethod;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
@@ -55,7 +70,7 @@ public class RunnerBuilder {
 
   public Runner build(
       final Vertx vertx,
-      final PantheonController<?, ?> pantheonController,
+      final PantheonController<?> pantheonController,
       final boolean discovery,
       final Collection<?> bootstrapPeers,
       final String discoveryHost,
@@ -124,8 +139,9 @@ public class RunnerBuilder {
 
     final Synchronizer synchronizer = pantheonController.getSynchronizer();
     final TransactionPool transactionPool = pantheonController.getTransactionPool();
-    final AbstractMiningCoordinator<?, ?> miningCoordinator =
-        pantheonController.getMiningCoordinator();
+    final MiningCoordinator miningCoordinator = pantheonController.getMiningCoordinator();
+
+    final FilterManager filterManager = createFilterManager(vertx, context, transactionPool);
 
     Optional<JsonRpcHttpService> jsonRpcHttpService = Optional.empty();
     if (jsonRpcConfiguration.isEnabled()) {
@@ -139,9 +155,10 @@ public class RunnerBuilder {
               transactionPool,
               miningCoordinator,
               supportedCapabilities,
-              jsonRpcConfiguration.getRpcApis());
+              jsonRpcConfiguration.getRpcApis(),
+              filterManager);
       jsonRpcHttpService =
-          Optional.of(new JsonRpcHttpService(vertx, jsonRpcConfiguration, jsonRpcMethods));
+          Optional.of(new JsonRpcHttpService(vertx, dataDir, jsonRpcConfiguration, jsonRpcMethods));
     }
 
     Optional<WebSocketService> webSocketService = Optional.empty();
@@ -156,7 +173,8 @@ public class RunnerBuilder {
               transactionPool,
               miningCoordinator,
               supportedCapabilities,
-              webSocketConfiguration.getRpcApis());
+              webSocketConfiguration.getRpcApis(),
+              filterManager);
 
       final SubscriptionManager subscriptionManager =
           createSubscriptionManager(vertx, context.getBlockchain(), transactionPool);
@@ -179,21 +197,34 @@ public class RunnerBuilder {
         vertx, networkRunner, jsonRpcHttpService, webSocketService, pantheonController, dataDir);
   }
 
+  private FilterManager createFilterManager(
+      final Vertx vertx, final ProtocolContext<?> context, final TransactionPool transactionPool) {
+    final FilterManager filterManager =
+        new FilterManager(
+            new BlockchainQueries(context.getBlockchain(), context.getWorldStateArchive()),
+            transactionPool,
+            new FilterIdGenerator(),
+            new FilterRepository());
+    vertx.deployVerticle(filterManager);
+    return filterManager;
+  }
+
   private Map<String, JsonRpcMethod> jsonRpcMethods(
       final ProtocolContext<?> context,
       final ProtocolSchedule<?> protocolSchedule,
-      final PantheonController<?, ?> pantheonController,
+      final PantheonController<?> pantheonController,
       final NetworkRunner networkRunner,
       final Synchronizer synchronizer,
       final TransactionPool transactionPool,
-      final AbstractMiningCoordinator<?, ?> miningCoordinator,
+      final MiningCoordinator miningCoordinator,
       final Set<Capability> supportedCapabilities,
-      final Collection<RpcApis> jsonRpcApis) {
+      final Collection<RpcApi> jsonRpcApis,
+      final FilterManager filterManager) {
     final Map<String, JsonRpcMethod> methods =
         new JsonRpcMethodsFactory()
             .methods(
                 PantheonInfo.version(),
-                String.valueOf(pantheonController.getGenesisConfig().getChainId()),
+                pantheonController.getGenesisConfig().getChainId(),
                 networkRunner.getNetwork(),
                 context.getBlockchain(),
                 context.getWorldStateArchive(),
@@ -202,14 +233,15 @@ public class RunnerBuilder {
                 protocolSchedule,
                 miningCoordinator,
                 supportedCapabilities,
-                jsonRpcApis);
+                jsonRpcApis,
+                filterManager);
 
     if (context.getConsensusState() instanceof CliqueContext) {
       // This is checked before entering this if branch
       @SuppressWarnings("unchecked")
       final ProtocolContext<CliqueContext> cliqueProtocolContext =
           (ProtocolContext<CliqueContext>) context;
-      methods.putAll(new CliqueJsonRpcMethodsFactory().methods(cliqueProtocolContext));
+      methods.putAll(new CliqueJsonRpcMethodsFactory().methods(cliqueProtocolContext, jsonRpcApis));
     }
 
     if (context.getConsensusState() instanceof IbftContext) {
@@ -217,7 +249,7 @@ public class RunnerBuilder {
       @SuppressWarnings("unchecked")
       final ProtocolContext<IbftContext> ibftProtocolContext =
           (ProtocolContext<IbftContext>) context;
-      methods.putAll(new IbftJsonRpcMethodsFactory().methods(ibftProtocolContext));
+      methods.putAll(new IbftJsonRpcMethodsFactory().methods(ibftProtocolContext, jsonRpcApis));
     }
     return methods;
   }

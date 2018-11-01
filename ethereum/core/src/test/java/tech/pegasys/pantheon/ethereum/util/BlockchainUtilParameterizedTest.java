@@ -1,16 +1,26 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.BlockBody;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
+import tech.pegasys.pantheon.ethereum.core.InMemoryTestFixture;
 import tech.pegasys.pantheon.ethereum.core.TransactionReceipt;
-import tech.pegasys.pantheon.ethereum.db.DefaultMutableBlockchain;
-import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockHashFunction;
 import tech.pegasys.pantheon.ethereum.testutil.BlockDataGenerator;
-import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
-import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
 import java.util.ArrayList;
@@ -34,11 +44,9 @@ public class BlockchainUtilParameterizedTest {
   private static final int chainHeight = 89;
   private final int commonAncestorHeight;
   private static Block genesisBlock;
-  private static KeyValueStorage localKvStore;
-  private static DefaultMutableBlockchain localBlockchain;
+  private static MutableBlockchain localBlockchain;
 
-  private KeyValueStorage remoteKvStore;
-  private DefaultMutableBlockchain remoteBlockchain;
+  private MutableBlockchain remoteBlockchain;
 
   private BlockHeader commonHeader;
   private List<BlockHeader> headers;
@@ -50,10 +58,7 @@ public class BlockchainUtilParameterizedTest {
   @BeforeClass
   public static void setupClass() {
     genesisBlock = blockDataGenerator.genesisBlock();
-    localKvStore = new InMemoryKeyValueStorage();
-    localBlockchain =
-        new DefaultMutableBlockchain(
-            genesisBlock, localKvStore, MainnetBlockHashFunction::createHash);
+    localBlockchain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
     // Setup local chain.
     for (int i = 1; i <= chainHeight; i++) {
       final BlockDataGenerator.BlockOptions options =
@@ -68,10 +73,7 @@ public class BlockchainUtilParameterizedTest {
 
   @Before
   public void setup() {
-    remoteKvStore = new InMemoryKeyValueStorage();
-    remoteBlockchain =
-        new DefaultMutableBlockchain(
-            genesisBlock, remoteKvStore, MainnetBlockHashFunction::createHash);
+    remoteBlockchain = InMemoryTestFixture.createInMemoryBlockchain(genesisBlock);
 
     commonHeader = genesisBlock.getHeader();
     for (long i = 1; i <= commonAncestorHeight; i++) {
@@ -119,7 +121,7 @@ public class BlockchainUtilParameterizedTest {
 
   @Test
   public void searchesAscending() {
-    OptionalInt maybeAncestorNumber =
+    final OptionalInt maybeAncestorNumber =
         BlockchainUtil.findHighestKnownBlockIndex(localBlockchain, headers, true);
     assertThat(maybeAncestorNumber.getAsInt()).isEqualTo(Math.toIntExact(commonHeader.getNumber()));
   }
@@ -127,7 +129,7 @@ public class BlockchainUtilParameterizedTest {
   @Test
   public void searchesDescending() {
     Collections.reverse(headers);
-    OptionalInt maybeAncestorNumber =
+    final OptionalInt maybeAncestorNumber =
         BlockchainUtil.findHighestKnownBlockIndex(localBlockchain, headers, false);
     assertThat(maybeAncestorNumber.getAsInt())
         .isEqualTo(Math.toIntExact(chainHeight - commonHeader.getNumber()));

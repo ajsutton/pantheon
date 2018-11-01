@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.eth.sync;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
@@ -27,12 +39,17 @@ public class DefaultSynchronizer<C> implements Synchronizer {
       final SynchronizerConfiguration syncConfig,
       final ProtocolSchedule<C> protocolSchedule,
       final ProtocolContext<C> protocolContext,
-      final EthContext ethContext) {
-    this.syncState =
-        new SyncState(protocolContext.getBlockchain(), ethContext, new PendingBlocks());
+      final EthContext ethContext,
+      final SyncState syncState) {
+    this.syncState = syncState;
     this.blockPropagationManager =
         new BlockPropagationManager<>(
-            syncConfig, protocolSchedule, protocolContext, ethContext, syncState);
+            syncConfig,
+            protocolSchedule,
+            protocolContext,
+            ethContext,
+            syncState,
+            new PendingBlocks());
     this.downloader =
         new Downloader<>(syncConfig, protocolSchedule, protocolContext, ethContext, syncState);
 

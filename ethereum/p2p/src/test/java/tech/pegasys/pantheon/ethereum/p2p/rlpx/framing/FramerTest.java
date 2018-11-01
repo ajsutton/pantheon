@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.p2p.rlpx.framing;
 
 import static io.netty.buffer.ByteBufUtil.decodeHexDump;
@@ -47,7 +59,7 @@ public class FramerTest {
     final Framer framer = new Framer(secrets);
 
     assertThatExceptionOfType(IllegalArgumentException.class)
-        .isThrownBy(() -> framer.frame(ethMessage))
+        .isThrownBy(() -> framer.frame(ethMessage, Unpooled.buffer()))
         .withMessageContaining("Message size in excess of maximum length.");
   }
 
@@ -68,7 +80,8 @@ public class FramerTest {
     final ByteBuf buf = wrappedBuffer(byteArray);
 
     final MessageData ethMessage = new RawMessage(0x00, buf);
-    final ByteBuf framedMessage = framer.frameAndReleaseMessage(ethMessage);
+    final ByteBuf framedMessage = Unpooled.buffer();
+    framer.frameAndReleaseMessage(ethMessage, framedMessage);
 
     final HandshakeSecrets deframeSecrets = secretsFrom(td, true);
     final Framer deframer = new Framer(deframeSecrets);
@@ -174,7 +187,8 @@ public class FramerTest {
     framer = new Framer(secrets);
 
     for (int i = 0; i < decrypted.size(); i++) {
-      final ByteBuf b = framer.frame(decrypted.get(i));
+      final ByteBuf b = Unpooled.buffer();
+      framer.frame(decrypted.get(i), b);
       final byte[] enc = new byte[b.readableBytes()];
       b.readBytes(enc);
       final byte[] expected = decodeHexDump(messages.get(i).get("data").asText());

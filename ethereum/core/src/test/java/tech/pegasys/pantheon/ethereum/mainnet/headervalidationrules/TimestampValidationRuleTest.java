@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.ethereum.mainnet.headervalidationrules;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -14,7 +26,8 @@ public class TimestampValidationRuleTest {
 
   @Test
   public void headerTimestampSufficientlyFarIntoFutureVadidatesSuccessfully() {
-    final TimestampValidationRule uut = new TimestampValidationRule(0, 10);
+    final TimestampBoundedByFutureParameter uut00 = new TimestampBoundedByFutureParameter(0);
+    final TimestampMoreRecentThanParent uut01 = new TimestampMoreRecentThanParent(10);
 
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
 
@@ -25,18 +38,20 @@ public class TimestampValidationRuleTest {
     headerBuilder.timestamp(parent.getTimestamp() + 11);
     final BlockHeader header = headerBuilder.buildHeader();
 
-    assertThat(uut.validate(header, parent)).isTrue();
+    assertThat(uut00.validate(header, parent)).isTrue();
+    assertThat(uut01.validate(header, parent)).isTrue();
   }
 
   @Test
   public void headerTimestampDifferenceMustBePositive() {
-    Assertions.assertThatThrownBy(() -> new TimestampValidationRule(0, -1))
+    Assertions.assertThatThrownBy(() -> new TimestampMoreRecentThanParent(-1))
         .hasMessage("minimumSecondsSinceParent must be positive");
   }
 
   @Test
   public void headerTimestampTooCloseToParentFailsValidation() {
-    final TimestampValidationRule uut = new TimestampValidationRule(0, 10);
+    final TimestampBoundedByFutureParameter uut00 = new TimestampBoundedByFutureParameter(0);
+    final TimestampMoreRecentThanParent uut01 = new TimestampMoreRecentThanParent(10);
 
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
 
@@ -47,12 +62,14 @@ public class TimestampValidationRuleTest {
     headerBuilder.timestamp(parent.getTimestamp() + 1);
     final BlockHeader header = headerBuilder.buildHeader();
 
-    assertThat(uut.validate(header, parent)).isFalse();
+    assertThat(uut00.validate(header, parent)).isTrue();
+    assertThat(uut01.validate(header, parent)).isFalse();
   }
 
   @Test
   public void headerTimestampIsBehindParentFailsValidation() {
-    final TimestampValidationRule uut = new TimestampValidationRule(0, 10);
+    final TimestampBoundedByFutureParameter uut00 = new TimestampBoundedByFutureParameter(0);
+    final TimestampMoreRecentThanParent uut01 = new TimestampMoreRecentThanParent(10);
 
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
 
@@ -63,13 +80,17 @@ public class TimestampValidationRuleTest {
     headerBuilder.timestamp(parent.getTimestamp() - 11);
     final BlockHeader header = headerBuilder.buildHeader();
 
-    assertThat(uut.validate(header, parent)).isFalse();
+    assertThat(uut00.validate(header, parent)).isTrue();
+    assertThat(uut01.validate(header, parent)).isFalse();
   }
 
   @Test
   public void headerNewerThanCurrentSystemFailsValidation() {
     final long acceptableClockDrift = 5;
-    final TimestampValidationRule uut = new TimestampValidationRule(acceptableClockDrift, 10);
+
+    final TimestampBoundedByFutureParameter uut00 =
+        new TimestampBoundedByFutureParameter(acceptableClockDrift);
+    final TimestampMoreRecentThanParent uut01 = new TimestampMoreRecentThanParent(10);
 
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
 
@@ -82,13 +103,17 @@ public class TimestampValidationRuleTest {
     headerBuilder.timestamp(parent.getTimestamp() + acceptableClockDrift + 1);
     final BlockHeader header = headerBuilder.buildHeader();
 
-    assertThat(uut.validate(header, parent)).isFalse();
+    assertThat(uut00.validate(header, parent)).isFalse();
+    assertThat(uut01.validate(header, parent)).isFalse();
   }
 
   @Test
   public void futureHeadersAreValidIfTimestampWithinTolerance() {
     final long acceptableClockDrift = 5;
-    final TimestampValidationRule uut = new TimestampValidationRule(acceptableClockDrift, 10);
+
+    final TimestampBoundedByFutureParameter uut00 =
+        new TimestampBoundedByFutureParameter(acceptableClockDrift);
+    final TimestampMoreRecentThanParent uut01 = new TimestampMoreRecentThanParent(10);
 
     final BlockHeaderTestFixture headerBuilder = new BlockHeaderTestFixture();
 
@@ -102,6 +127,7 @@ public class TimestampValidationRuleTest {
     headerBuilder.timestamp(parent.getTimestamp() + acceptableClockDrift - 1);
     final BlockHeader header = headerBuilder.buildHeader();
 
-    assertThat(uut.validate(header, parent)).isFalse();
+    assertThat(uut00.validate(header, parent)).isTrue();
+    assertThat(uut01.validate(header, parent)).isFalse();
   }
 }

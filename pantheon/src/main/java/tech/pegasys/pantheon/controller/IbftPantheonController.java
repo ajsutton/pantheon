@@ -1,3 +1,15 @@
+/*
+ * Copyright 2018 ConsenSys AG.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package tech.pegasys.pantheon.controller;
 
 import static org.apache.logging.log4j.LogManager.getLogger;
@@ -5,20 +17,21 @@ import static org.apache.logging.log4j.LogManager.getLogger;
 import tech.pegasys.pantheon.consensus.common.EpochManager;
 import tech.pegasys.pantheon.consensus.common.VoteProposer;
 import tech.pegasys.pantheon.consensus.common.VoteTally;
+import tech.pegasys.pantheon.consensus.ibft.IbftChainObserver;
 import tech.pegasys.pantheon.consensus.ibft.IbftContext;
 import tech.pegasys.pantheon.consensus.ibft.IbftEventQueue;
 import tech.pegasys.pantheon.consensus.ibft.IbftProcessor;
-import tech.pegasys.pantheon.consensus.ibft.IbftProtocolSchedule;
 import tech.pegasys.pantheon.consensus.ibft.IbftStateMachine;
-import tech.pegasys.pantheon.consensus.ibft.VoteTallyUpdater;
-import tech.pegasys.pantheon.consensus.ibft.blockcreation.IbftBlockMiner;
+import tech.pegasys.pantheon.consensus.ibft.network.IbftNetworkPeers;
 import tech.pegasys.pantheon.consensus.ibft.protocol.IbftProtocolManager;
 import tech.pegasys.pantheon.consensus.ibft.protocol.IbftSubProtocol;
-import tech.pegasys.pantheon.consensus.ibft.protocol.Istanbul64Protocol;
-import tech.pegasys.pantheon.consensus.ibft.protocol.Istanbul64ProtocolManager;
+import tech.pegasys.pantheon.consensus.ibftlegacy.IbftProtocolSchedule;
+import tech.pegasys.pantheon.consensus.ibftlegacy.IbftVoteTallyUpdater;
+import tech.pegasys.pantheon.consensus.ibftlegacy.protocol.Istanbul64Protocol;
+import tech.pegasys.pantheon.consensus.ibftlegacy.protocol.Istanbul64ProtocolManager;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
-import tech.pegasys.pantheon.ethereum.blockcreation.AbstractMiningCoordinator;
+import tech.pegasys.pantheon.ethereum.blockcreation.MiningCoordinator;
 import tech.pegasys.pantheon.ethereum.chain.GenesisConfig;
 import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
@@ -26,12 +39,14 @@ import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.core.TransactionPool;
 import tech.pegasys.pantheon.ethereum.db.DefaultMutableBlockchain;
+import tech.pegasys.pantheon.ethereum.db.KeyValueStoragePrefixedKeyBlockchainStorage;
 import tech.pegasys.pantheon.ethereum.db.WorldStateArchive;
 import tech.pegasys.pantheon.ethereum.eth.EthProtocol;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthProtocolManager;
 import tech.pegasys.pantheon.ethereum.eth.sync.DefaultSynchronizer;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
+import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncState;
 import tech.pegasys.pantheon.ethereum.eth.transactions.TransactionPoolFactory;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHashFunction;
@@ -39,6 +54,7 @@ import tech.pegasys.pantheon.ethereum.p2p.api.ProtocolManager;
 import tech.pegasys.pantheon.ethereum.p2p.config.SubProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.wire.SubProtocol;
 import tech.pegasys.pantheon.ethereum.worldstate.KeyValueStorageWorldStateStorage;
+import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
 import tech.pegasys.pantheon.services.kvstore.RocksDbKeyValueStorage;
 
 import java.io.IOException;
@@ -52,7 +68,7 @@ import java.util.concurrent.TimeUnit;
 import io.vertx.core.json.JsonObject;
 import org.apache.logging.log4j.Logger;
 
-public class IbftPantheonController implements PantheonController<IbftContext, IbftBlockMiner> {
+public class IbftPantheonController implements PantheonController<IbftContext> {
 
   private static final int DEFAULT_ROUND_EXPIRY_MILLISECONDS = 10000;
   private static final Logger LOG = getLogger();
@@ -91,7 +107,7 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
     this.closer = closer;
   }
 
-  public static PantheonController<IbftContext, IbftBlockMiner> init(
+  public static PantheonController<IbftContext> init(
       final Path home,
       final GenesisConfig<IbftContext> genesisConfig,
       final SynchronizerConfiguration taintedSyncConfig,
@@ -100,13 +116,17 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
       final int networkId,
       final KeyPair nodeKeys)
       throws IOException {
-    final RocksDbKeyValueStorage kv =
+    final KeyValueStorage kv =
         RocksDbKeyValueStorage.create(Files.createDirectories(home.resolve(DATABASE_PATH)));
     final ProtocolSchedule<IbftContext> protocolSchedule = genesisConfig.getProtocolSchedule();
+
     final BlockHashFunction blockHashFunction =
         ScheduleBasedBlockHashFunction.create(protocolSchedule);
+    final KeyValueStoragePrefixedKeyBlockchainStorage blockchainStorage =
+        new KeyValueStoragePrefixedKeyBlockchainStorage(kv, blockHashFunction);
     final MutableBlockchain blockchain =
-        new DefaultMutableBlockchain(genesisConfig.getBlock(), kv, blockHashFunction);
+        new DefaultMutableBlockchain(genesisConfig.getBlock(), blockchainStorage);
+
     final KeyValueStorageWorldStateStorage worldStateStorage =
         new KeyValueStorageWorldStateStorage(kv);
     final WorldStateArchive worldStateArchive = new WorldStateArchive(worldStateStorage);
@@ -116,7 +136,7 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
         new EpochManager(IbftProtocolSchedule.getEpochLength(Optional.of(ibftConfig)));
 
     final VoteTally voteTally =
-        new VoteTallyUpdater(epochManager).buildVoteTallyFromBlockchain(blockchain);
+        new IbftVoteTallyUpdater(epochManager).buildVoteTallyFromBlockchain(blockchain);
 
     final VoteProposer voteProposer = new VoteProposer();
 
@@ -126,8 +146,8 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
 
     final SynchronizerConfiguration syncConfig = taintedSyncConfig.validated(blockchain);
     final boolean fastSyncEnabled = syncConfig.syncMode().equals(SyncMode.FAST);
-    EthProtocolManager ethProtocolManager;
-    SubProtocol ethSubProtocol;
+    final EthProtocolManager ethProtocolManager;
+    final SubProtocol ethSubProtocol;
     if (ottomanTestnetOperation) {
       LOG.info("Operating on Ottoman testnet.");
       ethSubProtocol = Istanbul64Protocol.get();
@@ -139,11 +159,20 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
       ethProtocolManager =
           new EthProtocolManager(protocolContext.getBlockchain(), networkId, fastSyncEnabled, 1);
     }
+    final SyncState syncState =
+        new SyncState(
+            protocolContext.getBlockchain(), ethProtocolManager.ethContext().getEthPeers());
     final Synchronizer synchronizer =
         new DefaultSynchronizer<>(
-            syncConfig, protocolSchedule, protocolContext, ethProtocolManager.ethContext());
+            syncConfig,
+            protocolSchedule,
+            protocolContext,
+            ethProtocolManager.ethContext(),
+            syncState);
 
     final IbftEventQueue ibftEventQueue = new IbftEventQueue();
+
+    blockchain.observeBlockAdded(new IbftChainObserver(ibftEventQueue));
 
     final IbftStateMachine ibftStateMachine = new IbftStateMachine();
     final IbftProcessor ibftProcessor =
@@ -163,19 +192,26 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
           } catch (final InterruptedException e) {
             LOG.error("Failed to shutdown ibft processor executor");
           }
-          kv.close();
+          try {
+            kv.close();
+          } catch (final IOException e) {
+            LOG.error("Failed to close key value storage", e);
+          }
         };
 
     final TransactionPool transactionPool =
         TransactionPoolFactory.createTransactionPool(
             protocolSchedule, protocolContext, ethProtocolManager.ethContext());
 
+    final IbftNetworkPeers peers =
+        new IbftNetworkPeers(protocolContext.getConsensusState().getVoteTally());
+
     return new IbftPantheonController(
         genesisConfig,
         protocolContext,
         ethSubProtocol,
         ethProtocolManager,
-        new IbftProtocolManager(ibftEventQueue),
+        new IbftProtocolManager(ibftEventQueue, peers),
         synchronizer,
         nodeKeys,
         transactionPool,
@@ -216,7 +252,7 @@ public class IbftPantheonController implements PantheonController<IbftContext, I
   }
 
   @Override
-  public AbstractMiningCoordinator<IbftContext, IbftBlockMiner> getMiningCoordinator() {
+  public MiningCoordinator getMiningCoordinator() {
     return null;
   }
 
