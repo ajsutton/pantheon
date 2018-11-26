@@ -17,18 +17,38 @@ import static java.util.Collections.unmodifiableCollection;
 import tech.pegasys.pantheon.ethereum.p2p.api.DisconnectCallback;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason;
+import tech.pegasys.pantheon.metrics.MetricsSystem;
+import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import io.prometheus.client.Counter;
+
 public class PeerConnectionRegistry implements DisconnectCallback {
 
   private final ConcurrentMap<BytesValue, PeerConnection> connections = new ConcurrentHashMap<>();
 
+  private final Counter disconnectCounter;
+  private final Counter connectedPeersCounter;
+
+  public PeerConnectionRegistry(final MetricsSystem metricsSystem) {
+    disconnectCounter =
+        metricsSystem.createCounter(
+            Category.PEERS,
+            "disconnected",
+            "Total number of peers disconnected",
+            "initiator",
+            "disconnectReason");
+    connectedPeersCounter =
+        metricsSystem.createCounter(Category.PEERS, "connected", "Total number of peers connected");
+  }
+
   public void registerConnection(final PeerConnection connection) {
     connections.put(connection.getPeer().getNodeId(), connection);
+    connectedPeersCounter.inc();
   }
 
   public Collection<PeerConnection> getPeerConnections() {
@@ -49,5 +69,6 @@ public class PeerConnectionRegistry implements DisconnectCallback {
       final DisconnectReason reason,
       final boolean initiatedByPeer) {
     connections.remove(connection.getPeer().getNodeId());
+    disconnectCounter.labels(initiatedByPeer ? "remote" : "local", reason.name()).inc();
   }
 }
