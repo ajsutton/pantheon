@@ -42,6 +42,7 @@ import tech.pegasys.pantheon.ethereum.mainnet.MainnetProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.p2p.api.P2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.testutil.BlockDataGenerator;
+import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.bytes.BytesValues;
 import tech.pegasys.pantheon.util.uint.UInt256;
@@ -119,6 +120,7 @@ public class JsonRpcHttpServiceTest {
                     mock(FilterManager.class),
                     mock(TransactionPool.class),
                     mock(EthHashMiningCoordinator.class),
+                    new MetricsSystem(),
                     supportedCapabilities,
                     JSON_RPC_APIS));
     service = createJsonRpcHttpService();

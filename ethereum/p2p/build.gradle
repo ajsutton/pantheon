@@ -29,11 +29,13 @@ dependencies {
   implementation project(':crypto')
   implementation project(':ethereum:rlp')
   implementation project(':ethereum:core')
+  implementation project(':metrics')
 
   implementation 'com.google.guava:guava'
   implementation 'io.vertx:vertx-core'
   implementation 'org.apache.logging.log4j:log4j-api'
   implementation 'org.xerial.snappy:snappy-java'
+  implementation 'io.prometheus:simpleclient'
 
   runtime 'org.apache.logging.log4j:log4j-core'
 

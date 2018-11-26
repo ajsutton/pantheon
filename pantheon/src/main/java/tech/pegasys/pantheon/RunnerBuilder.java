@@ -50,6 +50,7 @@ import tech.pegasys.pantheon.ethereum.p2p.netty.NettyP2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.p2p.wire.SubProtocol;
+import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.nio.file.Path;
@@ -80,6 +81,7 @@ public class RunnerBuilder {
 
     Preconditions.checkNotNull(pantheonController);
 
+    final MetricsSystem metricsSystem = MetricsSystem.init();
     final DiscoveryConfiguration discoveryConfiguration;
     if (discovery) {
       final Collection<?> bootstrap;
@@ -136,7 +138,8 @@ public class RunnerBuilder {
                         networkConfig,
                         caps,
                         PeerRequirement.aggregateOf(protocolManagers),
-                        peerBlacklist))
+                        peerBlacklist,
+                        metricsSystem))
             .build();
 
     final Synchronizer synchronizer = pantheonController.getSynchronizer();
@@ -156,6 +159,7 @@ public class RunnerBuilder {
               synchronizer,
               transactionPool,
               miningCoordinator,
+              metricsSystem,
               supportedCapabilities,
               jsonRpcConfiguration.getRpcApis(),
               filterManager);
@@ -174,6 +178,7 @@ public class RunnerBuilder {
               synchronizer,
               transactionPool,
               miningCoordinator,
+              metricsSystem,
               supportedCapabilities,
               webSocketConfiguration.getRpcApis(),
               filterManager);
@@ -219,6 +224,7 @@ public class RunnerBuilder {
       final Synchronizer synchronizer,
       final TransactionPool transactionPool,
       final MiningCoordinator miningCoordinator,
+      final MetricsSystem metricsSystem,
       final Set<Capability> supportedCapabilities,
       final Collection<RpcApi> jsonRpcApis,
       final FilterManager filterManager) {
@@ -233,6 +239,7 @@ public class RunnerBuilder {
                 transactionPool,
                 protocolSchedule,
                 miningCoordinator,
+                metricsSystem,
                 supportedCapabilities,
                 jsonRpcApis,
                 filterManager);

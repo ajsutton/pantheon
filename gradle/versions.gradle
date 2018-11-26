@@ -56,5 +56,8 @@ dependencyManagement {
     dependency("com.google.errorprone:error_prone_core:2.3.1")
     dependency("com.google.errorprone:error_prone_annotation:2.3.1")
     dependency("com.google.errorprone:error_prone_test_helpers:2.3.1")
+    dependency("io.prometheus:simpleclient:0.5.0")
+    dependency("io.prometheus:simpleclient_hotspot:0.5.0")
+    dependency("io.prometheus:simpleclient_httpserver:0.5.0")
   }
 }
