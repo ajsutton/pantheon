@@ -181,7 +181,9 @@ public abstract class AbstractEthJsonRpcHttpServiceTest {
                 JSON_RPC_APIS);
     final JsonRpcConfiguration config = JsonRpcConfiguration.createDefault();
     config.setPort(0);
-    service = new JsonRpcHttpService(vertx, folder.newFolder().toPath(), config, methods);
+    service =
+        new JsonRpcHttpService(
+            vertx, folder.newFolder().toPath(), config, new MetricsSystem(), methods);
     service.start().join();
 
     client = new OkHttpClient();

@@ -133,12 +133,13 @@ public class JsonRpcHttpServiceTest {
 
   protected static JsonRpcHttpService createJsonRpcHttpService(final JsonRpcConfiguration config)
       throws Exception {
-    return new JsonRpcHttpService(vertx, folder.newFolder().toPath(), config, rpcMethods);
+    return new JsonRpcHttpService(
+        vertx, folder.newFolder().toPath(), config, new MetricsSystem(), rpcMethods);
   }
 
   protected static JsonRpcHttpService createJsonRpcHttpService() throws Exception {
     return new JsonRpcHttpService(
-        vertx, folder.newFolder().toPath(), createJsonRpcConfig(), rpcMethods);
+        vertx, folder.newFolder().toPath(), createJsonRpcConfig(), new MetricsSystem(), rpcMethods);
   }
 
   protected static JsonRpcConfiguration createJsonRpcConfig() {
