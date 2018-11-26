@@ -25,6 +25,8 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcErrorResp
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcNoResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponseType;
+import tech.pegasys.pantheon.metrics.MetricsSystem;
+import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 import tech.pegasys.pantheon.util.NetworkUtility;
 
 import java.net.BindException;
@@ -38,6 +40,8 @@ import java.util.concurrent.CompletableFuture;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.netty.handler.codec.http.HttpResponseStatus;
+import io.prometheus.client.Histogram;
+import io.prometheus.client.Histogram.Timer;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -69,6 +73,7 @@ public class JsonRpcHttpService {
   private final JsonRpcConfiguration config;
   private final Map<String, JsonRpcMethod> jsonRpcMethods;
   private final Path dataDir;
+  private final Histogram requestTimeHistogram;
 
   private HttpServer httpServer;
 
@@ -76,8 +81,12 @@ public class JsonRpcHttpService {
       final Vertx vertx,
       final Path dataDir,
       final JsonRpcConfiguration config,
+      final MetricsSystem metricsSystem,
       final Map<String, JsonRpcMethod> methods) {
     this.dataDir = dataDir;
+    requestTimeHistogram =
+        metricsSystem.createHistogram(
+            Category.RPC, "request_time", "Time taken to process a JSON-RPC request", "methodName");
     validateConfig(config);
     this.config = config;
     this.vertx = vertx;
@@ -327,11 +336,14 @@ public class JsonRpcHttpService {
     }
 
     // Generate response
+    final Timer timer = requestTimeHistogram.labels(request.getMethod()).startTimer();
     try {
       return method.response(request);
     } catch (final InvalidJsonRpcParameters e) {
       LOG.debug(e);
       return errorResponse(id, JsonRpcError.INVALID_PARAMS);
+    } finally {
+      timer.observeDuration();
     }
   }
 
