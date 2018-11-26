@@ -13,6 +13,7 @@
 package tech.pegasys.pantheon.metrics;
 
 import static java.util.Arrays.asList;
+import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.singleton;
 
 import java.util.Collection;
@@ -24,6 +25,7 @@ import java.util.stream.Stream;
 import io.prometheus.client.Collector;
 import io.prometheus.client.Collector.MetricFamilySamples;
 import io.prometheus.client.Counter;
+import io.prometheus.client.Histogram;
 import io.prometheus.client.hotspot.BufferPoolsExports;
 import io.prometheus.client.hotspot.ClassLoadingExports;
 import io.prometheus.client.hotspot.GarbageCollectorExports;
@@ -53,12 +55,21 @@ public class MetricsSystem {
       final Category category, final String name, final String help, final String... labelNames) {
     final Counter counter =
         Counter.build(category.getNameForMetric(name), help).labelNames(labelNames).create();
-    collectors.computeIfAbsent(category, key -> concurrentSet()).add(counter);
+    addCollector(category, counter);
     return counter;
   }
 
-  private Collection<Collector> concurrentSet() {
-    return Collections.newSetFromMap(new ConcurrentHashMap<>());
+  public Histogram createHistogram(
+      final Category category, final String name, final String help, final String... labelNames) {
+    final Histogram histogram = Histogram.build(name, help).labelNames(labelNames).create();
+    addCollector(category, histogram);
+    return histogram;
+  }
+
+  private void addCollector(final Category category, final Collector collector) {
+    collectors
+        .computeIfAbsent(category, key -> newSetFromMap(new ConcurrentHashMap<>()))
+        .add(collector);
   }
 
   public Stream<MetricFamilySamples> getMetrics() {
@@ -78,6 +89,7 @@ public class MetricsSystem {
 
   public enum Category {
     PEERS("peers"),
+    RPC("rpc"),
     JVM("jvm", ""),
     PROCESS("process", "");
 
