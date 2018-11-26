@@ -26,6 +26,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import io.prometheus.client.Counter;
+import io.prometheus.client.Gauge;
 
 public class PeerConnectionRegistry implements DisconnectCallback {
 
@@ -33,22 +34,28 @@ public class PeerConnectionRegistry implements DisconnectCallback {
 
   private final Counter disconnectCounter;
   private final Counter connectedPeersCounter;
+  private final Gauge peerCountGauge;
 
   public PeerConnectionRegistry(final MetricsSystem metricsSystem) {
     disconnectCounter =
         metricsSystem.createCounter(
             Category.PEERS,
-            "disconnected",
+            "disconnected_total",
             "Total number of peers disconnected",
             "initiator",
             "disconnectReason");
     connectedPeersCounter =
-        metricsSystem.createCounter(Category.PEERS, "connected", "Total number of peers connected");
+        metricsSystem.createCounter(
+            Category.PEERS, "connected_total", "Total number of peers connected");
+    peerCountGauge =
+        metricsSystem.createGauge(
+            Category.PEERS, "peer_count_current", "Number of peers currently connected");
   }
 
   public void registerConnection(final PeerConnection connection) {
     connections.put(connection.getPeer().getNodeId(), connection);
     connectedPeersCounter.inc();
+    peerCountGauge.inc();
   }
 
   public Collection<PeerConnection> getPeerConnections() {
@@ -68,7 +75,10 @@ public class PeerConnectionRegistry implements DisconnectCallback {
       final PeerConnection connection,
       final DisconnectReason reason,
       final boolean initiatedByPeer) {
-    connections.remove(connection.getPeer().getNodeId());
+    final PeerConnection disconnectedPeer = connections.remove(connection.getPeer().getNodeId());
     disconnectCounter.labels(initiatedByPeer ? "remote" : "local", reason.name()).inc();
+    if (disconnectedPeer != null) {
+      peerCountGauge.dec();
+    }
   }
 }

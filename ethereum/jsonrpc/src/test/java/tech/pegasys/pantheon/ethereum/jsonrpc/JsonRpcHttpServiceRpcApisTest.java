@@ -181,7 +181,8 @@ public class JsonRpcHttpServiceRpcApisTest {
                     supportedCapabilities,
                     config.getRpcApis()));
     final JsonRpcHttpService jsonRpcHttpService =
-        new JsonRpcHttpService(vertx, folder.newFolder().toPath(), config, rpcMethods);
+        new JsonRpcHttpService(
+            vertx, folder.newFolder().toPath(), config, new MetricsSystem(), rpcMethods);
     jsonRpcHttpService.start().join();
 
     baseUrl = jsonRpcHttpService.url();

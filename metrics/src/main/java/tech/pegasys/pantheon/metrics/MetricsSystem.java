@@ -13,7 +13,6 @@
 package tech.pegasys.pantheon.metrics;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.newSetFromMap;
 import static java.util.Collections.singleton;
 
 import java.util.Collection;
@@ -25,6 +24,7 @@ import java.util.stream.Stream;
 import io.prometheus.client.Collector;
 import io.prometheus.client.Collector.MetricFamilySamples;
 import io.prometheus.client.Counter;
+import io.prometheus.client.Gauge;
 import io.prometheus.client.Histogram;
 import io.prometheus.client.hotspot.BufferPoolsExports;
 import io.prometheus.client.hotspot.ClassLoadingExports;
@@ -66,10 +66,18 @@ public class MetricsSystem {
     return histogram;
   }
 
-  private void addCollector(final Category category, final Collector collector) {
+  public Gauge createGauge(
+      final Category category, final String name, final String help, final String... labelNames) {
+    final Gauge gauge =
+        Gauge.build(category.getNameForMetric(name), help).labelNames(labelNames).create();
+    addCollector(category, gauge);
+    return gauge;
+  }
+
+  private void addCollector(final Category category, final Collector counter) {
     collectors
-        .computeIfAbsent(category, key -> newSetFromMap(new ConcurrentHashMap<>()))
-        .add(collector);
+        .computeIfAbsent(category, key -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
+        .add(counter);
   }
 
   public Stream<MetricFamilySamples> getMetrics() {
