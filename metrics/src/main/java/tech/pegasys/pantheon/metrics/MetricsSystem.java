@@ -12,94 +12,133 @@
  */
 package tech.pegasys.pantheon.metrics;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
-
+import java.lang.management.ManagementFactory;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
-import io.prometheus.client.Collector;
-import io.prometheus.client.Collector.MetricFamilySamples;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
-import io.prometheus.client.Histogram;
-import io.prometheus.client.hotspot.BufferPoolsExports;
-import io.prometheus.client.hotspot.ClassLoadingExports;
-import io.prometheus.client.hotspot.GarbageCollectorExports;
-import io.prometheus.client.hotspot.MemoryPoolsExports;
-import io.prometheus.client.hotspot.StandardExports;
-import io.prometheus.client.hotspot.ThreadExports;
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Metric;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.MetricSet;
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.jmx.JmxReporter;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.JvmAttributeGaugeSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 
 public class MetricsSystem {
 
-  private final Map<Category, Collection<Collector>> collectors = new ConcurrentHashMap<>();
+  private final MetricRegistry metrics = new MetricRegistry();
+  private final Map<Category, Collection<String>> collectors = new ConcurrentHashMap<>();
+  private final Map<String, LabelledMetric<?>> labelledMetrics = new ConcurrentHashMap<>();
 
   public static MetricsSystem init() {
     final MetricsSystem metricsSystem = new MetricsSystem();
-    metricsSystem.collectors.put(Category.PROCESS, singleton(new StandardExports()));
-    metricsSystem.collectors.put(
+    //    metricsSystem.collectors.put(Category.PROCESS, singleton(new StandardExports()));
+    //    new FileDescriptorRatioGauge(),
+    metricsSystem.register(
         Category.JVM,
-        asList(
-            new MemoryPoolsExports(),
-            new BufferPoolsExports(),
-            new GarbageCollectorExports(),
-            new ThreadExports(),
-            new ClassLoadingExports()));
+        new ThreadStatesGaugeSet(),
+        new BufferPoolMetricSet(ManagementFactory.getPlatformMBeanServer()),
+        new GarbageCollectorMetricSet(),
+        new MemoryUsageGaugeSet(),
+        new ClassLoadingGaugeSet(),
+        new JvmAttributeGaugeSet());
+    metricsSystem.metrics.register("process_file_descriptor_ratio", new FileDescriptorRatioGauge());
+    metricsSystem.addCollector(Category.PROCESS, "process_file_descriptor_ratio");
+
+    final JmxReporter jmxReporter = JmxReporter.forRegistry(metricsSystem.metrics).build();
+    jmxReporter.start();
     return metricsSystem;
   }
 
-  public Counter createCounter(
-      final Category category, final String name, final String help, final String... labelNames) {
-    final Counter counter =
-        Counter.build(category.getNameForMetric(name), help).labelNames(labelNames).create();
-    addCollector(category, counter);
+  private void register(final Category category, final MetricSet... metricSets) {
+    for (final MetricSet metricSet : metricSets) {
+      metrics.registerAll(metricSet);
+      metricSet.getMetrics().keySet().forEach(metricName -> addCollector(category, metricName));
+    }
+  }
+
+  public Counter createCounter(final Category category, final String name) {
+
+    final String metricName = category.getNameForMetric(name);
+    final Counter counter = metrics.counter(metricName);
+    addCollector(category, metricName);
     return counter;
   }
 
-  public Histogram createHistogram(
-      final Category category, final String name, final String help, final String... labelNames) {
-    final Histogram histogram = Histogram.build(name, help).labelNames(labelNames).create();
-    addCollector(category, histogram);
-    return histogram;
+  public LabelledMetric<Counter> createCounter(
+      final Category category, final String name, final String... labelNames) {
+    return createLabelledMetric(category, name, metrics::counter);
   }
 
-  public Gauge createGauge(
-      final Category category, final String name, final String help, final String... labelNames) {
-    final Gauge gauge =
-        Gauge.build(category.getNameForMetric(name), help).labelNames(labelNames).create();
-    addCollector(category, gauge);
+  public Timer createTimer(final Category category, final String name) {
+    final String metricName = category.getNameForMetric(name);
+    final Timer timer = metrics.timer(metricName);
+    addCollector(category, metricName);
+    return timer;
+  }
+
+  public LabelledMetric<Timer> createTimer(
+      final Category category, final String name, final String... labelNames) {
+    return createLabelledMetric(category, name, metrics::timer);
+  }
+
+  @SuppressWarnings("unchecked")
+  public <T> Gauge<T> createGauge(
+      final Category category, final String name, final Gauge<T> collector) {
+    final String metricName = category.getNameForMetric(name);
+    final Gauge<T> gauge = metrics.gauge(metricName, () -> collector);
+    addCollector(category, metricName);
     return gauge;
   }
 
-  private void addCollector(final Category category, final Collector counter) {
+  private <T extends Metric> LabelledMetric<T> createLabelledMetric(
+      final Category category, final String name, final Function<String, T> metricFactory) {
+    final String metricName = category.getNameForMetric(name);
+    addCollector(category, metricName);
+    final LabelledMetric<T> labelledMetric = new LabelledMetric<>(metricName, metricFactory);
+    labelledMetrics.put(metricName, labelledMetric);
+    return labelledMetric;
+  }
+
+  private void addCollector(final Category category, final String name) {
     collectors
         .computeIfAbsent(category, key -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
-        .add(counter);
+        .add(name);
   }
 
-  public Stream<MetricFamilySamples> getMetrics() {
-    return collectors
-        .values()
-        .stream()
-        .flatMap(Collection::stream)
-        .flatMap(collector -> collector.collect().stream());
+  public Stream<String> getMetricNames(final Category category) {
+    return collectors.getOrDefault(category, Collections.emptySet()).stream();
   }
 
-  public Stream<MetricFamilySamples> getMetrics(final Category category) {
-    return collectors
-        .getOrDefault(category, Collections.emptySet())
-        .stream()
-        .flatMap(collector -> collector.collect().stream());
+  public Metric getMetric(final String name) {
+    final LabelledMetric<?> labelledMetric = labelledMetrics.get(name);
+    if (labelledMetric != null) {
+      return labelledMetric;
+    }
+    return metrics.getMetrics().get(name);
+  }
+
+  public MetricRegistry getMetrics() {
+    return metrics;
   }
 
   public enum Category {
     PEERS("peers"),
     RPC("rpc"),
     JVM("jvm", ""),
-    PROCESS("process", "");
+    PROCESS("process", ""),
+    LOGS("logs");
 
     private final String name;
     private final String prefix;

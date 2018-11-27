@@ -25,6 +25,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcErrorResp
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcNoResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponseType;
+import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 import tech.pegasys.pantheon.util.NetworkUtility;
@@ -38,10 +39,10 @@ import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.CompletableFuture;
 
+import com.codahale.metrics.Timer;
+import com.codahale.metrics.Timer.Context;
 import com.google.common.annotations.VisibleForTesting;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.prometheus.client.Histogram;
-import io.prometheus.client.Histogram.Timer;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Vertx;
@@ -73,7 +74,7 @@ public class JsonRpcHttpService {
   private final JsonRpcConfiguration config;
   private final Map<String, JsonRpcMethod> jsonRpcMethods;
   private final Path dataDir;
-  private final Histogram requestTimeHistogram;
+  private final LabelledMetric<Timer> requestTimeHistogram;
 
   private HttpServer httpServer;
 
@@ -84,9 +85,7 @@ public class JsonRpcHttpService {
       final MetricsSystem metricsSystem,
       final Map<String, JsonRpcMethod> methods) {
     this.dataDir = dataDir;
-    requestTimeHistogram =
-        metricsSystem.createHistogram(
-            Category.RPC, "request_time", "Time taken to process a JSON-RPC request", "methodName");
+    requestTimeHistogram = metricsSystem.createTimer(Category.RPC, "request_time", "methodName");
     validateConfig(config);
     this.config = config;
     this.vertx = vertx;
@@ -336,14 +335,11 @@ public class JsonRpcHttpService {
     }
 
     // Generate response
-    final Timer timer = requestTimeHistogram.labels(request.getMethod()).startTimer();
-    try {
+    try (final Context timer = requestTimeHistogram.labels(request.getMethod()).time()) {
       return method.response(request);
     } catch (final InvalidJsonRpcParameters e) {
       LOG.debug(e);
       return errorResponse(id, JsonRpcError.INVALID_PARAMS);
-    } finally {
-      timer.observeDuration();
     }
   }
 

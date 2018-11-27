@@ -17,6 +17,7 @@ import static java.util.Collections.unmodifiableCollection;
 import tech.pegasys.pantheon.ethereum.p2p.api.DisconnectCallback;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason;
+import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
@@ -25,37 +26,26 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
+import com.codahale.metrics.Counter;
 
 public class PeerConnectionRegistry implements DisconnectCallback {
 
   private final ConcurrentMap<BytesValue, PeerConnection> connections = new ConcurrentHashMap<>();
 
-  private final Counter disconnectCounter;
+  private final LabelledMetric<Counter> disconnectCounter;
   private final Counter connectedPeersCounter;
-  private final Gauge peerCountGauge;
 
   public PeerConnectionRegistry(final MetricsSystem metricsSystem) {
     disconnectCounter =
         metricsSystem.createCounter(
-            Category.PEERS,
-            "disconnected_total",
-            "Total number of peers disconnected",
-            "initiator",
-            "disconnectReason");
-    connectedPeersCounter =
-        metricsSystem.createCounter(
-            Category.PEERS, "connected_total", "Total number of peers connected");
-    peerCountGauge =
-        metricsSystem.createGauge(
-            Category.PEERS, "peer_count_current", "Number of peers currently connected");
+            Category.PEERS, "disconnected_total", "initiator", "disconnectReason");
+    connectedPeersCounter = metricsSystem.createCounter(Category.PEERS, "connected_total");
+    metricsSystem.createGauge(Category.PEERS, "peer_count_current", connections::size);
   }
 
   public void registerConnection(final PeerConnection connection) {
     connections.put(connection.getPeer().getNodeId(), connection);
     connectedPeersCounter.inc();
-    peerCountGauge.inc();
   }
 
   public Collection<PeerConnection> getPeerConnections() {
@@ -75,10 +65,7 @@ public class PeerConnectionRegistry implements DisconnectCallback {
       final PeerConnection connection,
       final DisconnectReason reason,
       final boolean initiatedByPeer) {
-    final PeerConnection disconnectedPeer = connections.remove(connection.getPeer().getNodeId());
+    connections.remove(connection.getPeer().getNodeId());
     disconnectCounter.labels(initiatedByPeer ? "remote" : "local", reason.name()).inc();
-    if (disconnectedPeer != null) {
-      peerCountGauge.dec();
-    }
   }
 }
