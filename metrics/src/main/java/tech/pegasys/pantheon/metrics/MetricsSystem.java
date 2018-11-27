@@ -12,90 +12,28 @@
  */
 package tech.pegasys.pantheon.metrics;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.singleton;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
-import io.prometheus.client.Collector;
-import io.prometheus.client.Collector.MetricFamilySamples;
-import io.prometheus.client.Counter;
-import io.prometheus.client.Gauge;
-import io.prometheus.client.Histogram;
-import io.prometheus.client.hotspot.BufferPoolsExports;
-import io.prometheus.client.hotspot.ClassLoadingExports;
-import io.prometheus.client.hotspot.GarbageCollectorExports;
-import io.prometheus.client.hotspot.MemoryPoolsExports;
-import io.prometheus.client.hotspot.StandardExports;
-import io.prometheus.client.hotspot.ThreadExports;
+public interface MetricsSystem {
 
-public class MetricsSystem {
+  Counter createCounter(Category category, String name, String help);
 
-  private final Map<Category, Collection<Collector>> collectors = new ConcurrentHashMap<>();
+  LabelledMetric<Counter> createCounter(
+      Category category, String name, String help, String... labelNames);
 
-  public static MetricsSystem init() {
-    final MetricsSystem metricsSystem = new MetricsSystem();
-    metricsSystem.collectors.put(Category.PROCESS, singleton(new StandardExports()));
-    metricsSystem.collectors.put(
-        Category.JVM,
-        asList(
-            new MemoryPoolsExports(),
-            new BufferPoolsExports(),
-            new GarbageCollectorExports(),
-            new ThreadExports(),
-            new ClassLoadingExports()));
-    return metricsSystem;
+  LabelledMetric<OperationTimer> createTimer(
+      Category category, String name, String help, String... labelNames);
+
+  void createGauge(Category category, String name, String help, Supplier<Double> valueSupplier);
+
+  Stream<Observation> getMetrics(Category category);
+
+  default Stream<Observation> getMetrics() {
+    return Stream.of(Category.values()).flatMap(this::getMetrics);
   }
 
-  public Counter createCounter(
-      final Category category, final String name, final String help, final String... labelNames) {
-    final Counter counter =
-        Counter.build(category.getNameForMetric(name), help).labelNames(labelNames).create();
-    addCollector(category, counter);
-    return counter;
-  }
-
-  public Histogram createHistogram(
-      final Category category, final String name, final String help, final String... labelNames) {
-    final Histogram histogram = Histogram.build(name, help).labelNames(labelNames).create();
-    addCollector(category, histogram);
-    return histogram;
-  }
-
-  public Gauge createGauge(
-      final Category category, final String name, final String help, final String... labelNames) {
-    final Gauge gauge =
-        Gauge.build(category.getNameForMetric(name), help).labelNames(labelNames).create();
-    addCollector(category, gauge);
-    return gauge;
-  }
-
-  private void addCollector(final Category category, final Collector counter) {
-    collectors
-        .computeIfAbsent(category, key -> Collections.newSetFromMap(new ConcurrentHashMap<>()))
-        .add(counter);
-  }
-
-  public Stream<MetricFamilySamples> getMetrics() {
-    return collectors
-        .values()
-        .stream()
-        .flatMap(Collection::stream)
-        .flatMap(collector -> collector.collect().stream());
-  }
-
-  public Stream<MetricFamilySamples> getMetrics(final Category category) {
-    return collectors
-        .getOrDefault(category, Collections.emptySet())
-        .stream()
-        .flatMap(collector -> collector.collect().stream());
-  }
-
-  public enum Category {
+  enum Category {
     PEERS("peers"),
     RPC("rpc"),
     JVM("jvm", ""),

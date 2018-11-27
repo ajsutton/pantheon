@@ -10,23 +10,20 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
+package tech.pegasys.pantheon.metrics;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.io.Closeable;
 
-import tech.pegasys.pantheon.metrics.MetricsSystem;
-import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
+public interface OperationTimer {
 
-import org.junit.Test;
+  TimingContext startTimer();
 
-public class DebugMetricsTest {
+  interface TimingContext extends Closeable {
+    void stopTimer();
 
-  private final MetricsSystem metricsSystem = new NoOpMetricsSystem();
-
-  private final DebugMetrics method = new DebugMetrics(metricsSystem);
-
-  @Test
-  public void shouldHaveCorrectName() {
-    assertThat(method.getName()).isEqualTo("debug_metrics");
+    @Override
+    default void close() {
+      stopTimer();
+    }
   }
 }

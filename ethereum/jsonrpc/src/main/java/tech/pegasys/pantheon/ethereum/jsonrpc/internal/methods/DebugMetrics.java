@@ -19,6 +19,7 @@ import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class DebugMetrics implements JsonRpcMethod {
@@ -37,25 +38,26 @@ public class DebugMetrics implements JsonRpcMethod {
   @Override
   public JsonRpcResponse response(final JsonRpcRequest request) {
     final Map<String, Object> metrics = new HashMap<>();
-    for (final Category category : Category.values()) {
-      final Map<String, Object> categoryMetrics = getNextMapLevel(metrics, category.getName());
-      metricsSystem
-          .getMetrics(category)
-          .flatMap(metricFamily -> metricFamily.samples.stream())
-          .forEach(
-              sample -> {
-                final String name = category.extractRawName(sample.name);
-                if (sample.labelNames.isEmpty()) {
-                  categoryMetrics.put(name, sample.value);
-                } else {
-                  Map<String, Object> values = getNextMapLevel(categoryMetrics, name);
-                  for (int i = 0; i < sample.labelValues.size() - 1; i++) {
-                    values = getNextMapLevel(values, sample.labelValues.get(i));
-                  }
-                  values.put(sample.labelValues.get(sample.labelValues.size() - 1), sample.value);
+
+    metricsSystem
+        .getMetrics()
+        .forEach(
+            sample -> {
+              final Category category = sample.getCategory();
+              final Map<String, Object> categoryMetrics =
+                  getNextMapLevel(metrics, category.getName());
+              final String name = category.extractRawName(sample.getMetricName());
+              final List<String> labels = sample.getLabels();
+              if (labels.isEmpty()) {
+                categoryMetrics.put(name, sample.getValue());
+              } else {
+                Map<String, Object> values = getNextMapLevel(categoryMetrics, name);
+                for (int i = 0; i < labels.size() - 1; i++) {
+                  values = getNextMapLevel(values, labels.get(i));
                 }
-              });
-    }
+                values.put(labels.get(labels.size() - 1), sample.getValue());
+              }
+            });
     return new JsonRpcSuccessResponse(request.getId(), metrics);
   }
 

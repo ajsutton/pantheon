@@ -10,23 +10,26 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
+package tech.pegasys.pantheon.metrics.prometheus;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import tech.pegasys.pantheon.metrics.Counter;
+import tech.pegasys.pantheon.metrics.LabelledMetric;
 
-import tech.pegasys.pantheon.metrics.MetricsSystem;
-import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
+public class PrometheusCounter implements LabelledMetric<Counter>, Counter {
 
-import org.junit.Test;
+  private final io.prometheus.client.Counter counter;
 
-public class DebugMetricsTest {
+  public PrometheusCounter(final io.prometheus.client.Counter counter) {
+    this.counter = counter;
+  }
 
-  private final MetricsSystem metricsSystem = new NoOpMetricsSystem();
+  @Override
+  public Counter labels(final String... labels) {
+    return counter.labels(labels)::inc;
+  }
 
-  private final DebugMetrics method = new DebugMetrics(metricsSystem);
-
-  @Test
-  public void shouldHaveCorrectName() {
-    assertThat(method.getName()).isEqualTo("debug_metrics");
+  @Override
+  public void inc() {
+    counter.inc();
   }
 }

@@ -36,6 +36,7 @@ import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSpec;
 import tech.pegasys.pantheon.ethereum.p2p.api.P2PNetwork;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
+import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -76,7 +77,7 @@ public class JsonRpcTestMethodsFactory {
         new FilterManager(
             blockchainQueries, transactionPool, new FilterIdGenerator(), new FilterRepository());
     final EthHashMiningCoordinator miningCoordinator = mock(EthHashMiningCoordinator.class);
-    final MetricsSystem metricsSystem = new MetricsSystem();
+    final MetricsSystem metricsSystem = new NoOpMetricsSystem();
 
     return new JsonRpcMethodsFactory()
         .methods(
