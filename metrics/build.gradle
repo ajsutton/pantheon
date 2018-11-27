@@ -30,6 +30,9 @@ dependencies {
   implementation 'org.apache.logging.log4j:log4j-api'
   implementation 'io.prometheus:simpleclient'
   implementation 'io.prometheus:simpleclient_hotspot'
+  implementation 'io.dropwizard.metrics:metrics-core'
+  implementation 'io.dropwizard.metrics:metrics-jvm'
+  implementation 'io.dropwizard.metrics:metrics-jmx'
 
   runtime 'org.apache.logging.log4j:log4j-core'
 

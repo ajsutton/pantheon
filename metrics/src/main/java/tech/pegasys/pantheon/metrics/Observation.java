@@ -20,12 +20,12 @@ public class Observation {
   private final Category category;
   private final String metricName;
   private final List<String> labels;
-  private final double value;
+  private final Object value;
 
   public Observation(
       final Category category,
       final String metricName,
-      final double value,
+      final Object value,
       final List<String> labels) {
     this.category = category;
     this.metricName = metricName;
@@ -45,7 +45,7 @@ public class Observation {
     return labels;
   }
 
-  public double getValue() {
+  public Object getValue() {
     return value;
   }
 }

@@ -51,7 +51,7 @@ import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.p2p.wire.SubProtocol;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
-import tech.pegasys.pantheon.metrics.prometheus.PrometheusMetricsSystem;
+import tech.pegasys.pantheon.metrics.dropwizard.DropWizardMetricsSystem;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.nio.file.Path;
@@ -82,7 +82,7 @@ public class RunnerBuilder {
 
     Preconditions.checkNotNull(pantheonController);
 
-    final MetricsSystem metricsSystem = PrometheusMetricsSystem.init();
+    final MetricsSystem metricsSystem = DropWizardMetricsSystem.init();
     final DiscoveryConfiguration discoveryConfiguration;
     if (discovery) {
       final Collection<?> bootstrap;
