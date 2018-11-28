@@ -13,8 +13,6 @@
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcError;
-import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcErrorResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import tech.pegasys.pantheon.metrics.MetricCategory;
@@ -46,31 +44,26 @@ public class DebugMetrics implements JsonRpcMethod {
   public JsonRpcResponse response(final JsonRpcRequest request) {
     final Map<String, Object> metrics = new HashMap<>();
 
-    try {
-      metricsSystem
-          .getMetrics()
-          .forEach(
-              sample -> {
-                final MetricCategory category = sample.getCategory();
-                final Map<String, Object> categoryMetrics =
-                    getNextMapLevel(metrics, category.getName());
-                final String name = sample.getMetricName();
-                final List<String> labels = sample.getLabels();
-                if (labels.isEmpty()) {
-                  categoryMetrics.put(name, sample.getValue());
-                } else {
-                  Map<String, Object> values = getNextMapLevel(categoryMetrics, name);
-                  for (int i = 0; i < labels.size() - 1; i++) {
-                    values = getNextMapLevel(values, labels.get(i));
-                  }
-                  values.put(labels.get(labels.size() - 1), sample.getValue());
+    metricsSystem
+        .getMetrics()
+        .forEach(
+            sample -> {
+              final MetricCategory category = sample.getCategory();
+              final Map<String, Object> categoryMetrics =
+                  getNextMapLevel(metrics, category.getName());
+              final String name = sample.getMetricName();
+              final List<String> labels = sample.getLabels();
+              if (labels.isEmpty()) {
+                categoryMetrics.put(name, sample.getValue());
+              } else {
+                Map<String, Object> values = getNextMapLevel(categoryMetrics, name);
+                for (int i = 0; i < labels.size() - 1; i++) {
+                  values = getNextMapLevel(values, labels.get(i));
                 }
-              });
-      return new JsonRpcSuccessResponse(request.getId(), metrics);
-    } catch (Exception e) {
-      LOG.error("Failed to serialize metrics", e);
-      return new JsonRpcErrorResponse(request.getId(), JsonRpcError.INTERNAL_ERROR);
-    }
+                values.put(labels.get(labels.size() - 1), sample.getValue());
+              }
+            });
+    return new JsonRpcSuccessResponse(request.getId(), metrics);
   }
 
   @SuppressWarnings("unchecked")
