@@ -12,8 +12,29 @@
  */
 package tech.pegasys.pantheon.metrics;
 
-import java.util.List;
+public enum MetricCategory {
+  PEERS("peers"),
+  RPC("rpc"),
+  JVM("jvm", false),
+  PROCESS("process", false);
 
-public interface MetricCollector {
-  List<Observation> getObservations();
+  private final String name;
+  private final boolean pantheonSpecific;
+
+  MetricCategory(final String name) {
+    this(name, true);
+  }
+
+  MetricCategory(final String name, final boolean pantheonSpecific) {
+    this.name = name;
+    this.pantheonSpecific = pantheonSpecific;
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  public boolean isPantheonSpecific() {
+    return pantheonSpecific;
+  }
 }

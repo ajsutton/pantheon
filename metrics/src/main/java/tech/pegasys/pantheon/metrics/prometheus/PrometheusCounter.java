@@ -15,7 +15,7 @@ package tech.pegasys.pantheon.metrics.prometheus;
 import tech.pegasys.pantheon.metrics.Counter;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
 
-public class PrometheusCounter implements LabelledMetric<Counter>, Counter {
+class PrometheusCounter implements LabelledMetric<Counter>, Counter {
 
   private final io.prometheus.client.Counter counter;
 

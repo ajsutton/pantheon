@@ -26,8 +26,8 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcNoRespons
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponseType;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
+import tech.pegasys.pantheon.metrics.MetricCategory;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
-import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 import tech.pegasys.pantheon.metrics.OperationTimer;
 import tech.pegasys.pantheon.metrics.OperationTimer.TimingContext;
 import tech.pegasys.pantheon.util.NetworkUtility;
@@ -87,7 +87,10 @@ public class JsonRpcHttpService {
     this.dataDir = dataDir;
     requestTimer =
         metricsSystem.createTimer(
-            Category.RPC, "request_time", "Time taken to process a JSON-RPC request", "methodName");
+            MetricCategory.RPC,
+            "request_time",
+            "Time taken to process a JSON-RPC request",
+            "methodName");
     validateConfig(config);
     this.config = config;
     this.vertx = vertx;

@@ -17,8 +17,8 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcError;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcErrorResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcResponse;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
+import tech.pegasys.pantheon.metrics.MetricCategory;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
-import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
 
 import java.util.HashMap;
 import java.util.List;
@@ -51,10 +51,10 @@ public class DebugMetrics implements JsonRpcMethod {
           .getMetrics()
           .forEach(
               sample -> {
-                final Category category = sample.getCategory();
+                final MetricCategory category = sample.getCategory();
                 final Map<String, Object> categoryMetrics =
                     getNextMapLevel(metrics, category.getName());
-                final String name = category.extractRawName(sample.getMetricName());
+                final String name = sample.getMetricName();
                 final List<String> labels = sample.getLabels();
                 if (labels.isEmpty()) {
                   categoryMetrics.put(name, sample.getValue());

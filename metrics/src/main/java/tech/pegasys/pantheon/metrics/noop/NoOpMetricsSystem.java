@@ -14,6 +14,7 @@ package tech.pegasys.pantheon.metrics.noop;
 
 import tech.pegasys.pantheon.metrics.Counter;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
+import tech.pegasys.pantheon.metrics.MetricCategory;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.Observation;
 import tech.pegasys.pantheon.metrics.OperationTimer;
@@ -26,31 +27,38 @@ public class NoOpMetricsSystem implements MetricsSystem {
   private static final Counter NO_OP_COUNTER = () -> {};
 
   @Override
-  public Counter createCounter(final Category category, final String name, final String help) {
+  public Counter createCounter(
+      final MetricCategory category, final String name, final String help) {
     return NO_OP_COUNTER;
   }
 
   @Override
   public LabelledMetric<Counter> createCounter(
-      final Category category, final String name, final String help, final String... labelNames) {
+      final MetricCategory category,
+      final String name,
+      final String help,
+      final String... labelNames) {
     return labels -> NO_OP_COUNTER;
   }
 
   @Override
   public LabelledMetric<OperationTimer> createTimer(
-      final Category category, final String name, final String help, final String... labelNames) {
+      final MetricCategory category,
+      final String name,
+      final String help,
+      final String... labelNames) {
     return labels -> () -> () -> {};
   }
 
   @Override
   public void createGauge(
-      final Category category,
+      final MetricCategory category,
       final String name,
       final String help,
       final Supplier<Double> valueSupplier) {}
 
   @Override
-  public Stream<Observation> getMetrics(final Category category) {
+  public Stream<Observation> getMetrics(final MetricCategory category) {
     return Stream.empty();
   }
 

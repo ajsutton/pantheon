@@ -18,7 +18,7 @@ import tech.pegasys.pantheon.metrics.OperationTimer;
 import io.prometheus.client.Histogram;
 import io.prometheus.client.Histogram.Child;
 
-public class PrometheusTimer implements LabelledMetric<OperationTimer> {
+class PrometheusTimer implements LabelledMetric<OperationTimer> {
 
   private final Histogram histogram;
 

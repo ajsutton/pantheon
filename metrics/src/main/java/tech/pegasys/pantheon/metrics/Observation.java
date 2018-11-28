@@ -12,18 +12,16 @@
  */
 package tech.pegasys.pantheon.metrics;
 
-import tech.pegasys.pantheon.metrics.MetricsSystem.Category;
-
 import java.util.List;
 
 public class Observation {
-  private final Category category;
+  private final MetricCategory category;
   private final String metricName;
   private final List<String> labels;
   private final Object value;
 
   public Observation(
-      final Category category,
+      final MetricCategory category,
       final String metricName,
       final Object value,
       final List<String> labels) {
@@ -33,7 +31,7 @@ public class Observation {
     this.labels = labels;
   }
 
-  public Category getCategory() {
+  public MetricCategory getCategory() {
     return category;
   }
 
