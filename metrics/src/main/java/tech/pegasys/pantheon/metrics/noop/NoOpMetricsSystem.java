@@ -18,6 +18,7 @@ import tech.pegasys.pantheon.metrics.MetricCategory;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.Observation;
 import tech.pegasys.pantheon.metrics.OperationTimer;
+import tech.pegasys.pantheon.metrics.OperationTimer.TimingContext;
 
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -25,6 +26,8 @@ import java.util.stream.Stream;
 public class NoOpMetricsSystem implements MetricsSystem {
 
   private static final Counter NO_OP_COUNTER = () -> {};
+  private static final TimingContext NO_OP_TIMING_CONTEXT = () -> {};
+  private static final OperationTimer NO_OP_TIMER = () -> NO_OP_TIMING_CONTEXT;
 
   @Override
   public LabelledMetric<Counter> createCounter(
@@ -41,7 +44,7 @@ public class NoOpMetricsSystem implements MetricsSystem {
       final String name,
       final String help,
       final String... labelNames) {
-    return labels -> () -> () -> {};
+    return labels -> NO_OP_TIMER;
   }
 
   @Override
