@@ -27,12 +27,6 @@ public class NoOpMetricsSystem implements MetricsSystem {
   private static final Counter NO_OP_COUNTER = () -> {};
 
   @Override
-  public Counter createCounter(
-      final MetricCategory category, final String name, final String help) {
-    return NO_OP_COUNTER;
-  }
-
-  @Override
   public LabelledMetric<Counter> createCounter(
       final MetricCategory category,
       final String name,

@@ -21,8 +21,10 @@ import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.Observation;
 import tech.pegasys.pantheon.metrics.OperationTimer;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -30,6 +32,8 @@ import java.util.stream.Stream;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.Collector.MetricFamilySamples;
+import io.prometheus.client.Collector.MetricFamilySamples.Sample;
+import io.prometheus.client.Collector.Type;
 import io.prometheus.client.Counter;
 import io.prometheus.client.Histogram;
 import io.prometheus.client.hotspot.BufferPoolsExports;
@@ -41,11 +45,10 @@ import io.prometheus.client.hotspot.ThreadExports;
 
 public class PrometheusMetricsSystem implements MetricsSystem {
 
-  private static final String[] NO_LABELS = new String[0];
   private static final String PANTHEON_PREFIX = "pantheon_";
   private final Map<MetricCategory, Collection<Collector>> collectors = new ConcurrentHashMap<>();
 
-  private PrometheusMetricsSystem() {}
+  PrometheusMetricsSystem() {}
 
   public static MetricsSystem init() {
     final PrometheusMetricsSystem metricsSystem = new PrometheusMetricsSystem();
@@ -59,12 +62,6 @@ public class PrometheusMetricsSystem implements MetricsSystem {
             new ThreadExports(),
             new ClassLoadingExports()));
     return metricsSystem;
-  }
-
-  @Override
-  public tech.pegasys.pantheon.metrics.Counter createCounter(
-      final MetricCategory category, final String name, final String help) {
-    return createCounter(category, name, help, NO_LABELS).labels();
   }
 
   @Override
@@ -114,21 +111,42 @@ public class PrometheusMetricsSystem implements MetricsSystem {
         .getOrDefault(category, Collections.emptySet())
         .stream()
         .flatMap(collector -> collector.collect().stream())
-        .flatMap(familySample -> convertSamplesToObservations(category, familySample));
+        .flatMap(familySamples -> convertSamplesToObservations(category, familySamples));
   }
 
   private Stream<Observation> convertSamplesToObservations(
-      final MetricCategory category, final MetricFamilySamples familySample) {
-    return familySample
+      final MetricCategory category, final MetricFamilySamples familySamples) {
+    return familySamples
         .samples
         .stream()
-        .map(
-            sample ->
-                new Observation(
-                    category,
-                    convertFromPrometheusName(category, familySample.name),
-                    sample.value,
-                    sample.labelValues));
+        .map(sample -> createObservationFromSample(category, sample, familySamples));
+  }
+
+  private Observation createObservationFromSample(
+      final MetricCategory category, final Sample sample, final MetricFamilySamples familySamples) {
+    if (familySamples.type == Type.HISTOGRAM) {
+      return convertHistogramSampleNamesToLabels(category, sample, familySamples);
+    }
+    return new Observation(
+        category,
+        convertFromPrometheusName(category, sample.name),
+        sample.value,
+        sample.labelValues);
+  }
+
+  private Observation convertHistogramSampleNamesToLabels(
+      final MetricCategory category, final Sample sample, final MetricFamilySamples familySamples) {
+    final List<String> labelValues = new ArrayList<>(sample.labelValues);
+    if (sample.name.endsWith("_bucket")) {
+      labelValues.add(labelValues.size() - 1, "bucket");
+    } else {
+      labelValues.add(sample.name.substring(sample.name.lastIndexOf("_") + 1));
+    }
+    return new Observation(
+        category,
+        convertFromPrometheusName(category, familySamples.name),
+        sample.value,
+        labelValues);
   }
 
   private String convertToPrometheusName(final MetricCategory category, final String name) {

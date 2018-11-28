@@ -13,6 +13,9 @@
 package tech.pegasys.pantheon.metrics;
 
 import java.util.List;
+import java.util.Objects;
+
+import com.google.common.base.MoreObjects;
 
 public class Observation {
   private final MetricCategory category;
@@ -45,5 +48,35 @@ public class Observation {
 
   public Object getValue() {
     return value;
+  }
+
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    final Observation that = (Observation) o;
+    return category == that.category
+        && Objects.equals(metricName, that.metricName)
+        && Objects.equals(labels, that.labels)
+        && Objects.equals(value, that.value);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(category, metricName, labels, value);
+  }
+
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("category", category)
+        .add("metricName", metricName)
+        .add("labels", labels)
+        .add("value", value)
+        .toString();
   }
 }

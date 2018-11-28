@@ -17,10 +17,18 @@ import java.util.stream.Stream;
 
 public interface MetricsSystem {
 
-  Counter createCounter(MetricCategory category, String name, String help);
+  default Counter createCounter(
+      final MetricCategory category, final String name, final String help) {
+    return createCounter(category, name, help, new String[0]).labels();
+  }
 
   LabelledMetric<Counter> createCounter(
       MetricCategory category, String name, String help, String... labelNames);
+
+  default OperationTimer createTimer(
+      final MetricCategory category, final String name, final String help) {
+    return createTimer(category, name, help, new String[0]).labels();
+  }
 
   LabelledMetric<OperationTimer> createTimer(
       MetricCategory category, String name, String help, String... labelNames);
