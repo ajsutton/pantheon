@@ -91,6 +91,11 @@ public class StubGenesisConfigOptions implements GenesisConfigOptions {
   }
 
   @Override
+  public OptionalLong getStateRentBlockNumber() {
+    return OptionalLong.empty();
+  }
+
+  @Override
   public OptionalInt getChainId() {
     return chainId;
   }

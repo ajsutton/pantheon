@@ -191,6 +191,10 @@ public abstract class MainnetProtocolSpecs {
         .name("Constantinople");
   }
 
+  public static ProtocolSpecBuilder<Void> stateRentDefinition(final int chainId) {
+    return constantinopleDefinition(chainId).name("StateRent");
+  }
+
   private static TransactionReceipt frontierTransactionReceiptFactory(
       final TransactionProcessor.Result result, final WorldState worldState, final long gasUsed) {
     return new TransactionReceipt(worldState.rootHash(), gasUsed, result.getLogs());
