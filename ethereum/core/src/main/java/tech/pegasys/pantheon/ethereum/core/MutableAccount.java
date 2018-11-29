@@ -15,6 +15,7 @@ package tech.pegasys.pantheon.ethereum.core;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.math.BigInteger;
 import java.util.Map;
 
 /** A mutable world state account. */
@@ -74,6 +75,20 @@ public interface MutableAccount extends Account {
    * @param value the amount to set.
    */
   void setBalance(Wei value);
+
+  /**
+   * Sets the rent balance of the account to the provided amount.
+   *
+   * @param value the amount to set.
+   */
+  void setRentBalance(BigInteger value);
+
+  /**
+   * Sets the rent block of this account to the provided block number.
+   *
+   * @param rentBlock the block number to set the rent block to.
+   */
+  void setRentBlock(long rentBlock);
 
   /**
    * Sets the code for the account.

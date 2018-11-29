@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.AbstractWorldUpdater;
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.MutableWorldState;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
@@ -29,6 +30,7 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -112,7 +114,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
     in.leaveList();
 
-    return new AccountState(address, addressHash, nonce, balance, storageRoot, codeHash);
+    return new AccountState(address, addressHash, nonce, balance, BigInteger.ZERO, Account.NO_RENT_BLOCK, storageRoot, codeHash);
   }
 
   private static BytesValue serializeAccount(
@@ -191,6 +193,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
     private final Wei balance;
     private final Hash storageRoot;
     private final Hash codeHash;
+    private final BigInteger rentBalance;
+    private final long rentBlock;
 
     // Lazily initialized since we don't always access storage.
     private volatile MerklePatriciaTrie<Bytes32, BytesValue> storageTrie;
@@ -200,6 +204,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
         final Hash addressHash,
         final long nonce,
         final Wei balance,
+        final BigInteger rentBalance,
+        final long rentBlock,
         final Hash storageRoot,
         final Hash codeHash) {
 
@@ -207,6 +213,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
       this.addressHash = addressHash;
       this.nonce = nonce;
       this.balance = balance;
+      this.rentBalance = rentBalance;
+      this.rentBlock = rentBlock;
       this.storageRoot = storageRoot;
       this.codeHash = codeHash;
     }
@@ -240,6 +248,16 @@ public class DefaultMutableWorldState implements MutableWorldState {
     @Override
     public Wei getBalance() {
       return balance;
+    }
+
+    @Override
+    public BigInteger getRentBalance() {
+      return rentBalance;
+    }
+
+    @Override
+    public long getRentBlock() {
+      return rentBlock;
     }
 
     @Override
@@ -328,7 +346,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
     }
 
     @Override
-    public Collection<Account> getTouchedAccounts() {
+    public Collection<MutableAccount> getTouchedAccounts() {
       return new ArrayList<>(updatedAccounts());
     }
 

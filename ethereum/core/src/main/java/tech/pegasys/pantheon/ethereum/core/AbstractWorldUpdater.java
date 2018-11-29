@@ -18,6 +18,7 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -163,6 +164,8 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
 
     private long nonce;
     private Wei balance;
+    private BigInteger rentBalance;
+    private long rentBlock;
 
     @Nullable private BytesValue updatedCode; // Null if the underlying code has not been updated.
     @Nullable private Hash updatedCodeHash;
@@ -179,6 +182,8 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
 
       this.nonce = 0;
       this.balance = Wei.ZERO;
+      this.rentBalance = BigInteger.ZERO;
+      this.rentBlock = NEW_ACCOUNT_RENT_BLOCK;
 
       this.updatedCode = BytesValue.EMPTY;
       this.updatedStorage = new TreeMap<>();
@@ -192,6 +197,8 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
 
       this.nonce = account.getNonce();
       this.balance = account.getBalance();
+      this.rentBalance = account.getRentBalance();
+      this.rentBlock = account.getRentBlock();
 
       this.updatedStorage = new TreeMap<>();
     }
@@ -249,6 +256,26 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     @Override
     public void setBalance(final Wei value) {
       this.balance = value;
+    }
+
+    @Override
+    public BigInteger getRentBalance() {
+      return rentBalance;
+    }
+
+    @Override
+    public void setRentBalance(final BigInteger rentBalance) {
+      this.rentBalance = rentBalance;
+    }
+
+    @Override
+    public long getRentBlock() {
+      return rentBlock;
+    }
+
+    @Override
+    public void setRentBlock(final long rentBlock) {
+      this.rentBlock = rentBlock;
     }
 
     @Override
@@ -381,7 +408,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     }
 
     @Override
-    public Collection<Account> getTouchedAccounts() {
+    public Collection<MutableAccount> getTouchedAccounts() {
       return new ArrayList<>(updatedAccounts());
     }
 

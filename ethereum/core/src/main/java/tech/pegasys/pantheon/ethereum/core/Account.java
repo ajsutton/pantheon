@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.math.BigInteger;
 import java.util.NavigableMap;
 
 /**
@@ -34,6 +35,10 @@ import java.util.NavigableMap;
  * </ul>
  */
 public interface Account {
+
+  long NO_RENT_BLOCK = -1;
+  // TODO(rent): Probably should be able to set the rent block correctly as part of creating the account and get rid of this hack
+  long NEW_ACCOUNT_RENT_BLOCK = -2;
 
   /**
    * The Keccak-256 hash of the account address.
@@ -69,6 +74,21 @@ public interface Account {
    * @return the balance, in Wei, of the account.
    */
   Wei getBalance();
+
+  /**
+   * The current rent balance of the account.
+   *
+   * @return the rent balance, in Wei, of the account.
+   */
+  BigInteger getRentBalance();
+
+  /**
+   * The current rent block for the account. This indicates the last block number that rent was
+   * charged for this account.
+   *
+   * @return the rent block of the account.
+   */
+  long getRentBlock();
 
   /**
    * The EVM bytecode associated with this account.

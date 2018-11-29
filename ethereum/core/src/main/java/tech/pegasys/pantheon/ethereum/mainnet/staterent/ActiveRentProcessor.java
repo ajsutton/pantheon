@@ -12,8 +12,13 @@
  */
 package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
+import static tech.pegasys.pantheon.util.bytes.BytesValues.asUnsignedBigInteger;
+
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+
+import java.math.BigInteger;
 
 public class ActiveRentProcessor implements RentProcessor {
 
@@ -26,7 +31,28 @@ public class ActiveRentProcessor implements RentProcessor {
   }
 
   @Override
-  public void chargeRent(final MutableAccount account, final long currentBlockNumber) {}
+  public void chargeRent(final MutableAccount account, final long currentBlockNumber) {
+    if (account.getRentBlock() == Account.NEW_ACCOUNT_RENT_BLOCK) {
+      account.setRentBlock(currentBlockNumber);
+      return;
+    }
+    final long rentBlock = account.getRentBlock() == Account.NO_RENT_BLOCK ? rentEnabledBlockNumber
+        : account.getRentBlock();
+    final Wei rentDue = rentCost.times(currentBlockNumber - rentBlock);
+    BigInteger newRentBalance = account.getRentBalance()
+        .subtract(asUnsignedBigInteger(rentDue.getBytes()));
+    if (newRentBalance.signum() < 0) {
+      final Wei rentStillOwing = Wei.of(newRentBalance.negate());
+      final Wei repayment =
+          account.getBalance().compareTo(rentStillOwing) <= 0 ? account.getBalance()
+              : rentStillOwing;
+      newRentBalance = newRentBalance.add(asUnsignedBigInteger(repayment.getBytes()));
+      account.decrementBalance(repayment);
+    }
+
+    account.setRentBalance(newRentBalance);
+    account.setRentBlock(currentBlockNumber);
+  }
 
   @Override
   public boolean isRentCharged() {

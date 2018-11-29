@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -24,7 +25,9 @@ public class StubAccount implements MutableAccount {
 
   private long nonce = 0;
   private Wei balance = Wei.ZERO;
-  private BytesValue code;
+  private BigInteger rentBalance = BigInteger.ZERO;
+  private long rentBlock = NO_RENT_BLOCK;
+  private BytesValue code = BytesValue.EMPTY;
   private final Map<UInt256, UInt256> storage = new HashMap<>();
   private final Address address;
 
@@ -62,13 +65,33 @@ public class StubAccount implements MutableAccount {
   }
 
   @Override
+  public BigInteger getRentBalance() {
+    return rentBalance;
+  }
+
+  @Override
+  public void setRentBalance(final BigInteger rentBalance) {
+    this.rentBalance = rentBalance;
+  }
+
+  @Override
+  public long getRentBlock() {
+    return rentBlock;
+  }
+
+  @Override
+  public void setRentBlock(final long rentBlock) {
+    this.rentBlock = rentBlock;
+  }
+
+  @Override
   public BytesValue getCode() {
     return code;
   }
 
   @Override
   public Hash getCodeHash() {
-    return code != null ? Hash.hash(code) : Hash.EMPTY;
+    return code.isEmpty() ? Hash.EMPTY : Hash.hash(code);
   }
 
   @Override

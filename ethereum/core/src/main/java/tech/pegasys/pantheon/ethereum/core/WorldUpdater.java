@@ -90,7 +90,7 @@ public interface WorldUpdater extends MutableWorldView {
    *
    * @return the accounts that have been touched within the scope of this updater
    */
-  Collection<Account> getTouchedAccounts();
+  Collection<MutableAccount> getTouchedAccounts();
 
   /** Removes the changes that were made to this updater. */
   void revert();

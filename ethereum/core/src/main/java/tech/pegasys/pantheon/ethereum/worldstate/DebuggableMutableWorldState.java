@@ -143,7 +143,7 @@ public class DebuggableMutableWorldState extends DefaultMutableWorldState {
     }
 
     @Override
-    public Collection<Account> getTouchedAccounts() {
+    public Collection<MutableAccount> getTouchedAccounts() {
       return wrapped.getTouchedAccounts();
     }
 

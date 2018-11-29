@@ -18,11 +18,13 @@ import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.StubAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 
+import java.math.BigInteger;
+
 import org.junit.Test;
 
 public class ActiveRentProcessorTest {
 
-  private static final Wei RENT_COST = Wei.fromGwei(2);
+  private static final Wei RENT_COST = Wei.of(2);
   private static final int RENT_ENABLED_BLOCK_NUMBER = 1000;
 
   private final MutableAccount account = new StubAccount();
@@ -37,10 +39,40 @@ public class ActiveRentProcessorTest {
 
   @Test
   public void shouldNotChargeRentWhenCurrentBlockNumberIsSameAsRentBlock() {
-    final Wei initialBalance = Wei.fromGwei(1_000_000);
+    final Wei initialBalance = Wei.of(1_000_000);
     account.setBalance(initialBalance);
     rentProcessor.chargeRent(account, RENT_ENABLED_BLOCK_NUMBER);
 
     assertThat(account.getBalance()).isEqualTo(initialBalance);
+    assertThat(account.getRentBlock()).isEqualTo(RENT_ENABLED_BLOCK_NUMBER);
+    assertThat(account.getRentBalance()).isEqualTo(BigInteger.ZERO);
+  }
+
+  @Test
+  public void shouldChargeRentToRentBalanceWhenRentBalanceIsSufficient() {
+    final Wei initialBalance = Wei.of(10_000);
+    account.setBalance(initialBalance);
+    account.setRentBalance(BigInteger.valueOf(50));
+    account.setRentBlock(RENT_ENABLED_BLOCK_NUMBER);
+
+    rentProcessor.chargeRent(account, RENT_ENABLED_BLOCK_NUMBER + 10);
+
+    assertThat(account.getRentBalance()).isEqualTo(BigInteger.valueOf(30));
+    assertThat(account.getRentBlock()).isEqualTo(RENT_ENABLED_BLOCK_NUMBER + 10);
+    assertThat(account.getBalance()).isEqualTo(initialBalance);
+  }
+
+  @Test
+  public void shouldReduceBalanceByRentDueWhenRentBalanceIsZero() {
+    final Wei initialBalance = Wei.of(10_000);
+    account.setBalance(initialBalance);
+    account.setRentBalance(BigInteger.ZERO);
+    account.setRentBlock(RENT_ENABLED_BLOCK_NUMBER);
+
+    rentProcessor.chargeRent(account, RENT_ENABLED_BLOCK_NUMBER + 10);
+
+    assertThat(account.getRentBalance()).isEqualTo(BigInteger.ZERO);
+    assertThat(account.getRentBlock()).isEqualTo(RENT_ENABLED_BLOCK_NUMBER + 10);
+    assertThat(account.getBalance()).isEqualTo(Wei.of(10_000 - 20));
   }
 }
