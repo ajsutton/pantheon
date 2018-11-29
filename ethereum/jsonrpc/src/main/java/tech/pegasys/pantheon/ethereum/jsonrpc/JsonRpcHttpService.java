@@ -86,7 +86,7 @@ public class JsonRpcHttpService {
       final Map<String, JsonRpcMethod> methods) {
     this.dataDir = dataDir;
     requestTimer =
-        metricsSystem.createTimer(
+        metricsSystem.createLabelledTimer(
             MetricCategory.RPC,
             "request_time",
             "Time taken to process a JSON-RPC request",

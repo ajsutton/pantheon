@@ -25,12 +25,12 @@ import java.util.stream.Stream;
 
 public class NoOpMetricsSystem implements MetricsSystem {
 
-  private static final Counter NO_OP_COUNTER = () -> {};
+  private static final Counter NO_OP_COUNTER = new NoOpCounter();
   private static final TimingContext NO_OP_TIMING_CONTEXT = () -> {};
   private static final OperationTimer NO_OP_TIMER = () -> NO_OP_TIMING_CONTEXT;
 
   @Override
-  public LabelledMetric<Counter> createCounter(
+  public LabelledMetric<Counter> createLabelledCounter(
       final MetricCategory category,
       final String name,
       final String help,
@@ -39,7 +39,7 @@ public class NoOpMetricsSystem implements MetricsSystem {
   }
 
   @Override
-  public LabelledMetric<OperationTimer> createTimer(
+  public LabelledMetric<OperationTimer> createLabelledTimer(
       final MetricCategory category,
       final String name,
       final String help,

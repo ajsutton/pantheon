@@ -10,10 +10,15 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.metrics;
+package tech.pegasys.pantheon.metrics.noop;
 
-public interface Counter {
-  void inc();
+import tech.pegasys.pantheon.metrics.Counter;
 
-  void inc(long amount);
+class NoOpCounter implements Counter {
+
+  @Override
+  public void inc() {}
+
+  @Override
+  public void inc(final long amount) {}
 }

@@ -15,7 +15,7 @@ package tech.pegasys.pantheon.metrics.prometheus;
 import tech.pegasys.pantheon.metrics.Counter;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
 
-class PrometheusCounter implements LabelledMetric<Counter>, Counter {
+class PrometheusCounter implements LabelledMetric<Counter> {
 
   private final io.prometheus.client.Counter counter;
 
@@ -25,11 +25,24 @@ class PrometheusCounter implements LabelledMetric<Counter>, Counter {
 
   @Override
   public Counter labels(final String... labels) {
-    return counter.labels(labels)::inc;
+    return new UnlabelledCounter(counter.labels(labels));
   }
 
-  @Override
-  public void inc() {
-    counter.inc();
+  private static class UnlabelledCounter implements Counter {
+    private final io.prometheus.client.Counter.Child counter;
+
+    private UnlabelledCounter(final io.prometheus.client.Counter.Child counter) {
+      this.counter = counter;
+    }
+
+    @Override
+    public void inc() {
+      counter.inc();
+    }
+
+    @Override
+    public void inc(final long amount) {
+      counter.inc(amount);
+    }
   }
 }

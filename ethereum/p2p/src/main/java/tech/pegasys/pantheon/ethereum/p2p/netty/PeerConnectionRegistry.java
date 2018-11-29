@@ -36,7 +36,7 @@ public class PeerConnectionRegistry implements DisconnectCallback {
 
   public PeerConnectionRegistry(final MetricsSystem metricsSystem) {
     disconnectCounter =
-        metricsSystem.createCounter(
+        metricsSystem.createLabelledCounter(
             MetricCategory.PEERS,
             "disconnected_total",
             "Total number of peers disconnected",

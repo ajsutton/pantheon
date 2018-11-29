@@ -65,7 +65,7 @@ public class PrometheusMetricsSystem implements MetricsSystem {
   }
 
   @Override
-  public LabelledMetric<tech.pegasys.pantheon.metrics.Counter> createCounter(
+  public LabelledMetric<tech.pegasys.pantheon.metrics.Counter> createLabelledCounter(
       final MetricCategory category,
       final String name,
       final String help,
@@ -79,7 +79,7 @@ public class PrometheusMetricsSystem implements MetricsSystem {
   }
 
   @Override
-  public LabelledMetric<OperationTimer> createTimer(
+  public LabelledMetric<OperationTimer> createLabelledTimer(
       final MetricCategory category,
       final String name,
       final String help,

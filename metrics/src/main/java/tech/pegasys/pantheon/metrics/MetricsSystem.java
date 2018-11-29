@@ -19,18 +19,18 @@ public interface MetricsSystem {
 
   default Counter createCounter(
       final MetricCategory category, final String name, final String help) {
-    return createCounter(category, name, help, new String[0]).labels();
+    return createLabelledCounter(category, name, help, new String[0]).labels();
   }
 
-  LabelledMetric<Counter> createCounter(
+  LabelledMetric<Counter> createLabelledCounter(
       MetricCategory category, String name, String help, String... labelNames);
 
   default OperationTimer createTimer(
       final MetricCategory category, final String name, final String help) {
-    return createTimer(category, name, help, new String[0]).labels();
+    return createLabelledTimer(category, name, help, new String[0]).labels();
   }
 
-  LabelledMetric<OperationTimer> createTimer(
+  LabelledMetric<OperationTimer> createLabelledTimer(
       MetricCategory category, String name, String help, String... labelNames);
 
   void createGauge(

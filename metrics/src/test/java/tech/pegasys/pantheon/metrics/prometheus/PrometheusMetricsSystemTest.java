@@ -56,7 +56,7 @@ public class PrometheusMetricsSystemTest {
   @Test
   public void shouldCreateSeparateObservationsForEachCounterLabelValue() {
     final LabelledMetric<Counter> counter =
-        metricsSystem.createCounter(PEERS, "connected", "Some help string", "labelName");
+        metricsSystem.createLabelledCounter(PEERS, "connected", "Some help string", "labelName");
 
     counter.labels("value1").inc();
     counter.labels("value2").inc();
@@ -66,6 +66,19 @@ public class PrometheusMetricsSystemTest {
         .containsExactlyInAnyOrder(
             new Observation(PEERS, "connected", 2d, singletonList("value1")),
             new Observation(PEERS, "connected", 1d, singletonList("value2")));
+  }
+
+  @Test
+  public void shouldIncrementCounterBySpecifiedAmount() {
+    final Counter counter = metricsSystem.createCounter(PEERS, "connected", "Some help string");
+
+    counter.inc(5);
+    assertThat(metricsSystem.getMetrics())
+        .containsExactly(new Observation(PEERS, "connected", 5d, emptyList()));
+
+    counter.inc(6);
+    assertThat(metricsSystem.getMetrics())
+        .containsExactly(new Observation(PEERS, "connected", 11d, emptyList()));
   }
 
   @Test
@@ -100,13 +113,12 @@ public class PrometheusMetricsSystemTest {
   @Test
   public void shouldCreateObservationsFromTimerWithLabels() {
     final LabelledMetric<OperationTimer> timer =
-        metricsSystem.createTimer(RPC, "request", "Some help", "methodName");
+        metricsSystem.createLabelledTimer(RPC, "request", "Some help", "methodName");
 
-    final TimingContext context = timer.labels("method").startTimer();
-    context.stopTimer();
+    try (final TimingContext context = timer.labels("method").startTimer()) {}
 
     assertThat(metricsSystem.getMetrics())
-        .usingElementComparator(IGNORE_VALUES)
+        .usingElementComparator(IGNORE_VALUES) // We don't know how long it will actually take.
         .containsExactlyInAnyOrder(
             new Observation(RPC, "request", null, asList("method", "bucket", "0.005")),
             new Observation(RPC, "request", null, asList("method", "bucket", "0.01")),
