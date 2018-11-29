@@ -22,6 +22,8 @@ import tech.pegasys.pantheon.ethereum.core.TransactionReceipt;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.ActiveRentProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.InactiveRentProcessor;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -60,6 +62,8 @@ public abstract class MainnetProtocolSpecs {
   public static ProtocolSpecBuilder<Void> frontierDefinition() {
     return new ProtocolSpecBuilder<Void>()
         .gasCalculator(FrontierGasCalculator::new)
+        .rentProcessor(rentCost -> new InactiveRentProcessor())
+        .rentCost(Wei.ZERO)
         .evmBuilder(MainnetEvmRegistries::frontier)
         .precompileContractRegistryBuilder(MainnetPrecompiledContractRegistries::frontier)
         .messageCallProcessorBuilder(MainnetMessageCallProcessor::new)
@@ -71,6 +75,7 @@ public abstract class MainnetProtocolSpecs {
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, false))
         .transactionProcessorBuilder(
             (gasCalculator,
+                rentProcessor,
                 transactionValidator,
                 contractCreationProcessor,
                 messageCallProcessor) ->
@@ -159,6 +164,7 @@ public abstract class MainnetProtocolSpecs {
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, true, chainId))
         .transactionProcessorBuilder(
             (gasCalculator,
+                rentProcessor,
                 transactionValidator,
                 contractCreationProcessor,
                 messageCallProcessor) ->
@@ -191,8 +197,12 @@ public abstract class MainnetProtocolSpecs {
         .name("Constantinople");
   }
 
-  public static ProtocolSpecBuilder<Void> stateRentDefinition(final int chainId) {
-    return constantinopleDefinition(chainId).name("StateRent");
+  public static ProtocolSpecBuilder<Void> stateRentDefinition(
+      final int chainId, final long rentEnabledBlockNumber) {
+    return constantinopleDefinition(chainId)
+        .rentCost(Wei.fromGwei(2))
+        .rentProcessor(rentCost -> new ActiveRentProcessor(rentCost, rentEnabledBlockNumber))
+        .name("StateRent");
   }
 
   private static TransactionReceipt frontierTransactionReceiptFactory(

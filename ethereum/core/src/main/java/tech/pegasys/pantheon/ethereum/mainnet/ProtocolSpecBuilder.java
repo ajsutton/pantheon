@@ -18,6 +18,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.core.BlockImporter;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionReceiptFactory;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.EVM;
 import tech.pegasys.pantheon.ethereum.vm.GasCalculator;
 
@@ -46,6 +47,8 @@ public class ProtocolSpecBuilder<T> {
   private TransactionReceiptType transactionReceiptType;
   private String name;
   private MiningBeneficiaryCalculator miningBeneficiaryCalculator;
+  private Function<Wei, RentProcessor> rentProcessorBuilder;
+  private Wei rentCost;
 
   public ProtocolSpecBuilder<T> gasCalculator(final Supplier<GasCalculator> gasCalculatorBuilder) {
     this.gasCalculatorBuilder = gasCalculatorBuilder;
@@ -54,6 +57,16 @@ public class ProtocolSpecBuilder<T> {
 
   public ProtocolSpecBuilder<T> blockReward(final Wei blockReward) {
     this.blockReward = blockReward;
+    return this;
+  }
+
+  public ProtocolSpecBuilder<T> rentProcessor(final Function<Wei, RentProcessor> rentProcessor) {
+    this.rentProcessorBuilder = rentProcessor;
+    return this;
+  }
+
+  public ProtocolSpecBuilder<T> rentCost(final Wei rentCost) {
+    this.rentCost = rentCost;
     return this;
   }
 
@@ -168,6 +181,8 @@ public class ProtocolSpecBuilder<T> {
       final DifficultyCalculator<R> difficultyCalculator) {
     return new ProtocolSpecBuilder<R>()
         .gasCalculator(gasCalculatorBuilder)
+        .rentProcessor(rentProcessorBuilder)
+        .rentCost(rentCost)
         .evmBuilder(evmBuilder)
         .transactionValidatorBuilder(transactionValidatorBuilder)
         .contractCreationProcessorBuilder(contractCreationProcessorBuilder)
@@ -190,6 +205,8 @@ public class ProtocolSpecBuilder<T> {
 
   public ProtocolSpec<T> build(final ProtocolSchedule<T> protocolSchedule) {
     checkNotNull(gasCalculatorBuilder, "Missing gasCalculator");
+    checkNotNull(rentProcessorBuilder, "Missing rent processor");
+    checkNotNull(rentCost, "Missing rent cost");
     checkNotNull(evmBuilder, "Missing operation registry");
     checkNotNull(transactionValidatorBuilder, "Missing transaction validator");
     checkNotNull(contractCreationProcessorBuilder, "Missing contract creation processor");
@@ -210,6 +227,7 @@ public class ProtocolSpecBuilder<T> {
     checkNotNull(protocolSchedule, "Missing protocol schedule");
 
     final GasCalculator gasCalculator = gasCalculatorBuilder.get();
+    final RentProcessor rentProcessor = rentProcessorBuilder.apply(rentCost);
     final EVM evm = evmBuilder.apply(gasCalculator);
     final TransactionValidator transactionValidator =
         transactionValidatorBuilder.apply(gasCalculator);
@@ -221,7 +239,11 @@ public class ProtocolSpecBuilder<T> {
         messageCallProcessorBuilder.apply(evm, precompileContractRegistry);
     final TransactionProcessor transactionProcessor =
         transactionProcessorBuilder.apply(
-            gasCalculator, transactionValidator, contractCreationProcessor, messageCallProcessor);
+            gasCalculator,
+            rentProcessor,
+            transactionValidator,
+            contractCreationProcessor,
+            messageCallProcessor);
     final BlockHeaderValidator<T> blockHeaderValidator =
         blockHeaderValidatorBuilder.apply(difficultyCalculator);
     final BlockHeaderValidator<T> ommerHeaderValidator =
@@ -257,6 +279,7 @@ public class ProtocolSpecBuilder<T> {
   public interface TransactionProcessorBuilder {
     TransactionProcessor apply(
         GasCalculator gasCalculator,
+        RentProcessor rentProcessor,
         TransactionValidator transactionValidator,
         AbstractMessageProcessor contractCreationProcessor,
         AbstractMessageProcessor messageCallProcessor);

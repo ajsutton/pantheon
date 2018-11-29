@@ -83,7 +83,8 @@ public class ProtocolScheduleBuilder<C> {
     addProtocolSpec(
         protocolSchedule,
         config.getStateRentBlockNumber(),
-        MainnetProtocolSpecs.stateRentDefinition(chainId));
+        activationBlockNumber ->
+            MainnetProtocolSpecs.stateRentDefinition(chainId, activationBlockNumber));
     return protocolSchedule;
   }
 
@@ -91,9 +92,19 @@ public class ProtocolScheduleBuilder<C> {
       final MutableProtocolSchedule<C> protocolSchedule,
       final OptionalLong blockNumber,
       final ProtocolSpecBuilder<Void> definition) {
+    addProtocolSpec(protocolSchedule, blockNumber, number -> definition);
+  }
+
+  private void addProtocolSpec(
+      final MutableProtocolSchedule<C> protocolSchedule,
+      final OptionalLong blockNumber,
+      final Function<Long, ProtocolSpecBuilder<Void>> definitionSupplier) {
     blockNumber.ifPresent(
         number ->
             protocolSchedule.putMilestone(
-                number, protocolSpecAdapter.apply(definition).build(protocolSchedule)));
+                number,
+                protocolSpecAdapter
+                    .apply(definitionSupplier.apply(number))
+                    .build(protocolSchedule)));
   }
 }
