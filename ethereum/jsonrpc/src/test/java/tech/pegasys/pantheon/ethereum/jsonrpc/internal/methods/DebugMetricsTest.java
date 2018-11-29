@@ -12,21 +12,77 @@
  */
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods;
 
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import static tech.pegasys.pantheon.metrics.MetricCategory.PEERS;
+import static tech.pegasys.pantheon.metrics.MetricCategory.RPC;
 
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.JsonRpcRequest;
+import tech.pegasys.pantheon.ethereum.jsonrpc.internal.response.JsonRpcSuccessResponse;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
-import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
+import tech.pegasys.pantheon.metrics.Observation;
 
+import java.util.Collections;
+import java.util.stream.Stream;
+
+import com.google.common.collect.ImmutableMap;
 import org.junit.Test;
 
 public class DebugMetricsTest {
 
-  private final MetricsSystem metricsSystem = new NoOpMetricsSystem();
+  private static final JsonRpcRequest REQUEST =
+      new JsonRpcRequest("2.0", "debug_metrics", new Object[0]);
+  private final MetricsSystem metricsSystem = mock(MetricsSystem.class);
 
   private final DebugMetrics method = new DebugMetrics(metricsSystem);
 
   @Test
   public void shouldHaveCorrectName() {
     assertThat(method.getName()).isEqualTo("debug_metrics");
+  }
+
+  @Test
+  public void shouldReportUnlabelledObservationsByCategory() {
+    when(metricsSystem.getMetrics())
+        .thenReturn(
+            Stream.of(
+                new Observation(PEERS, "peer1", "peer1Value", Collections.emptyList()),
+                new Observation(PEERS, "peer2", "peer2Value", Collections.emptyList()),
+                new Observation(RPC, "rpc1", "rpc1Value", Collections.emptyList())));
+
+    assertResponse(
+        ImmutableMap.of(
+            PEERS.getName(),
+            ImmutableMap.<String, Object>of("peer1", "peer1Value", "peer2", "peer2Value"),
+            RPC.getName(),
+            ImmutableMap.<String, Object>of("rpc1", "rpc1Value")));
+  }
+
+  @Test
+  public void shouldNestObservationsByLabel() {
+    when(metricsSystem.getMetrics())
+        .thenReturn(
+            Stream.of(
+                new Observation(PEERS, "peer1", "value1", asList("label1A", "label2A")),
+                new Observation(PEERS, "peer1", "value2", asList("label1A", "label2B")),
+                new Observation(PEERS, "peer1", "value3", asList("label1B", "label2B"))));
+
+    assertResponse(
+        ImmutableMap.of(
+            PEERS.getName(),
+            ImmutableMap.<String, Object>of(
+                "peer1",
+                ImmutableMap.of(
+                    "label1A",
+                    ImmutableMap.of("label2A", "value1", "label2B", "value2"),
+                    "label1B",
+                    ImmutableMap.of("label2B", "value3")))));
+  }
+
+  private void assertResponse(final ImmutableMap<String, Object> expectedResponse) {
+    final JsonRpcSuccessResponse response = (JsonRpcSuccessResponse) method.response(REQUEST);
+    assertThat(response.getResult()).isEqualTo(expectedResponse);
   }
 }
