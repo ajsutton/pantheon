@@ -12,7 +12,6 @@
  */
 package tech.pegasys.pantheon.metrics;
 
-@FunctionalInterface
 public interface Counter {
   void inc();
 }
