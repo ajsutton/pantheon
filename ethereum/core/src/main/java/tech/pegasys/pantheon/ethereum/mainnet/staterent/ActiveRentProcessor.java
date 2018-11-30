@@ -36,15 +36,18 @@ public class ActiveRentProcessor implements RentProcessor {
       account.setRentBlock(currentBlockNumber);
       return;
     }
-    final long rentBlock = account.getRentBlock() == Account.NO_RENT_BLOCK ? rentEnabledBlockNumber
-        : account.getRentBlock();
+    final long rentBlock =
+        account.getRentBlock() == Account.NO_RENT_BLOCK
+            ? rentEnabledBlockNumber
+            : account.getRentBlock();
     final Wei rentDue = rentCost.times(currentBlockNumber - rentBlock);
-    BigInteger newRentBalance = account.getRentBalance()
-        .subtract(asUnsignedBigInteger(rentDue.getBytes()));
+    BigInteger newRentBalance =
+        account.getRentBalance().subtract(asUnsignedBigInteger(rentDue.getBytes()));
     if (newRentBalance.signum() < 0) {
       final Wei rentStillOwing = Wei.of(newRentBalance.negate());
       final Wei repayment =
-          account.getBalance().compareTo(rentStillOwing) <= 0 ? account.getBalance()
+          account.getBalance().compareTo(rentStillOwing) <= 0
+              ? account.getBalance()
               : rentStillOwing;
       newRentBalance = newRentBalance.add(asUnsignedBigInteger(repayment.getBytes()));
       account.decrementBalance(repayment);

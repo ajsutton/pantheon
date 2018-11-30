@@ -37,7 +37,8 @@ import java.util.NavigableMap;
 public interface Account {
 
   long NO_RENT_BLOCK = -1;
-  // TODO(rent): Probably should be able to set the rent block correctly as part of creating the account and get rid of this hack
+  // TODO(rent): Probably should be able to set the rent block correctly as part of creating the
+  // account and get rid of this hack
   long NEW_ACCOUNT_RENT_BLOCK = -2;
 
   /**

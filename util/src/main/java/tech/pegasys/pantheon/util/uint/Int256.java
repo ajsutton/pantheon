@@ -15,6 +15,8 @@ package tech.pegasys.pantheon.util.uint;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.Bytes32Backed;
 
+import java.math.BigInteger;
+
 /** A signed 256-bits precision number. */
 /*
  * Implementation note: this interface is currently extremely bar-bones and contains only the
@@ -30,6 +32,10 @@ public interface Int256 extends Bytes32Backed, Comparable<Int256> {
 
   static Int256 wrap(final Bytes32 bytes) {
     return new DefaultInt256(bytes);
+  }
+
+  static Int256 of(final BigInteger value) {
+    return new DefaultInt256(Int256Bytes.of(value));
   }
 
   default boolean isZero() {

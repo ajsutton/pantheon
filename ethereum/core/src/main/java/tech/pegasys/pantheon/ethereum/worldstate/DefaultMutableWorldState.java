@@ -112,13 +112,29 @@ public class DefaultMutableWorldState implements MutableWorldState {
     final Hash storageRoot = Hash.wrap(in.readBytes32());
     final Hash codeHash = Hash.wrap(in.readBytes32());
 
+    final long rentBlock;
+    final BigInteger rentBalance;
+    if (!in.isEndOfCurrentList()) {
+      rentBalance = new BigInteger(in.readBytesValue().getArrayUnsafe());
+      rentBlock = in.readLongScalar();
+    } else {
+      rentBalance = BigInteger.ZERO;
+      rentBlock = Account.NO_RENT_BLOCK;
+    }
+
     in.leaveList();
 
-    return new AccountState(address, addressHash, nonce, balance, BigInteger.ZERO, Account.NO_RENT_BLOCK, storageRoot, codeHash);
+    return new AccountState(
+        address, addressHash, nonce, balance, rentBalance, rentBlock, storageRoot, codeHash);
   }
 
   private static BytesValue serializeAccount(
-      final long nonce, final Wei balance, final Hash codeHash, final Hash storageRoot) {
+      final long nonce,
+      final Wei balance,
+      final Hash codeHash,
+      final Hash storageRoot,
+      final BigInteger rentBalance,
+      final long rentBlock) {
     return RLP.encode(
         out -> {
           out.startList();
@@ -127,6 +143,10 @@ public class DefaultMutableWorldState implements MutableWorldState {
           out.writeUInt256Scalar(balance);
           out.writeBytesValue(storageRoot);
           out.writeBytesValue(codeHash);
+          if (rentBlock != Account.NO_RENT_BLOCK && rentBlock != Account.NEW_ACCOUNT_RENT_BLOCK) {
+            out.writeBytesValue(BytesValue.wrap(rentBalance.toByteArray()));
+            out.writeLongScalar(rentBlock);
+          }
 
           out.endList();
         });
@@ -404,7 +424,13 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
         // Lastly, save the new account.
         final BytesValue account =
-            serializeAccount(updated.getNonce(), updated.getBalance(), codeHash, storageRoot);
+            serializeAccount(
+                updated.getNonce(),
+                updated.getBalance(),
+                codeHash,
+                storageRoot,
+                updated.getRentBalance(),
+                updated.getRentBlock());
 
         wrapped.accountStateTrie.put(updated.getAddressHash(), account);
       }

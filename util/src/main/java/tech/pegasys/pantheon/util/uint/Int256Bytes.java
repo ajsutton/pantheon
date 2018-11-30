@@ -12,6 +12,8 @@
  */
 package tech.pegasys.pantheon.util.uint;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.bytes.BytesValues;
@@ -89,5 +91,15 @@ abstract class Int256Bytes {
             return val.signum() < 0 ? absModulo.negate() : absModulo;
           });
     }
+  }
+
+  public static Bytes32 of(final BigInteger v) {
+    checkArgument(v.bitLength() < 256, "Argument too big (%s bits)", v.bitLength());
+    final Bytes32 unsignedBytes = UInt256Bytes.of(v.abs());
+
+    final MutableBytes32 bytes = MutableBytes32.create();
+    unsignedBytes.copyTo(bytes, bytes.size() - unsignedBytes.size());
+    bytes.set(0, (byte) (0b1000000 | bytes.get(0)));
+    return bytes;
   }
 }

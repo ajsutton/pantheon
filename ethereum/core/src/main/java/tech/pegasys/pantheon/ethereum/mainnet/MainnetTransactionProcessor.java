@@ -282,7 +282,8 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
     initialFrame.getSelfDestructs().forEach(worldState::deleteAccount);
 
     if (rentProcessor.isRentCharged()) {
-      worldState.getTouchedAccounts()
+      worldState
+          .getTouchedAccounts()
           .forEach(account -> rentProcessor.chargeRent(account, blockHeader.getNumber()));
     }
     if (clearEmptyAccounts) {
