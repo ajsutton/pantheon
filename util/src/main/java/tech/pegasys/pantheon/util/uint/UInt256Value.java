@@ -13,8 +13,11 @@
 package tech.pegasys.pantheon.util.uint;
 
 import static com.google.common.base.Preconditions.checkState;
+import static tech.pegasys.pantheon.util.bytes.BytesValues.asUnsignedBigInteger;
 
 import tech.pegasys.pantheon.util.bytes.Bytes32Backed;
+
+import java.math.BigInteger;
 
 /**
  * Represents a 256-bits (32 bytes) unsigned integer value.
@@ -180,4 +183,8 @@ public interface UInt256Value<T extends UInt256Value<T>> extends Bytes32Backed, 
    * @return This value as a {@link UInt256}.
    */
   UInt256 asUInt256();
+
+  default BigInteger asBigInteger() {
+    return asUnsignedBigInteger(getBytes());
+  }
 }

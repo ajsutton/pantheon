@@ -12,8 +12,6 @@
  */
 package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
-import static tech.pegasys.pantheon.util.bytes.BytesValues.asUnsignedBigInteger;
-
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
@@ -22,11 +20,11 @@ import java.math.BigInteger;
 
 public class ActiveRentProcessor implements RentProcessor {
 
-  private final Wei rentCost;
+  private final BigInteger rentCost;
   private final long rentEnabledBlockNumber;
 
   public ActiveRentProcessor(final Wei rentCost, final long rentEnabledBlockNumber) {
-    this.rentCost = rentCost;
+    this.rentCost = rentCost.asBigInteger();
     this.rentEnabledBlockNumber = rentEnabledBlockNumber;
   }
 
@@ -36,25 +34,28 @@ public class ActiveRentProcessor implements RentProcessor {
       account.setRentBlock(currentBlockNumber);
       return;
     }
-    final long rentBlock =
-        account.getRentBlock() == Account.NO_RENT_BLOCK
-            ? rentEnabledBlockNumber
-            : account.getRentBlock();
-    final Wei rentDue = rentCost.times(currentBlockNumber - rentBlock);
-    BigInteger newRentBalance =
-        account.getRentBalance().subtract(asUnsignedBigInteger(rentDue.getBytes()));
+    final BigInteger rentDue = calculateRentDue(account, currentBlockNumber);
+    BigInteger newRentBalance = account.getRentBalance().subtract(rentDue);
     if (newRentBalance.signum() < 0) {
       final Wei rentStillOwing = Wei.of(newRentBalance.negate());
       final Wei repayment =
           account.getBalance().compareTo(rentStillOwing) <= 0
               ? account.getBalance()
               : rentStillOwing;
-      newRentBalance = newRentBalance.add(asUnsignedBigInteger(repayment.getBytes()));
+      newRentBalance = newRentBalance.add(repayment.asBigInteger());
       account.decrementBalance(repayment);
     }
 
     account.setRentBalance(newRentBalance);
     account.setRentBlock(currentBlockNumber);
+  }
+
+  private BigInteger calculateRentDue(final MutableAccount account, final long currentBlockNumber) {
+    final long rentBlock =
+        account.getRentBlock() == Account.NO_RENT_BLOCK
+            ? rentEnabledBlockNumber
+            : account.getRentBlock();
+    return rentCost.multiply(BigInteger.valueOf(currentBlockNumber - rentBlock));
   }
 
   @Override
