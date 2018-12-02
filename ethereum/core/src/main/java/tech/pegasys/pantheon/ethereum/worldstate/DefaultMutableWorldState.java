@@ -22,7 +22,6 @@ import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.rlp.RLP;
-import tech.pegasys.pantheon.ethereum.rlp.RLPException;
 import tech.pegasys.pantheon.ethereum.rlp.RLPInput;
 import tech.pegasys.pantheon.ethereum.trie.MerklePatriciaTrie;
 import tech.pegasys.pantheon.ethereum.trie.StoredMerklePatriciaTrie;
@@ -42,6 +41,8 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.stream.Stream;
 
+import com.google.common.base.MoreObjects;
+
 public class DefaultMutableWorldState implements MutableWorldState {
 
   private final MerklePatriciaTrie<Bytes32, BytesValue> accountStateTrie;
@@ -49,6 +50,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
       new HashMap<>();
   private final Map<Address, BytesValue> updatedAccountCode = new HashMap<>();
   private final WorldStateStorage worldStateStorage;
+  private final AccountSerializer<AccountState> accountSerializer =
+      new AccountSerializer<>(AccountState::new);
 
   public DefaultMutableWorldState(final WorldStateStorage storage) {
     this(MerklePatriciaTrie.EMPTY_TRIE_ROOT_HASH, storage);
@@ -98,58 +101,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
     final Hash addressHash = Hash.hash(address);
     return accountStateTrie
         .get(Hash.hash(address))
-        .map(bytes -> deserializeAccount(address, addressHash, bytes))
+        .map(bytes -> accountSerializer.deserializeAccount(address, addressHash, bytes))
         .orElse(null);
-  }
-
-  private AccountState deserializeAccount(
-      final Address address, final Hash addressHash, final BytesValue encoded) throws RLPException {
-    final RLPInput in = RLP.input(encoded);
-    in.enterList();
-
-    final long nonce = in.readLongScalar();
-    final Wei balance = in.readUInt256Scalar(Wei::wrap);
-    final Hash storageRoot = Hash.wrap(in.readBytes32());
-    final Hash codeHash = Hash.wrap(in.readBytes32());
-
-    final long rentBlock;
-    final BigInteger rentBalance;
-    if (!in.isEndOfCurrentList()) {
-      rentBalance = new BigInteger(in.readBytesValue().getArrayUnsafe());
-      rentBlock = in.readLongScalar();
-    } else {
-      rentBalance = BigInteger.ZERO;
-      rentBlock = Account.NO_RENT_BLOCK;
-    }
-
-    in.leaveList();
-
-    return new AccountState(
-        address, addressHash, nonce, balance, rentBalance, rentBlock, storageRoot, codeHash);
-  }
-
-  private static BytesValue serializeAccount(
-      final long nonce,
-      final Wei balance,
-      final Hash codeHash,
-      final Hash storageRoot,
-      final BigInteger rentBalance,
-      final long rentBlock) {
-    return RLP.encode(
-        out -> {
-          out.startList();
-
-          out.writeLongScalar(nonce);
-          out.writeUInt256Scalar(balance);
-          out.writeBytesValue(storageRoot);
-          out.writeBytesValue(codeHash);
-          if (rentBlock != Account.NO_RENT_BLOCK && rentBlock != Account.NEW_ACCOUNT_RENT_BLOCK) {
-            out.writeBytesValue(BytesValue.wrap(rentBalance.toByteArray()));
-            out.writeLongScalar(rentBlock);
-          }
-
-          out.endList();
-        });
   }
 
   @Override
@@ -336,14 +289,15 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
     @Override
     public String toString() {
-      final StringBuilder builder = new StringBuilder();
-      builder.append("AccountState").append("{");
-      builder.append("address=").append(getAddress()).append(", ");
-      builder.append("nonce=").append(getNonce()).append(", ");
-      builder.append("balance=").append(getBalance()).append(", ");
-      builder.append("storageRoot=").append(storageRoot).append(", ");
-      builder.append("codeHash=").append(codeHash);
-      return builder.append("}").toString();
+      return MoreObjects.toStringHelper(this)
+          .add("address", address)
+          .add("nonce", nonce)
+          .add("balance", balance)
+          .add("storageRoot", storageRoot)
+          .add("codeHash", codeHash)
+          .add("rentBalance", rentBalance)
+          .add("rentBlock", rentBlock)
+          .toString();
     }
   }
 
@@ -361,7 +315,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
       return wrapped
           .accountStateTrie
           .get(addressHash)
-          .map(bytes -> wrapped.deserializeAccount(address, addressHash, bytes))
+          .map(bytes -> wrapped.accountSerializer.deserializeAccount(address, addressHash, bytes))
           .orElse(null);
     }
 
@@ -424,7 +378,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
         // Lastly, save the new account.
         final BytesValue account =
-            serializeAccount(
+            wrapped.accountSerializer.serializeAccount(
                 updated.getNonce(),
                 updated.getBalance(),
                 codeHash,
