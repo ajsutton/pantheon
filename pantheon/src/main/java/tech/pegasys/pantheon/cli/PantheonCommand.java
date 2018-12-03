@@ -33,6 +33,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApi;
 import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApis;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.peers.DefaultPeer;
+import tech.pegasys.pantheon.ethereum.permissioning.PermissioningConfiguration;
 import tech.pegasys.pantheon.ethereum.util.InvalidConfigurationException;
 import tech.pegasys.pantheon.util.BlockImporter;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
@@ -45,8 +46,8 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -217,7 +218,7 @@ public class PantheonCommand implements Runnable {
     split = ",",
     arity = "1..*"
   )
-  private final Collection<String> bannedNodeIds = null;
+  private final Collection<String> bannedNodeIds = new ArrayList<>();
 
   // TODO: Re-enable as per NC-1057/NC-1681
   //  @Option(
@@ -377,6 +378,17 @@ public class PantheonCommand implements Runnable {
   )
   private final BytesValue extraData = DEFAULT_EXTRA_DATA;
 
+  // Permissioning: A list of whitelist nodes can be passed.
+  @Option(
+    names = {"--nodes-whitelist"},
+    paramLabel = "<enode://id@host:port>",
+    description =
+        "Comma separated enode URLs for permissioned networks. You may specify an empty list.",
+    split = ",",
+    arity = "0..*"
+  )
+  private final Collection<String> nodesWhitelist = null;
+
   public PantheonCommand(
       final BlockImporter blockImporter,
       final RunnerBuilder runnerBuilder,
@@ -442,19 +454,22 @@ public class PantheonCommand implements Runnable {
         maxPeers,
         p2pHostAndPort,
         jsonRpcConfiguration(),
-        webSocketConfiguration());
+        webSocketConfiguration(),
+        permissioningConfiguration());
   }
 
   PantheonController<?> buildController() {
     try {
-      return controllerBuilder.build(
-          buildSyncConfig(syncMode),
-          dataDir,
-          ethNetworkConfig(),
-          syncWithOttoman,
-          new MiningParameters(coinbase, minTransactionGasPrice, extraData, isMiningEnabled),
-          isDevMode,
-          getNodePrivateKeyFile());
+      return controllerBuilder
+          .synchronizerConfiguration(buildSyncConfig(syncMode))
+          .homePath(dataDir)
+          .ethNetworkConfig(ethNetworkConfig())
+          .syncWithOttoman(syncWithOttoman)
+          .miningParameters(
+              new MiningParameters(coinbase, minTransactionGasPrice, extraData, isMiningEnabled))
+          .devMode(isDevMode)
+          .nodePrivateKeyFile(getNodePrivateKeyFile())
+          .build();
     } catch (final InvalidConfigurationException e) {
       throw new ExecutionException(new CommandLine(this), e.getMessage());
     } catch (final IOException e) {
@@ -485,6 +500,13 @@ public class PantheonCommand implements Runnable {
     return webSocketConfiguration;
   }
 
+  private PermissioningConfiguration permissioningConfiguration() {
+    final PermissioningConfiguration permissioningConfiguration =
+        PermissioningConfiguration.createDefault();
+    permissioningConfiguration.setNodeWhitelist(nodesWhitelist);
+    return permissioningConfiguration;
+  }
+
   private SynchronizerConfiguration buildSyncConfig(final SyncMode syncMode) {
     checkNotNull(syncMode);
     synchronizerConfigurationBuilder.syncMode(syncMode);
@@ -500,24 +522,27 @@ public class PantheonCommand implements Runnable {
       final int maxPeers,
       final HostAndPort discoveryHostAndPort,
       final JsonRpcConfiguration jsonRpcConfiguration,
-      final WebSocketConfiguration webSocketConfiguration) {
+      final WebSocketConfiguration webSocketConfiguration,
+      final PermissioningConfiguration permissioningConfiguration) {
 
     checkNotNull(runnerBuilder);
 
-    // BEWARE: Peer discovery boolean must be inverted as it's negated in the options !
-    final Runner runner =
-        runnerBuilder.build(
-            Vertx.vertx(),
-            controller,
-            !noPeerDiscovery,
-            bootstrapNodes,
-            discoveryHostAndPort.getHost(),
-            discoveryHostAndPort.getPort(),
-            maxPeers,
-            jsonRpcConfiguration,
-            webSocketConfiguration,
-            dataDir,
-            bannedNodeIds == null ? Collections.emptySet() : bannedNodeIds);
+    Runner runner =
+        runnerBuilder
+            .vertx(Vertx.vertx())
+            .pantheonController(controller)
+            // BEWARE: Peer discovery boolean must be inverted as it's negated in the options !
+            .discovery(!noPeerDiscovery)
+            .bootstrapPeers(bootstrapNodes)
+            .discoveryHost(discoveryHostAndPort.getHost())
+            .discoveryPort(discoveryHostAndPort.getPort())
+            .maxPeers(maxPeers)
+            .jsonRpcConfiguration(jsonRpcConfiguration)
+            .webSocketConfiguration(webSocketConfiguration)
+            .dataDir(dataDir)
+            .bannedNodeIds(bannedNodeIds)
+            .permissioningConfiguration(permissioningConfiguration)
+            .build();
 
     addShutdownHook(runner);
     runner.execute();
@@ -530,7 +555,7 @@ public class PantheonCommand implements Runnable {
                 () -> {
                   try {
                     runner.close();
-                  } catch (Exception e) {
+                  } catch (final Exception e) {
                     throw new RuntimeException(e);
                   }
                 }));
@@ -634,7 +659,7 @@ public class PantheonCommand implements Runnable {
   private String genesisConfig() {
     try {
       return Resources.toString(genesisFile.toURI().toURL(), UTF_8);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new ParameterException(
           new CommandLine(this), String.format("Unable to load genesis file %s.", genesisFile), e);
     }
