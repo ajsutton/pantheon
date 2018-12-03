@@ -31,6 +31,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.filter.LogsQuery;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -89,10 +90,7 @@ public class BlockchainQueries {
       return Optional.empty();
     }
     return Optional.of(
-        blockchain
-            .getBlockHeader(blockNumber)
-            .map(header -> worldStateArchive.get(header.getStateRoot()))
-            .map(worldState -> worldState.get(address))
+        getAccount(address, blockNumber)
             .map(account -> account.getStorageValue(storageIndex))
             .orElse(UInt256.ZERO));
   }
@@ -120,12 +118,19 @@ public class BlockchainQueries {
       return Optional.empty();
     }
     return Optional.of(
-        blockchain
-            .getBlockHeader(blockNumber)
-            .map(header -> worldStateArchive.get(header.getStateRoot()))
-            .map(worldState -> worldState.get(address))
+        getAccount(address, blockNumber)
             .map(Account::getBalance)
             .orElse(Wei.ZERO));
+  }
+
+  public Optional<BigInteger> getRentBalance(final Address address, final long blockNumber) {
+    if (!withinValidRange(blockNumber)) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        getAccount(address, blockNumber)
+            .map(Account::getRentBalance)
+            .orElse(BigInteger.ZERO));
   }
 
   /**
@@ -140,10 +145,7 @@ public class BlockchainQueries {
       return Optional.empty();
     }
     return Optional.of(
-        blockchain
-            .getBlockHeader(blockNumber)
-            .map(bh -> worldStateArchive.get(bh.getStateRoot()))
-            .map(ws -> ws.get(address))
+        getAccount(address, blockNumber)
             .map(Account::getCode)
             .orElse(BytesValue.EMPTY));
   }
@@ -198,10 +200,7 @@ public class BlockchainQueries {
    * @return The number of transactions sent from the given address.
    */
   public long getTransactionCount(final Address address, final long blockNumber) {
-    return blockchain
-        .getBlockHeader(blockNumber)
-        .map(header -> worldStateArchive.get(header.getStateRoot()))
-        .map(worldState -> worldState.get(address))
+    return getAccount(address, blockNumber)
         .map(Account::getNonce)
         .orElse(0L);
   }
@@ -620,5 +619,12 @@ public class BlockchainQueries {
 
   private boolean withinValidRange(final long blockNumber) {
     return blockNumber <= headBlockNumber() && blockNumber >= BlockHeader.GENESIS_BLOCK_NUMBER;
+  }
+
+  private Optional<Account> getAccount(final Address address, final long blockNumber) {
+    return blockchain
+        .getBlockHeader(blockNumber)
+        .map(header -> worldStateArchive.get(header.getStateRoot()))
+        .map(worldState -> worldState.get(address));
   }
 }

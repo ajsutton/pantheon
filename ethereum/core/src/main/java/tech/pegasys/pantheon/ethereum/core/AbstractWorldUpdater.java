@@ -377,8 +377,14 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
         storage = "[cleared]";
       }
       return String.format(
-          "%s -> {nonce: %s, balance:%s, code:%s, storage:%s }",
-          address, nonce, balance, updatedCode == null ? "[not updated]" : updatedCode, storage);
+          "%s -> {nonce: %s, balance:%s, rentBalance:%s, rentBlock: %s, code:%s, storage:%s }",
+          address,
+          nonce,
+          balance,
+          rentBalance,
+          rentBlock,
+          updatedCode == null ? "[not updated]" : updatedCode,
+          storage);
     }
   }
 
