@@ -23,7 +23,6 @@ import tech.pegasys.pantheon.ethereum.core.Transaction;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionValidator.TransactionInvalidReason;
-import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.vm.Code;
 import tech.pegasys.pantheon.ethereum.vm.GasCalculator;
@@ -44,7 +43,6 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
 
   private final GasCalculator gasCalculator;
 
-  private final RentProcessor rentProcessor;
   private final TransactionValidator transactionValidator;
 
   private final AbstractMessageProcessor contractCreationProcessor;
@@ -126,13 +124,11 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
 
   public MainnetTransactionProcessor(
       final GasCalculator gasCalculator,
-      final RentProcessor rentProcessor,
       final TransactionValidator transactionValidator,
       final AbstractMessageProcessor contractCreationProcessor,
       final AbstractMessageProcessor messageCallProcessor,
       final boolean clearEmptyAccounts) {
     this.gasCalculator = gasCalculator;
-    this.rentProcessor = rentProcessor;
     this.transactionValidator = transactionValidator;
     this.contractCreationProcessor = contractCreationProcessor;
     this.messageCallProcessor = messageCallProcessor;
@@ -281,11 +277,6 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
 
     initialFrame.getSelfDestructs().forEach(worldState::deleteAccount);
 
-    if (rentProcessor.isRentCharged()) {
-      worldState
-          .getTouchedAccounts()
-          .forEach(account -> rentProcessor.chargeRent(account, blockHeader.getNumber()));
-    }
     if (clearEmptyAccounts) {
       clearEmptyAccounts(worldState);
     }

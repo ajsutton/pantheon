@@ -24,6 +24,8 @@ import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.core.MutableWorldState;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionReceiptFactory;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.InactiveRentProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.TestBlockchain;
 import tech.pegasys.pantheon.ethereum.vm.WorldStateMock;
 
@@ -34,9 +36,14 @@ public class MainnetBlockProcessorTest {
   private final TransactionProcessor transactionProcessor = mock(TransactionProcessor.class);
   private final TransactionReceiptFactory transactionReceiptFactory =
       mock(TransactionReceiptFactory.class);
+  private final RentProcessor rentProcessor = new InactiveRentProcessor();
   private final MainnetBlockProcessor blockProcessor =
       new MainnetBlockProcessor(
-          transactionProcessor, transactionReceiptFactory, Wei.ZERO, BlockHeader::getCoinbase);
+          transactionProcessor,
+          transactionReceiptFactory,
+          rentProcessor,
+          Wei.ZERO,
+          BlockHeader::getCoinbase);
 
   @Test
   public void noAccountCreatedWhenBlockRewardIsZero() {

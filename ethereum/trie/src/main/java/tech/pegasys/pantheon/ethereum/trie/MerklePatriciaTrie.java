@@ -72,4 +72,6 @@ public interface MerklePatriciaTrie<K, V> {
    * @return the requested storage entries as a map of key hash to value.
    */
   Map<Bytes32, V> entriesFrom(Bytes32 startKeyHash, int limit);
+
+  boolean isDirty(K key);
 }

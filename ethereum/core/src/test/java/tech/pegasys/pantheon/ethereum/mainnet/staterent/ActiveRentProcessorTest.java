@@ -51,7 +51,7 @@ public class ActiveRentProcessorTest {
     assertThat(account.getBalance()).isEqualTo(initialBalance);
     assertThat(account.getRentBlock()).isEqualTo(Account.NEW_ACCOUNT_RENT_BLOCK);
     assertThat(account.getRentBalance()).isEqualTo(BigInteger.ZERO);
- }
+  }
 
   @Test
   public void shouldNotChargeRentWhenCurrentBlockNumberIsSameAsRentBlock() {

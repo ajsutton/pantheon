@@ -133,6 +133,11 @@ public class DefaultMutableWorldState implements MutableWorldState {
   }
 
   @Override
+  public boolean isModified(final Address address) {
+    return accountStateTrie.isDirty(Hash.hash(address));
+  }
+
+  @Override
   public void persist() {
     final WorldStateStorage.Updater updater = worldStateStorage.updater();
     // Store updated code

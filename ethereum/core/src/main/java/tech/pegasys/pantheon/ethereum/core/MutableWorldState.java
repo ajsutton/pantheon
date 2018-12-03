@@ -21,6 +21,8 @@ public interface MutableWorldState extends WorldState, MutableWorldView {
    */
   MutableWorldState copy();
 
+  boolean isModified(Address address);
+
   /** Persist accumulated changes to underlying storage. */
   void persist();
 }

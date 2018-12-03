@@ -239,11 +239,7 @@ public class ProtocolSpecBuilder<T> {
         messageCallProcessorBuilder.apply(evm, precompileContractRegistry);
     final TransactionProcessor transactionProcessor =
         transactionProcessorBuilder.apply(
-            gasCalculator,
-            rentProcessor,
-            transactionValidator,
-            contractCreationProcessor,
-            messageCallProcessor);
+            gasCalculator, transactionValidator, contractCreationProcessor, messageCallProcessor);
     final BlockHeaderValidator<T> blockHeaderValidator =
         blockHeaderValidatorBuilder.apply(difficultyCalculator);
     final BlockHeaderValidator<T> ommerHeaderValidator =
@@ -254,6 +250,7 @@ public class ProtocolSpecBuilder<T> {
         blockProcessorBuilder.apply(
             transactionProcessor,
             transactionReceiptFactory,
+            rentProcessor,
             blockReward,
             miningBeneficiaryCalculator);
     final BlockImporter<T> blockImporter =
@@ -279,7 +276,6 @@ public class ProtocolSpecBuilder<T> {
   public interface TransactionProcessorBuilder {
     TransactionProcessor apply(
         GasCalculator gasCalculator,
-        RentProcessor rentProcessor,
         TransactionValidator transactionValidator,
         AbstractMessageProcessor contractCreationProcessor,
         AbstractMessageProcessor messageCallProcessor);
@@ -289,6 +285,7 @@ public class ProtocolSpecBuilder<T> {
     BlockProcessor apply(
         TransactionProcessor transactionProcessor,
         TransactionReceiptFactory transactionReceiptFactory,
+        RentProcessor rentProcessor,
         Wei blockReward,
         MiningBeneficiaryCalculator miningBeneficiaryCalculator);
   }

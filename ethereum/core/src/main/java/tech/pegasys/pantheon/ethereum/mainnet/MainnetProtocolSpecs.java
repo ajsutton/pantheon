@@ -75,13 +75,11 @@ public abstract class MainnetProtocolSpecs {
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, false))
         .transactionProcessorBuilder(
             (gasCalculator,
-                rentProcessor,
                 transactionValidator,
                 contractCreationProcessor,
                 messageCallProcessor) ->
                 new MainnetTransactionProcessor(
                     gasCalculator,
-                    rentProcessor,
                     transactionValidator,
                     contractCreationProcessor,
                     messageCallProcessor,
@@ -120,12 +118,14 @@ public abstract class MainnetProtocolSpecs {
         .blockProcessorBuilder(
             (transactionProcessor,
                 transactionReceiptFactory,
+                rentProcessor,
                 blockReward,
                 miningBeneficiaryCalculator) ->
                 new DaoBlockProcessor(
                     new MainnetBlockProcessor(
                         transactionProcessor,
                         transactionReceiptFactory,
+                        rentProcessor,
                         blockReward,
                         miningBeneficiaryCalculator)))
         .name("DaoRecoveryInit");
@@ -165,13 +165,11 @@ public abstract class MainnetProtocolSpecs {
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, true, chainId))
         .transactionProcessorBuilder(
             (gasCalculator,
-                rentProcessor,
                 transactionValidator,
                 contractCreationProcessor,
                 messageCallProcessor) ->
                 new MainnetTransactionProcessor(
                     gasCalculator,
-                    rentProcessor,
                     transactionValidator,
                     contractCreationProcessor,
                     messageCallProcessor,

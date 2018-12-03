@@ -110,6 +110,11 @@ public class StoredMerklePatriciaTrie<K extends BytesValue, V> implements Merkle
   }
 
   @Override
+  public boolean isDirty(final K key) {
+    return root.accept(getVisitor, bytesToPath(key)).isDirty();
+  }
+
+  @Override
   public Bytes32 getRootHash() {
     return root.getHash();
   }

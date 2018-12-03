@@ -13,6 +13,7 @@
 package tech.pegasys.pantheon.ethereum.mainnet;
 
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
@@ -23,9 +24,12 @@ import tech.pegasys.pantheon.ethereum.core.TransactionReceipt;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import com.google.common.collect.ImmutableList;
@@ -81,6 +85,7 @@ public class MainnetBlockProcessor implements BlockProcessor {
 
   private final TransactionReceiptFactory transactionReceiptFactory;
 
+  private final RentProcessor rentProcessor;
   private final Wei blockReward;
 
   private final MiningBeneficiaryCalculator miningBeneficiaryCalculator;
@@ -88,10 +93,12 @@ public class MainnetBlockProcessor implements BlockProcessor {
   public MainnetBlockProcessor(
       final TransactionProcessor transactionProcessor,
       final TransactionReceiptFactory transactionReceiptFactory,
+      final RentProcessor rentProcessor,
       final Wei blockReward,
       final MiningBeneficiaryCalculator miningBeneficiaryCalculator) {
     this.transactionProcessor = transactionProcessor;
     this.transactionReceiptFactory = transactionReceiptFactory;
+    this.rentProcessor = rentProcessor;
     this.blockReward = blockReward;
     this.miningBeneficiaryCalculator = miningBeneficiaryCalculator;
   }
@@ -106,6 +113,9 @@ public class MainnetBlockProcessor implements BlockProcessor {
 
     long gasUsed = 0;
     final List<TransactionReceipt> receipts = new ArrayList<>();
+    final Address miningBeneficiary = miningBeneficiaryCalculator.calculateBeneficiary(blockHeader);
+
+    final Collection<Address> modifiedAccounts = new HashSet<>();
 
     for (final Transaction transaction : transactions) {
       final long remainingGasBudget = blockHeader.getGasLimit() - gasUsed;
@@ -119,8 +129,6 @@ public class MainnetBlockProcessor implements BlockProcessor {
 
       final WorldUpdater worldStateUpdater = worldState.updater();
       final BlockHashLookup blockHashLookup = new BlockHashLookup(blockHeader, blockchain);
-      final Address miningBeneficiary =
-          miningBeneficiaryCalculator.calculateBeneficiary(blockHeader);
       final TransactionProcessor.Result result =
           transactionProcessor.processTransaction(
               blockchain,
@@ -133,6 +141,11 @@ public class MainnetBlockProcessor implements BlockProcessor {
         return Result.failed();
       }
 
+      worldStateUpdater
+          .getTouchedAccounts()
+          .stream()
+          .map(Account::getAddress)
+          .forEach(modifiedAccounts::add);
       worldStateUpdater.commit();
       gasUsed = transaction.getGasLimit() - result.getGasRemaining() + gasUsed;
       final TransactionReceipt transactionReceipt =
@@ -140,8 +153,18 @@ public class MainnetBlockProcessor implements BlockProcessor {
       receipts.add(transactionReceipt);
     }
 
-    if (!rewardCoinbase(worldState, blockHeader, ommers)) {
+    if (!rewardCoinbase(worldState, blockHeader, ommers, miningBeneficiary, modifiedAccounts)) {
       return Result.failed();
+    }
+
+    if (rentProcessor.isRentCharged()) {
+      final WorldUpdater updater = worldState.updater();
+      modifiedAccounts
+          .stream()
+          .filter(worldState::isModified)
+          .map(updater::getMutable)
+          .forEach(account -> rentProcessor.chargeRent(account, blockHeader.getNumber()));
+      updater.commit();
     }
 
     worldState.persist();
@@ -151,14 +174,16 @@ public class MainnetBlockProcessor implements BlockProcessor {
   private boolean rewardCoinbase(
       final MutableWorldState worldState,
       final ProcessableBlockHeader header,
-      final List<BlockHeader> ommers) {
+      final List<BlockHeader> ommers,
+      final Address miningBeneficiary,
+      final Collection<Address> modifiedAccounts) {
     if (blockReward.isZero()) {
       return true;
     }
     final Wei coinbaseReward = blockReward.plus(blockReward.times(ommers.size()).dividedBy(32));
     final WorldUpdater updater = worldState.updater();
-    final MutableAccount coinbase = updater.getOrCreate(header.getCoinbase());
-
+    final MutableAccount coinbase = updater.getOrCreate(miningBeneficiary);
+    modifiedAccounts.add(miningBeneficiary);
     coinbase.incrementBalance(coinbaseReward);
     for (final BlockHeader ommerHeader : ommers) {
       if (ommerHeader.getNumber() - header.getNumber() > MAX_GENERATION) {
@@ -170,7 +195,10 @@ public class MainnetBlockProcessor implements BlockProcessor {
         return false;
       }
 
-      final MutableAccount ommerCoinbase = updater.getOrCreate(ommerHeader.getCoinbase());
+      final Address ommerBeneficiary =
+          miningBeneficiaryCalculator.calculateBeneficiary(ommerHeader);
+      modifiedAccounts.add(ommerBeneficiary);
+      final MutableAccount ommerCoinbase = updater.getOrCreate(ommerBeneficiary);
       final long distance = header.getNumber() - ommerHeader.getNumber();
       final Wei ommerReward = blockReward.minus(blockReward.times(distance).dividedBy(8));
       ommerCoinbase.incrementBalance(ommerReward);

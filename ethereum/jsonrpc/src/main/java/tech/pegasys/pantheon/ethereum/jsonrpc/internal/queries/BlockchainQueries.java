@@ -117,10 +117,7 @@ public class BlockchainQueries {
     if (!withinValidRange(blockNumber)) {
       return Optional.empty();
     }
-    return Optional.of(
-        getAccount(address, blockNumber)
-            .map(Account::getBalance)
-            .orElse(Wei.ZERO));
+    return Optional.of(getAccount(address, blockNumber).map(Account::getBalance).orElse(Wei.ZERO));
   }
 
   public Optional<BigInteger> getRentBalance(final Address address, final long blockNumber) {
@@ -128,9 +125,7 @@ public class BlockchainQueries {
       return Optional.empty();
     }
     return Optional.of(
-        getAccount(address, blockNumber)
-            .map(Account::getRentBalance)
-            .orElse(BigInteger.ZERO));
+        getAccount(address, blockNumber).map(Account::getRentBalance).orElse(BigInteger.ZERO));
   }
 
   /**
@@ -145,9 +140,7 @@ public class BlockchainQueries {
       return Optional.empty();
     }
     return Optional.of(
-        getAccount(address, blockNumber)
-            .map(Account::getCode)
-            .orElse(BytesValue.EMPTY));
+        getAccount(address, blockNumber).map(Account::getCode).orElse(BytesValue.EMPTY));
   }
 
   /**
@@ -200,9 +193,7 @@ public class BlockchainQueries {
    * @return The number of transactions sent from the given address.
    */
   public long getTransactionCount(final Address address, final long blockNumber) {
-    return getAccount(address, blockNumber)
-        .map(Account::getNonce)
-        .orElse(0L);
+    return getAccount(address, blockNumber).map(Account::getNonce).orElse(0L);
   }
 
   /**

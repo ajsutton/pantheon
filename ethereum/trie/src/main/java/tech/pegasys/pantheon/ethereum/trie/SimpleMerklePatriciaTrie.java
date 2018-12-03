@@ -82,4 +82,9 @@ public class SimpleMerklePatriciaTrie<K extends BytesValue, V> implements Merkle
   public Map<Bytes32, V> entriesFrom(final Bytes32 startKeyHash, final int limit) {
     return StorageEntriesCollector.collectEntries(root, startKeyHash, limit);
   }
+
+  @Override
+  public boolean isDirty(final K key) {
+    return root.accept(getVisitor, bytesToPath(key)).isDirty();
+  }
 }
