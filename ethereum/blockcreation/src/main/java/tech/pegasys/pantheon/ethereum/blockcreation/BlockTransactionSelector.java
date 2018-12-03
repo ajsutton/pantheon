@@ -13,6 +13,7 @@
 package tech.pegasys.pantheon.ethereum.blockcreation;
 
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MutableWorldState;
 import tech.pegasys.pantheon.ethereum.core.PendingTransactions;
@@ -26,13 +27,14 @@ import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionR
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.function.Supplier;
-
-import com.google.common.collect.Lists;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Responsible for extracting transactions from PendingTransactions and determining if the
@@ -56,21 +58,25 @@ import org.apache.logging.log4j.Logger;
  */
 public class BlockTransactionSelector {
 
-  private static final Logger LOG = LogManager.getLogger();
   private final Wei minTransactionGasPrice;
 
   private static final double MIN_BLOCK_OCCUPANCY_RATIO = 0.8;
 
   public static class TransactionSelectionResults {
-    private final List<Transaction> transactions = Lists.newArrayList();
-    private final List<TransactionReceipt> receipts = Lists.newArrayList();
+    private final List<Transaction> transactions = new ArrayList<>();
+    private final List<TransactionReceipt> receipts = new ArrayList<>();
+    private final Set<Address> modifiedAccounts = new HashSet<>();
     private long cumulativeGasUsed = 0;
 
     private void update(
-        final Transaction transaction, final TransactionReceipt receipt, final long gasUsed) {
+        final Transaction transaction,
+        final TransactionReceipt receipt,
+        final long gasUsed,
+        final Collection<Address> modifiedAccounts) {
       transactions.add(transaction);
       receipts.add(receipt);
       cumulativeGasUsed += gasUsed;
+      this.modifiedAccounts.addAll(modifiedAccounts);
     }
 
     public List<Transaction> getTransactions() {
@@ -83,6 +89,10 @@ public class BlockTransactionSelector {
 
     public long getCumulativeGasUsed() {
       return cumulativeGasUsed;
+    }
+
+    public Set<Address> getModifiedAccounts() {
+      return modifiedAccounts;
     }
   }
 
@@ -171,8 +181,14 @@ public class BlockTransactionSelector {
             blockHashLookup);
 
     if (!result.isInvalid()) {
+      final Set<Address> modifiedAccounts =
+          worldStateUpdater
+              .getTouchedAccounts()
+              .stream()
+              .map(Account::getAddress)
+              .collect(Collectors.toSet());
       worldStateUpdater.commit();
-      updateTransactionResultTracking(transaction, result);
+      updateTransactionResultTracking(transaction, result, modifiedAccounts);
     } else {
       // Remove invalid transactions from the transaction pool but continue looking for valid ones
       // as the block may not yet be full.
@@ -186,7 +202,9 @@ public class BlockTransactionSelector {
   cumulative gas, world state root hash.).
    */
   private void updateTransactionResultTracking(
-      final Transaction transaction, final TransactionProcessor.Result result) {
+      final Transaction transaction,
+      final TransactionProcessor.Result result,
+      final Collection<Address> modifiedAccounts) {
     final long gasUsedByTransaction = transaction.getGasLimit() - result.getGasRemaining();
     final long cumulativeGasUsed =
         transactionSelectionResult.cumulativeGasUsed + gasUsedByTransaction;
@@ -194,7 +212,8 @@ public class BlockTransactionSelector {
     transactionSelectionResult.update(
         transaction,
         transactionReceiptFactory.create(result, worldState, cumulativeGasUsed),
-        gasUsedByTransaction);
+        gasUsedByTransaction,
+        modifiedAccounts);
   }
 
   private boolean transactionTooLargeForBlock(final Transaction transaction) {

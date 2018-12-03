@@ -30,12 +30,16 @@ import tech.pegasys.pantheon.ethereum.mainnet.BodyValidation;
 import tech.pegasys.pantheon.ethereum.mainnet.DifficultyCalculator;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionReceiptFactory;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
+import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSpec;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
@@ -125,12 +129,29 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
 
       throwIfStopped();
 
-      final Wei blockReward =
-          protocolSchedule.getByBlockNumber(processableBlockHeader.getNumber()).getBlockReward();
+      final ProtocolSpec<C> protocolSpec =
+          protocolSchedule.getByBlockNumber(processableBlockHeader.getNumber());
+      final Wei blockReward = protocolSpec.getBlockReward();
 
-      if (!rewardBeneficiary(disposableWorldState, processableBlockHeader, ommers, blockReward)) {
+      final Set<Address> modifiedAccounts = transactionResults.getModifiedAccounts();
+      if (!rewardBeneficiary(
+          disposableWorldState, processableBlockHeader, ommers, blockReward, modifiedAccounts)) {
         LOG.trace("Failed to apply mining reward, exiting.");
         throw new RuntimeException("Failed to apply mining reward.");
+      }
+
+      throwIfStopped();
+
+      final RentProcessor rentProcessor = protocolSpec.getRentProcessor();
+      if (rentProcessor.isRentCharged()) {
+        final WorldUpdater updater = disposableWorldState.updater();
+        modifiedAccounts
+            .stream()
+            .filter(disposableWorldState::isModified)
+            .map(updater::getMutable)
+            .forEach(
+                account -> rentProcessor.chargeRent(account, processableBlockHeader.getNumber()));
+        updater.commit();
       }
 
       throwIfStopped();
@@ -174,11 +195,11 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
       throws RuntimeException {
     final long blockNumber = processableBlockHeader.getNumber();
 
-    final TransactionProcessor transactionProcessor =
-        protocolSchedule.getByBlockNumber(blockNumber).getTransactionProcessor();
+    final ProtocolSpec<C> protocolSpec = protocolSchedule.getByBlockNumber(blockNumber);
+    final TransactionProcessor transactionProcessor = protocolSpec.getTransactionProcessor();
 
     final TransactionReceiptFactory transactionReceiptFactory =
-        protocolSchedule.getByBlockNumber(blockNumber).getTransactionReceiptFactory();
+        protocolSpec.getTransactionReceiptFactory();
 
     final BlockTransactionSelector selector =
         new BlockTransactionSelector(
@@ -242,7 +263,8 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
       final MutableWorldState worldState,
       final ProcessableBlockHeader header,
       final List<BlockHeader> ommers,
-      final Wei blockReward) {
+      final Wei blockReward,
+      final Collection<Address> modifiedAccounts) {
 
     // TODO(tmm): Added to make this work, should come from blockProcessor.
     final int MAX_GENERATION = 6;
@@ -252,6 +274,7 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
     final Wei coinbaseReward = blockReward.plus(blockReward.times(ommers.size()).dividedBy(32));
     final WorldUpdater updater = worldState.updater();
     final MutableAccount beneficiary = updater.getOrCreate(miningBeneficiary);
+    modifiedAccounts.add(miningBeneficiary);
 
     beneficiary.incrementBalance(coinbaseReward);
     for (final BlockHeader ommerHeader : ommers) {
@@ -263,7 +286,7 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
             header.getNumber());
         return false;
       }
-
+      modifiedAccounts.add(ommerHeader.getCoinbase());
       final MutableAccount ommerCoinbase = updater.getOrCreate(ommerHeader.getCoinbase());
       final long distance = header.getNumber() - ommerHeader.getNumber();
       final Wei ommerReward = blockReward.minus(blockReward.times(distance).dividedBy(8));

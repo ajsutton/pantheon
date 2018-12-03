@@ -18,7 +18,11 @@ import tech.pegasys.pantheon.ethereum.core.Wei;
 
 import java.math.BigInteger;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class ActiveRentProcessor implements RentProcessor {
+  private static final Logger LOG = LogManager.getLogger();
 
   private final BigInteger rentCost;
   private final long rentEnabledBlockNumber;
@@ -38,6 +42,11 @@ public class ActiveRentProcessor implements RentProcessor {
       return;
     }
     final BigInteger rentDue = calculateRentDue(account, currentBlockNumber);
+    LOG.debug(
+        "Charging {} wei in rent for {} since {}",
+        rentDue,
+        account.getAddress(),
+        account.getRentBlock());
     BigInteger newRentBalance = account.getRentBalance().subtract(rentDue);
     if (newRentBalance.signum() < 0) {
       final Wei rentStillOwing = Wei.of(newRentBalance.negate());

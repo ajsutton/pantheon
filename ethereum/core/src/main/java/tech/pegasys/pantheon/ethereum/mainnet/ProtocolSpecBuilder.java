@@ -270,7 +270,8 @@ public class ProtocolSpecBuilder<T> {
         difficultyCalculator,
         blockReward,
         transactionReceiptType,
-        miningBeneficiaryCalculator);
+        miningBeneficiaryCalculator,
+        rentProcessor);
   }
 
   public interface TransactionProcessorBuilder {

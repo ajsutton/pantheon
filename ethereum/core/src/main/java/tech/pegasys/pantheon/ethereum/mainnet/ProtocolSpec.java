@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.core.BlockImporter;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionReceiptFactory;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.EVM;
 
 /** A protocol specification. */
@@ -48,6 +49,8 @@ public class ProtocolSpec<C> {
 
   private final MiningBeneficiaryCalculator miningBeneficiaryCalculator;
 
+  private final RentProcessor rentProcessor;
+
   /**
    * Creates a new protocol specification instance.
    *
@@ -66,6 +69,7 @@ public class ProtocolSpec<C> {
    * @param blockReward the blockReward to use.
    * @param transactionReceiptType the type of transaction receipt to use, one of
    * @param miningBeneficiaryCalculator determines to whom mining proceeds are paid
+   * @param rentProcessor the rent processor to use
    */
   public ProtocolSpec(
       final String name,
@@ -82,7 +86,8 @@ public class ProtocolSpec<C> {
       final DifficultyCalculator<C> difficultyCalculator,
       final Wei blockReward,
       final TransactionReceiptType transactionReceiptType,
-      final MiningBeneficiaryCalculator miningBeneficiaryCalculator) {
+      final MiningBeneficiaryCalculator miningBeneficiaryCalculator,
+      final RentProcessor rentProcessor) {
     this.name = name;
     this.evm = evm;
     this.transactionValidator = transactionValidator;
@@ -97,6 +102,7 @@ public class ProtocolSpec<C> {
     this.difficultyCalculator = difficultyCalculator;
     this.blockReward = blockReward;
     this.miningBeneficiaryCalculator = miningBeneficiaryCalculator;
+    this.rentProcessor = rentProcessor;
   }
 
   /**
@@ -133,6 +139,10 @@ public class ProtocolSpec<C> {
    */
   public BlockProcessor getBlockProcessor() {
     return blockProcessor;
+  }
+
+  public RentProcessor getRentProcessor() {
+    return rentProcessor;
   }
 
   /**
