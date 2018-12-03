@@ -14,9 +14,11 @@ package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.StubAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.math.BigInteger;
 
@@ -36,6 +38,20 @@ public class ActiveRentProcessorTest {
   public void shouldReportRentAsActive() {
     assertThat(rentProcessor.isRentCharged()).isTrue();
   }
+
+  @Test
+  public void shouldNotChargeRentWhenAccountHasCode() {
+    final Wei initialBalance = Wei.of(1_000_000);
+    account.setBalance(initialBalance);
+    account.setRentBlock(Account.NEW_ACCOUNT_RENT_BLOCK);
+    account.setCode(BytesValue.of(1, 2, 3));
+
+    rentProcessor.chargeRent(account, RENT_ENABLED_BLOCK_NUMBER);
+
+    assertThat(account.getBalance()).isEqualTo(initialBalance);
+    assertThat(account.getRentBlock()).isEqualTo(Account.NEW_ACCOUNT_RENT_BLOCK);
+    assertThat(account.getRentBalance()).isEqualTo(BigInteger.ZERO);
+ }
 
   @Test
   public void shouldNotChargeRentWhenCurrentBlockNumberIsSameAsRentBlock() {

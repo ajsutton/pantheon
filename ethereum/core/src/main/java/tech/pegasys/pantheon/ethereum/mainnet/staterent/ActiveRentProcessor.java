@@ -30,6 +30,9 @@ public class ActiveRentProcessor implements RentProcessor {
 
   @Override
   public void chargeRent(final MutableAccount account, final long currentBlockNumber) {
+    if (account.hasCode()) {
+      return;
+    }
     if (account.getRentBlock() == Account.NEW_ACCOUNT_RENT_BLOCK) {
       account.setRentBlock(currentBlockNumber);
       return;
