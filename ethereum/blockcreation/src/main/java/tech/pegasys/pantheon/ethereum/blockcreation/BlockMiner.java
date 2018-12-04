@@ -90,7 +90,8 @@ public class BlockMiner<C, M extends AbstractBlockCreator<C>> implements Runnabl
     final Block block = blockCreator.createBlock(newBlockTimestamp);
     LOG.info(
         "Block {} created with {} transactions, importing to local chain",
-        block.getHeader().getNumber(), block.getBody().getTransactions().size());
+        block.getHeader().getNumber(),
+        block.getBody().getTransactions().size());
 
     final BlockImporter<C> importer =
         protocolSchedule.getByBlockNumber(block.getHeader().getNumber()).getBlockImporter();
