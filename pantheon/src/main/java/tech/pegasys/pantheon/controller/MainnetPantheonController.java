@@ -102,7 +102,7 @@ public class MainnetPantheonController implements PantheonController<Void> {
 
     final WorldStateArchive worldStateArchive =
         new WorldStateArchive(storageProvider.createWorldStateStorage());
-    genesisState.writeStateTo(worldStateArchive.getMutable(Hash.EMPTY_TRIE_HASH));
+    genesisState.writeStateTo(worldStateArchive.getMutable(Hash.EMPTY_TRIE_HASH), protocolSchedule);
 
     final ProtocolContext<Void> protocolContext =
         new ProtocolContext<>(blockchain, worldStateArchive, null);

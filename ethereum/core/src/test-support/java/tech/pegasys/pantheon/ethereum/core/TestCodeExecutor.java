@@ -18,6 +18,7 @@ import tech.pegasys.pantheon.ethereum.mainnet.MainnetMessageCallProcessor;
 import tech.pegasys.pantheon.ethereum.mainnet.PrecompileContractRegistry;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSpec;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.vm.Code;
 import tech.pegasys.pantheon.ethereum.vm.MessageFrame;
 import tech.pegasys.pantheon.ethereum.vm.OperationTracer;
@@ -41,12 +42,14 @@ public class TestCodeExecutor {
   public MessageFrame executeCode(
       final String code, final long gasLimit, final Consumer<MutableAccount> accountSetup) {
     final ProtocolSpec<Void> protocolSpec = fixture.getProtocolSchedule().getByBlockNumber(0);
+    final AccountInit accountInit = protocolSpec.getAccountInit();
     final WorldUpdater worldState =
-        createInitialWorldState(accountSetup, fixture.getStateArchive());
+        createInitialWorldState(accountSetup, fixture.getStateArchive(), accountInit);
     final Deque<MessageFrame> messageFrameStack = new ArrayDeque<>();
 
     final MainnetMessageCallProcessor messageCallProcessor =
-        new MainnetMessageCallProcessor(protocolSpec.getEvm(), new PrecompileContractRegistry());
+        new MainnetMessageCallProcessor(
+            protocolSpec.getEvm(), new PrecompileContractRegistry(), accountInit);
 
     final Transaction transaction =
         Transaction.builder()
@@ -75,6 +78,7 @@ public class TestCodeExecutor {
             .code(new Code(BytesValue.fromHexString(code)))
             .blockHeader(blockHeader)
             .depth(0)
+            .accountInit(accountInit)
             .build();
     messageFrameStack.addFirst(initialFrame);
 
@@ -85,11 +89,15 @@ public class TestCodeExecutor {
   }
 
   private WorldUpdater createInitialWorldState(
-      final Consumer<MutableAccount> accountSetup, final WorldStateArchive stateArchive) {
+      final Consumer<MutableAccount> accountSetup,
+      final WorldStateArchive stateArchive,
+      final AccountInit accountInit) {
     final MutableWorldState initialWorldState = stateArchive.getMutable();
 
     final WorldUpdater worldState = initialWorldState.updater();
-    final MutableAccount senderAccount = worldState.getOrCreate(TestCodeExecutor.SENDER_ADDRESS);
+    final MutableAccount senderAccount =
+        worldState.getOrCreate(
+            TestCodeExecutor.SENDER_ADDRESS, accountInit, BlockHeader.GENESIS_BLOCK_NUMBER);
     accountSetup.accept(senderAccount);
     worldState.commit();
     initialWorldState.persist();

@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Gas;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.vm.EVM;
 import tech.pegasys.pantheon.ethereum.vm.MessageFrame;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
@@ -30,18 +31,21 @@ public class MainnetMessageCallProcessor extends AbstractMessageProcessor {
   private static final Logger LOG = LogManager.getLogger();
 
   private final PrecompileContractRegistry precompiles;
+  private final AccountInit accountInit;
 
   public MainnetMessageCallProcessor(
       final EVM evm,
       final PrecompileContractRegistry precompiles,
+      final AccountInit accountInit,
       final Collection<Address> forceCommitAddresses) {
     super(evm, forceCommitAddresses);
     this.precompiles = precompiles;
+    this.accountInit = accountInit;
   }
 
-  public MainnetMessageCallProcessor(final EVM evm, final PrecompileContractRegistry precompiles) {
-    super(evm, ImmutableSet.of());
-    this.precompiles = precompiles;
+  public MainnetMessageCallProcessor(
+      final EVM evm, final PrecompileContractRegistry precompiles, final AccountInit accountInit) {
+    this(evm, precompiles, accountInit, ImmutableSet.of());
   }
 
   @Override
@@ -80,7 +84,10 @@ public class MainnetMessageCallProcessor extends AbstractMessageProcessor {
     // The yellow paper explicitly states that if the recipient account doesn't exist at this
     // point, it is created.
     final MutableAccount recipientAccount =
-        frame.getWorldState().getOrCreate(frame.getRecipientAddress());
+        frame
+            .getWorldState()
+            .getOrCreate(
+                frame.getRecipientAddress(), accountInit, frame.getBlockHeader().getNumber());
 
     if (frame.getRecipientAddress().equals(frame.getSenderAddress())) {
       LOG.trace("Message call of {} to itself: no fund transferred", frame.getSenderAddress());

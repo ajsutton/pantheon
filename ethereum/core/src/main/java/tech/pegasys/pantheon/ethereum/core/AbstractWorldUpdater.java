@@ -14,6 +14,7 @@ package tech.pegasys.pantheon.ethereum.core;
 
 import static com.google.common.base.Preconditions.checkNotNull;
 
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
@@ -58,8 +59,10 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
   }
 
   @Override
-  public MutableAccount createAccount(final Address address) {
+  public MutableAccount createAccount(
+      final Address address, final AccountInit accountInit, final long currentBlockNumber) {
     final UpdateTrackingAccount<A> account = new UpdateTrackingAccount<>(address);
+    accountInit.applyDefaults(account, currentBlockNumber);
     return track(account);
   }
 

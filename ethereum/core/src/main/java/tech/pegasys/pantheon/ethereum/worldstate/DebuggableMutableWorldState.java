@@ -17,6 +17,7 @@ import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.storage.keyvalue.KeyValueStorageWorldStateStorage;
 import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
 
@@ -112,15 +113,17 @@ public class DebuggableMutableWorldState extends DefaultMutableWorldState {
     }
 
     @Override
-    public MutableAccount createAccount(final Address address) {
+    public MutableAccount createAccount(
+        final Address address, final AccountInit accountInit, final long currentBlockNumber) {
       record(address);
-      return wrapped.createAccount(address);
+      return wrapped.createAccount(address, accountInit, currentBlockNumber);
     }
 
     @Override
-    public MutableAccount getOrCreate(final Address address) {
+    public MutableAccount getOrCreate(
+        final Address address, final AccountInit accountInit, final long currentBlockNumber) {
       record(address);
-      return wrapped.getOrCreate(address);
+      return wrapped.getOrCreate(address, accountInit, currentBlockNumber);
     }
 
     @Override

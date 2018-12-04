@@ -12,6 +12,8 @@
  */
 package tech.pegasys.pantheon.ethereum.core;
 
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
+
 import java.util.Collection;
 
 /**
@@ -29,22 +31,27 @@ public interface WorldUpdater extends MutableWorldView {
    * already exists.
    *
    * @param address the address of the account to create (or reset).
+   * @param defaultSetup the {@link AccountInit} to apply default values with.
+   * @param currentBlockNumber the block number the account is first created in
    * @return the account {@code address}, which will have 0 for the nonce and balance and empty code
    *     and storage.
    */
-  MutableAccount createAccount(final Address address);
+  MutableAccount createAccount(Address address, AccountInit defaultSetup, long currentBlockNumber);
 
   /**
    * Retrieves the provided account if it exists, or create it if it doesn't.
    *
    * @param address the address of the account.
+   * @param defaultSetup the {@link AccountInit} to apply default values with.
+   * @param currentBlockNumber the block number the account is first created in
    * @return the account {@code address}. If that account exists, it is returned as if by {@link
    *     #getMutable(Address)}, otherwise, it is created and returned as if by {@link
-   *     #createAccount(Address)} (and thus all his fields will be zero/empty).
+   *     #createAccount(Address, AccountInit, long)} (and thus all his fields will be zero/empty).
    */
-  default MutableAccount getOrCreate(final Address address) {
+  default MutableAccount getOrCreate(
+      final Address address, final AccountInit defaultSetup, final long currentBlockNumber) {
     final MutableAccount account = getMutable(address);
-    return account == null ? createAccount(address) : account;
+    return account == null ? createAccount(address, defaultSetup, currentBlockNumber) : account;
   }
 
   /**

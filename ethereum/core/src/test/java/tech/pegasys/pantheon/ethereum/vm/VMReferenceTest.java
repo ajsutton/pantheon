@@ -139,6 +139,7 @@ public class VMReferenceTest extends AbstractRetryingTest {
             .completer(c -> {})
             .miningBeneficiary(execEnv.getBlockHeader().getCoinbase())
             .blockHashLookup(new BlockHashLookup(execEnv.getBlockHeader(), blockchain))
+            .accountInit(protocolSpec.getAccountInit())
             .build();
 
     // This is normally set inside the containing message executing the code.

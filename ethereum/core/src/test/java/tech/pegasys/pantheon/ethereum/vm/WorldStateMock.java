@@ -12,6 +12,8 @@
  */
 package tech.pegasys.pantheon.ethereum.vm;
 
+import static tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit.FRONTIER_ACCOUNT_INIT;
+
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
@@ -35,7 +37,7 @@ public class WorldStateMock extends DebuggableMutableWorldState {
     private final BytesValue code;
     private final Map<UInt256, UInt256> storage;
 
-    private static final Map<UInt256, UInt256> parseStorage(final Map<String, String> values) {
+    private static Map<UInt256, UInt256> parseStorage(final Map<String, String> values) {
       final Map<UInt256, UInt256> storage = new HashMap<>();
       for (final Map.Entry<String, String> entry : values.entrySet()) {
         storage.put(UInt256.fromHexString(entry.getKey()), UInt256.fromHexString(entry.getValue()));
@@ -73,7 +75,7 @@ public class WorldStateMock extends DebuggableMutableWorldState {
 
   public static void insertAccount(
       final WorldUpdater updater, final Address address, final AccountMock toCopy) {
-    final MutableAccount account = updater.getOrCreate(address);
+    final MutableAccount account = updater.getOrCreate(address, FRONTIER_ACCOUNT_INIT, 0);
     account.setNonce(toCopy.nonce());
     account.setBalance(toCopy.balance());
     account.setCode(toCopy.code());

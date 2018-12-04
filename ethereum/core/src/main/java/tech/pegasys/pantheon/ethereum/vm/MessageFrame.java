@@ -24,6 +24,7 @@ import tech.pegasys.pantheon.ethereum.core.Transaction;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.AbstractMessageProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
@@ -188,6 +189,7 @@ public class MessageFrame {
   // Machine state fields.
   private Gas gasRemaining;
   private final BlockHashLookup blockHashLookup;
+  private final AccountInit accountInit;
   private int pc;
   private final Memory memory;
   private final OperandStack stack;
@@ -245,13 +247,15 @@ public class MessageFrame {
       final boolean isStatic,
       final Consumer<MessageFrame> completer,
       final Address miningBeneficiary,
-      final BlockHashLookup blockHashLookup) {
+      final BlockHashLookup blockHashLookup,
+      final AccountInit accountInit) {
     this.type = type;
     this.blockchain = blockchain;
     this.messageFrameStack = messageFrameStack;
     this.worldState = worldState;
     this.gasRemaining = initialGas;
     this.blockHashLookup = blockHashLookup;
+    this.accountInit = accountInit;
     this.pc = 0;
     this.memory = new Memory();
     this.stack = new PreAllocatedOperandStack(MAX_STACK_SIZE);
@@ -798,6 +802,10 @@ public class MessageFrame {
     return miningBeneficiary;
   }
 
+  public AccountInit getAccountInit() {
+    return accountInit;
+  }
+
   public BlockHashLookup getBlockHashLookup() {
     return blockHashLookup;
   }
@@ -832,6 +840,7 @@ public class MessageFrame {
     private Consumer<MessageFrame> completer;
     private Address miningBeneficiary;
     private BlockHashLookup blockHashLookup;
+    private AccountInit accountInit;
 
     public Builder type(final Type type) {
       this.type = type;
@@ -933,6 +942,11 @@ public class MessageFrame {
       return this;
     }
 
+    public Builder accountInit(final AccountInit accountInit) {
+      this.accountInit = accountInit;
+      return this;
+    }
+
     private void validate() {
       checkState(type != null, "Missing message frame type");
       checkState(blockchain != null, "Missing message frame blockchain");
@@ -953,6 +967,7 @@ public class MessageFrame {
       checkState(completer != null, "Missing message frame completer");
       checkState(miningBeneficiary != null, "Missing mining beneficiary");
       checkState(blockHashLookup != null, "Missing block hash lookup");
+      checkState(accountInit != null, "Missing account init");
     }
 
     public MessageFrame build() {
@@ -978,7 +993,8 @@ public class MessageFrame {
           isStatic,
           completer,
           miningBeneficiary,
-          blockHashLookup);
+          blockHashLookup,
+          accountInit);
     }
   }
 }

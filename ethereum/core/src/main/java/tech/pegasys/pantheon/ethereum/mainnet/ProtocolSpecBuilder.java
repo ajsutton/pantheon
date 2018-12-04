@@ -18,11 +18,11 @@ import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.core.BlockImporter;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionReceiptFactory;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.EVM;
 import tech.pegasys.pantheon.ethereum.vm.GasCalculator;
 
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -37,10 +37,9 @@ public class ProtocolSpecBuilder<T> {
   private Function<DifficultyCalculator<T>, BlockHeaderValidator<T>> blockHeaderValidatorBuilder;
   private Function<DifficultyCalculator<T>, BlockHeaderValidator<T>> ommerHeaderValidatorBuilder;
   private Function<ProtocolSchedule<T>, BlockBodyValidator<T>> blockBodyValidatorBuilder;
-  private BiFunction<GasCalculator, EVM, AbstractMessageProcessor> contractCreationProcessorBuilder;
+  private ContractCreationProcessorBuilder contractCreationProcessorBuilder;
   private Function<GasCalculator, PrecompileContractRegistry> precompileContractRegistryBuilder;
-  private BiFunction<EVM, PrecompileContractRegistry, AbstractMessageProcessor>
-      messageCallProcessorBuilder;
+  private MessageCallProcessorBuilder messageCallProcessorBuilder;
   private TransactionProcessorBuilder transactionProcessorBuilder;
   private BlockProcessorBuilder blockProcessorBuilder;
   private BlockImporterBuilder<T> blockImporterBuilder;
@@ -49,6 +48,7 @@ public class ProtocolSpecBuilder<T> {
   private MiningBeneficiaryCalculator miningBeneficiaryCalculator;
   private Function<Wei, RentProcessor> rentProcessorBuilder;
   private Wei rentCost;
+  private Supplier<AccountInit> accountInitBuilder;
 
   public ProtocolSpecBuilder<T> gasCalculator(final Supplier<GasCalculator> gasCalculatorBuilder) {
     this.gasCalculatorBuilder = gasCalculatorBuilder;
@@ -119,8 +119,7 @@ public class ProtocolSpecBuilder<T> {
   }
 
   public ProtocolSpecBuilder<T> contractCreationProcessorBuilder(
-      final BiFunction<GasCalculator, EVM, AbstractMessageProcessor>
-          contractCreationProcessorBuilder) {
+      final ContractCreationProcessorBuilder contractCreationProcessorBuilder) {
     this.contractCreationProcessorBuilder = contractCreationProcessorBuilder;
     return this;
   }
@@ -132,8 +131,7 @@ public class ProtocolSpecBuilder<T> {
   }
 
   public ProtocolSpecBuilder<T> messageCallProcessorBuilder(
-      final BiFunction<EVM, PrecompileContractRegistry, AbstractMessageProcessor>
-          messageCallProcessorBuilder) {
+      final MessageCallProcessorBuilder messageCallProcessorBuilder) {
     this.messageCallProcessorBuilder = messageCallProcessorBuilder;
     return this;
   }
@@ -165,6 +163,11 @@ public class ProtocolSpecBuilder<T> {
   public ProtocolSpecBuilder<T> miningBeneficiaryCalculator(
       final MiningBeneficiaryCalculator miningBeneficiaryCalculator) {
     this.miningBeneficiaryCalculator = miningBeneficiaryCalculator;
+    return this;
+  }
+
+  public ProtocolSpecBuilder<T> accountInit(final Supplier<AccountInit> accountInit) {
+    this.accountInitBuilder = accountInit;
     return this;
   }
 
@@ -200,6 +203,7 @@ public class ProtocolSpecBuilder<T> {
         .transactionReceiptFactory(transactionReceiptFactory)
         .transactionReceiptType(transactionReceiptType)
         .miningBeneficiaryCalculator(miningBeneficiaryCalculator)
+        .accountInit(accountInitBuilder)
         .name(name);
   }
 
@@ -224,22 +228,28 @@ public class ProtocolSpecBuilder<T> {
     checkNotNull(transactionReceiptType, "Missing transaction receipt type");
     checkNotNull(name, "Missing name");
     checkNotNull(miningBeneficiaryCalculator, "Missing Mining Beneficiary Calculator");
+    checkNotNull(accountInitBuilder, "Missing account init");
     checkNotNull(protocolSchedule, "Missing protocol schedule");
 
+    final AccountInit accountInit = accountInitBuilder.get();
     final GasCalculator gasCalculator = gasCalculatorBuilder.get();
     final RentProcessor rentProcessor = rentProcessorBuilder.apply(rentCost);
     final EVM evm = evmBuilder.apply(gasCalculator);
     final TransactionValidator transactionValidator =
         transactionValidatorBuilder.apply(gasCalculator);
     final AbstractMessageProcessor contractCreationProcessor =
-        contractCreationProcessorBuilder.apply(gasCalculator, evm);
+        contractCreationProcessorBuilder.apply(gasCalculator, evm, accountInit);
     final PrecompileContractRegistry precompileContractRegistry =
         precompileContractRegistryBuilder.apply(gasCalculator);
     final AbstractMessageProcessor messageCallProcessor =
-        messageCallProcessorBuilder.apply(evm, precompileContractRegistry);
+        messageCallProcessorBuilder.apply(evm, precompileContractRegistry, accountInit);
     final TransactionProcessor transactionProcessor =
         transactionProcessorBuilder.apply(
-            gasCalculator, transactionValidator, contractCreationProcessor, messageCallProcessor);
+            gasCalculator,
+            transactionValidator,
+            contractCreationProcessor,
+            messageCallProcessor,
+            accountInit);
     final BlockHeaderValidator<T> blockHeaderValidator =
         blockHeaderValidatorBuilder.apply(difficultyCalculator);
     final BlockHeaderValidator<T> ommerHeaderValidator =
@@ -252,7 +262,8 @@ public class ProtocolSpecBuilder<T> {
             transactionReceiptFactory,
             rentProcessor,
             blockReward,
-            miningBeneficiaryCalculator);
+            miningBeneficiaryCalculator,
+            accountInit);
     final BlockImporter<T> blockImporter =
         blockImporterBuilder.apply(blockHeaderValidator, blockBodyValidator, blockProcessor);
     return new ProtocolSpec<>(
@@ -271,7 +282,8 @@ public class ProtocolSpecBuilder<T> {
         blockReward,
         transactionReceiptType,
         miningBeneficiaryCalculator,
-        rentProcessor);
+        rentProcessor,
+        accountInit);
   }
 
   public interface TransactionProcessorBuilder {
@@ -279,7 +291,8 @@ public class ProtocolSpecBuilder<T> {
         GasCalculator gasCalculator,
         TransactionValidator transactionValidator,
         AbstractMessageProcessor contractCreationProcessor,
-        AbstractMessageProcessor messageCallProcessor);
+        AbstractMessageProcessor messageCallProcessor,
+        AccountInit accountInit);
   }
 
   public interface BlockProcessorBuilder {
@@ -288,7 +301,8 @@ public class ProtocolSpecBuilder<T> {
         TransactionReceiptFactory transactionReceiptFactory,
         RentProcessor rentProcessor,
         Wei blockReward,
-        MiningBeneficiaryCalculator miningBeneficiaryCalculator);
+        MiningBeneficiaryCalculator miningBeneficiaryCalculator,
+        AccountInit accountInit);
   }
 
   public interface BlockImporterBuilder<T> {
@@ -296,5 +310,14 @@ public class ProtocolSpecBuilder<T> {
         BlockHeaderValidator<T> blockHeaderValidator,
         BlockBodyValidator<T> blockBodyValidator,
         BlockProcessor blockProcessor);
+  }
+
+  public interface ContractCreationProcessorBuilder {
+    AbstractMessageProcessor apply(GasCalculator gasCalculator, EVM evm, AccountInit accountInit);
+  }
+
+  public interface MessageCallProcessorBuilder {
+    AbstractMessageProcessor apply(
+        EVM evm, PrecompileContractRegistry precompileContractRegistry, AccountInit accountInit);
   }
 }

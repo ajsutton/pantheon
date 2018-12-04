@@ -54,14 +54,16 @@ public class JsonRpcTestMethodsFactory {
 
   public Map<String, JsonRpcMethod> methods() {
     final WorldStateArchive stateArchive = createInMemoryWorldStateArchive();
+    final ProtocolSchedule<Void> protocolSchedule = importer.getProtocolSchedule();
 
-    importer.getGenesisState().writeStateTo(stateArchive.getMutable(Hash.EMPTY_TRIE_HASH));
+    importer
+        .getGenesisState()
+        .writeStateTo(stateArchive.getMutable(Hash.EMPTY_TRIE_HASH), protocolSchedule);
 
     final MutableBlockchain blockchain = createInMemoryBlockchain(importer.getGenesisBlock());
     final ProtocolContext<Void> context = new ProtocolContext<>(blockchain, stateArchive, null);
 
     for (final Block block : importer.getBlocks()) {
-      final ProtocolSchedule<Void> protocolSchedule = importer.getProtocolSchedule();
       final ProtocolSpec<Void> protocolSpec =
           protocolSchedule.getByBlockNumber(block.getHeader().getNumber());
       final BlockImporter<Void> blockImporter = protocolSpec.getBlockImporter();

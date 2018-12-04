@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockHashFunction;
 import tech.pegasys.pantheon.ethereum.core.BlockImporter;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionReceiptFactory;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.EVM;
 
@@ -51,6 +52,8 @@ public class ProtocolSpec<C> {
 
   private final RentProcessor rentProcessor;
 
+  private final AccountInit accountInit;
+
   /**
    * Creates a new protocol specification instance.
    *
@@ -70,6 +73,7 @@ public class ProtocolSpec<C> {
    * @param transactionReceiptType the type of transaction receipt to use, one of
    * @param miningBeneficiaryCalculator determines to whom mining proceeds are paid
    * @param rentProcessor the rent processor to use
+   * @param accountInit the initialization for newly created accounts
    */
   public ProtocolSpec(
       final String name,
@@ -87,7 +91,8 @@ public class ProtocolSpec<C> {
       final Wei blockReward,
       final TransactionReceiptType transactionReceiptType,
       final MiningBeneficiaryCalculator miningBeneficiaryCalculator,
-      final RentProcessor rentProcessor) {
+      final RentProcessor rentProcessor,
+      final AccountInit accountInit) {
     this.name = name;
     this.evm = evm;
     this.transactionValidator = transactionValidator;
@@ -103,6 +108,7 @@ public class ProtocolSpec<C> {
     this.blockReward = blockReward;
     this.miningBeneficiaryCalculator = miningBeneficiaryCalculator;
     this.rentProcessor = rentProcessor;
+    this.accountInit = accountInit;
   }
 
   /**
@@ -228,5 +234,9 @@ public class ProtocolSpec<C> {
 
   public MiningBeneficiaryCalculator getMiningBeneficiaryCalculator() {
     return miningBeneficiaryCalculator;
+  }
+
+  public AccountInit getAccountInit() {
+    return accountInit;
   }
 }

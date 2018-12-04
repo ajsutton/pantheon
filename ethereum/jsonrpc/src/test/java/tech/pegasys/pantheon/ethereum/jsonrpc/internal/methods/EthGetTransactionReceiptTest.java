@@ -91,6 +91,7 @@ public class EthGetTransactionReceiptTest {
           null,
           TransactionReceiptType.ROOT,
           BlockHeader::getCoinbase,
+          null,
           null);
   private final ProtocolSpec<Void> statusTransactionTypeSpec =
       new ProtocolSpec<>(
@@ -109,6 +110,7 @@ public class EthGetTransactionReceiptTest {
           null,
           TransactionReceiptType.STATUS,
           BlockHeader::getCoinbase,
+          null,
           null);
 
   private final JsonRpcParameter parameters = new JsonRpcParameter();

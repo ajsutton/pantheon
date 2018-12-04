@@ -12,6 +12,8 @@
  */
 package tech.pegasys.pantheon.ethereum.chain;
 
+import static tech.pegasys.pantheon.ethereum.core.BlockHeader.GENESIS_BLOCK_NUMBER;
+
 import tech.pegasys.pantheon.config.GenesisConfigFile;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Block;
@@ -25,6 +27,7 @@ import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHashFunction;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.storage.keyvalue.KeyValueStorageWorldStateStorage;
 import tech.pegasys.pantheon.ethereum.worldstate.DefaultMutableWorldState;
 import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
@@ -82,7 +85,10 @@ public final class GenesisState {
         parseAllocations(config).collect(Collectors.toList());
     final Block block =
         new Block(
-            buildHeader(config, calculateGenesisStateHash(genesisAccounts), protocolSchedule),
+            buildHeader(
+                config,
+                calculateGenesisStateHash(genesisAccounts, protocolSchedule),
+                protocolSchedule),
             BODY);
     return new GenesisState(block, genesisAccounts);
   }
@@ -95,25 +101,35 @@ public final class GenesisState {
    * Writes the genesis block's world state to the given {@link MutableWorldState}.
    *
    * @param target WorldView to write genesis state to
+   * @param protocolSchedule the {@link ProtocolSchedule} to use
    */
-  public void writeStateTo(final MutableWorldState target) {
-    writeAccountsTo(target, genesisAccounts);
+  public void writeStateTo(
+      final MutableWorldState target, final ProtocolSchedule<?> protocolSchedule) {
+    writeAccountsTo(target, genesisAccounts, protocolSchedule);
   }
 
   private static void writeAccountsTo(
-      final MutableWorldState target, final List<GenesisAccount> genesisAccounts) {
+      final MutableWorldState target,
+      final List<GenesisAccount> genesisAccounts,
+      final ProtocolSchedule<?> protocolSchedule) {
+    final AccountInit accountInit =
+        protocolSchedule.getByBlockNumber(GENESIS_BLOCK_NUMBER).getAccountInit();
     final WorldUpdater updater = target.updater();
     genesisAccounts.forEach(
-        account -> updater.getOrCreate(account.address).setBalance(account.balance));
+        account ->
+            updater
+                .getOrCreate(account.address, accountInit, GENESIS_BLOCK_NUMBER)
+                .setBalance(account.balance));
     updater.commit();
     target.persist();
   }
 
-  private static Hash calculateGenesisStateHash(final List<GenesisAccount> genesisAccounts) {
+  private static Hash calculateGenesisStateHash(
+      final List<GenesisAccount> genesisAccounts, final ProtocolSchedule<?> protocolSchedule) {
     final MutableWorldState worldState =
         new DefaultMutableWorldState(
             new KeyValueStorageWorldStateStorage(new InMemoryKeyValueStorage()));
-    writeAccountsTo(worldState, genesisAccounts);
+    writeAccountsTo(worldState, genesisAccounts, protocolSchedule);
     return worldState.rootHash();
   }
 
@@ -131,7 +147,7 @@ public final class GenesisState {
         .receiptsRoot(Hash.EMPTY_TRIE_HASH)
         .logsBloom(LogsBloomFilter.empty())
         .difficulty(parseDifficulty(genesis))
-        .number(BlockHeader.GENESIS_BLOCK_NUMBER)
+        .number(GENESIS_BLOCK_NUMBER)
         .gasLimit(genesis.getGasLimit())
         .gasUsed(0L)
         .timestamp(genesis.getTimestamp())

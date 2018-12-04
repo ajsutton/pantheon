@@ -128,7 +128,7 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
 
     final WorldStateStorage worldStateStorage = storageProvider.createWorldStateStorage();
     final WorldStateArchive worldStateArchive = new WorldStateArchive(worldStateStorage);
-    genesisState.writeStateTo(worldStateArchive.getMutable(Hash.EMPTY_TRIE_HASH));
+    genesisState.writeStateTo(worldStateArchive.getMutable(Hash.EMPTY_TRIE_HASH), protocolSchedule);
 
     final IbftConfigOptions ibftConfig = genesisConfig.getConfigOptions().getIbftConfigOptions();
     final EpochManager epochManager = new EpochManager(ibftConfig.getEpochLength());

@@ -184,6 +184,7 @@ public abstract class AbstractCallOperation extends AbstractOperation {
             .completer(child -> complete(frame, child))
             .miningBeneficiary(frame.getMiningBeneficiary())
             .blockHashLookup(frame.getBlockHashLookup())
+            .accountInit(frame.getAccountInit())
             .build();
 
     frame.getMessageFrameStack().addFirst(childFrame);

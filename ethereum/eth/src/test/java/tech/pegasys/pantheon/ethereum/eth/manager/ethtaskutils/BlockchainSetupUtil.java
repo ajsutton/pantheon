@@ -103,7 +103,7 @@ public class BlockchainSetupUtil<C> {
       final MutableBlockchain blockchain = createInMemoryBlockchain(genesisState.getBlock());
       final WorldStateArchive worldArchive = createInMemoryWorldStateArchive();
 
-      genesisState.writeStateTo(worldArchive.getMutable());
+      genesisState.writeStateTo(worldArchive.getMutable(), protocolSchedule);
       final ProtocolContext<Void> protocolContext =
           new ProtocolContext<>(blockchain, worldArchive, null);
 

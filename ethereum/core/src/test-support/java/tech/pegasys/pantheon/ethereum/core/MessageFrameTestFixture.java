@@ -12,7 +12,10 @@
  */
 package tech.pegasys.pantheon.ethereum.core;
 
+import static tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit.FRONTIER_ACCOUNT_INIT;
+
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.vm.Code;
 import tech.pegasys.pantheon.ethereum.vm.MessageFrame;
@@ -48,6 +51,7 @@ public class MessageFrameTestFixture {
   private int depth = 0;
   private Optional<BlockHashLookup> blockHashLookup = Optional.empty();
   private ExecutionContextTestFixture executionContextTestFixture;
+  private AccountInit accountInit = FRONTIER_ACCOUNT_INIT;
 
   public MessageFrameTestFixture type(final Type type) {
     this.type = type;
@@ -145,6 +149,11 @@ public class MessageFrameTestFixture {
     return this;
   }
 
+  public MessageFrameTestFixture accountInit(final AccountInit accountInit) {
+    this.accountInit = accountInit;
+    return this;
+  }
+
   public MessageFrame build() {
     final Blockchain blockchain = this.blockchain.orElseGet(this::createDefaultBlockchain);
     final BlockHeader blockHeader =
@@ -171,6 +180,7 @@ public class MessageFrameTestFixture {
             .miningBeneficiary(blockHeader.getCoinbase())
             .blockHashLookup(
                 blockHashLookup.orElseGet(() -> new BlockHashLookup(blockHeader, blockchain)))
+            .accountInit(accountInit)
             .build();
     stackItems.forEach(frame::pushStackItem);
     return frame;

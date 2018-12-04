@@ -14,6 +14,7 @@ package tech.pegasys.pantheon.ethereum.testutil;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static tech.pegasys.pantheon.ethereum.core.InMemoryStorageProvider.createInMemoryWorldStateArchive;
+import static tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit.FRONTIER_ACCOUNT_INIT;
 
 import tech.pegasys.pantheon.crypto.SECP256K1;
 import tech.pegasys.pantheon.ethereum.core.Address;
@@ -81,7 +82,8 @@ public class BlockDataGenerator {
       final WorldUpdater stateUpdater = worldState.updater();
       if (i == 0) {
         // Set up some accounts
-        accountsToSetup.forEach(stateUpdater::createAccount);
+        accountsToSetup.forEach(
+            address -> stateUpdater.createAccount(address, FRONTIER_ACCOUNT_INIT, 0));
         stateUpdater.commit();
       } else {
         // Mutate accounts

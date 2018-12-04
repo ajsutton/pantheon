@@ -148,7 +148,7 @@ public abstract class AbstractEthJsonRpcHttpServiceTest {
     final PendingTransactions pendingTransactionsMock = mock(PendingTransactions.class);
     when(transactionPoolMock.getPendingTransactions()).thenReturn(pendingTransactionsMock);
     stateArchive = createInMemoryWorldStateArchive();
-    GENESIS_CONFIG.writeStateTo(stateArchive.getMutable(Hash.EMPTY_TRIE_HASH));
+    GENESIS_CONFIG.writeStateTo(stateArchive.getMutable(Hash.EMPTY_TRIE_HASH), PROTOCOL_SCHEDULE);
 
     blockchain = createInMemoryBlockchain(GENESIS_BLOCK);
     context = new ProtocolContext<>(blockchain, stateArchive, null);

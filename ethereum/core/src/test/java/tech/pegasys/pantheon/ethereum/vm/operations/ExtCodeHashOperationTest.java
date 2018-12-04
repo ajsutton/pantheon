@@ -14,6 +14,7 @@ package tech.pegasys.pantheon.ethereum.vm.operations;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit.FRONTIER_ACCOUNT_INIT;
 
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
 import tech.pegasys.pantheon.ethereum.core.Address;
@@ -63,7 +64,7 @@ public class ExtCodeHashOperationTest {
 
   @Test
   public void shouldReturnHashOfEmptyDataWhenAccountExistsButDoesNotHaveCode() {
-    worldStateUpdater.getOrCreate(REQUESTED_ADDRESS);
+    worldStateUpdater.getOrCreate(REQUESTED_ADDRESS, FRONTIER_ACCOUNT_INIT, 0);
     assertThat(executeOperation(REQUESTED_ADDRESS)).isEqualTo(Hash.EMPTY);
   }
 
@@ -75,14 +76,14 @@ public class ExtCodeHashOperationTest {
   @Test
   public void shouldReturnEmptyCodeHashWhenPrecompileHasBalance() {
     // Sending money to a precompile causes it to exist in the world state archive.
-    worldStateUpdater.getOrCreate(Address.ECREC).setBalance(Wei.of(10));
+    worldStateUpdater.getOrCreate(Address.ECREC, FRONTIER_ACCOUNT_INIT, 0).setBalance(Wei.of(10));
     assertThat(executeOperation(Address.ECREC)).isEqualTo(Hash.EMPTY);
   }
 
   @Test
   public void shouldGetHashOfAccountCodeWhenCodeIsPresent() {
     final BytesValue code = BytesValue.fromHexString("0xabcdef");
-    worldStateUpdater.getOrCreate(REQUESTED_ADDRESS).setCode(code);
+    worldStateUpdater.getOrCreate(REQUESTED_ADDRESS, FRONTIER_ACCOUNT_INIT, 0).setCode(code);
     assertThat(executeOperation(REQUESTED_ADDRESS)).isEqualTo(Hash.hash(code));
   }
 
@@ -90,7 +91,7 @@ public class ExtCodeHashOperationTest {
   public void shouldZeroOutLeftMostBitsToGetAddress() {
     // If EXTCODEHASH of A is X, then EXTCODEHASH of A + 2**160 is X.
     final BytesValue code = BytesValue.fromHexString("0xabcdef");
-    worldStateUpdater.getOrCreate(REQUESTED_ADDRESS).setCode(code);
+    worldStateUpdater.getOrCreate(REQUESTED_ADDRESS, FRONTIER_ACCOUNT_INIT, 0).setCode(code);
     final Bytes32 value =
         Words.fromAddress(REQUESTED_ADDRESS)
             .asUInt256()

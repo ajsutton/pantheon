@@ -12,6 +12,8 @@
  */
 package tech.pegasys.pantheon.ethereum.mainnet;
 
+import static tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit.FRONTIER_ACCOUNT_INIT;
+
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
@@ -22,6 +24,7 @@ import tech.pegasys.pantheon.ethereum.core.TransactionReceipt;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.ActiveRentProcessor;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.InactiveRentProcessor;
 
@@ -68,21 +71,23 @@ public abstract class MainnetProtocolSpecs {
         .precompileContractRegistryBuilder(MainnetPrecompiledContractRegistries::frontier)
         .messageCallProcessorBuilder(MainnetMessageCallProcessor::new)
         .contractCreationProcessorBuilder(
-            (gasCalculator, evm) ->
+            (gasCalculator, evm, accountInit) ->
                 new MainnetContractCreationProcessor(
-                    gasCalculator, evm, false, FRONTIER_CONTRACT_SIZE_LIMIT, 0))
+                    gasCalculator, evm, false, FRONTIER_CONTRACT_SIZE_LIMIT, 0, accountInit))
         .transactionValidatorBuilder(
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, false))
         .transactionProcessorBuilder(
             (gasCalculator,
                 transactionValidator,
                 contractCreationProcessor,
-                messageCallProcessor) ->
+                messageCallProcessor,
+                accountInit) ->
                 new MainnetTransactionProcessor(
                     gasCalculator,
                     transactionValidator,
                     contractCreationProcessor,
                     messageCallProcessor,
+                    accountInit,
                     false))
         .difficultyCalculator(MainnetDifficultyCalculators.FRONTIER)
         .blockHeaderValidatorBuilder(MainnetBlockHeaderValidator::create)
@@ -95,6 +100,7 @@ public abstract class MainnetProtocolSpecs {
         .transactionReceiptType(TransactionReceiptType.ROOT)
         .blockHashFunction(MainnetBlockHashFunction::createHash)
         .miningBeneficiaryCalculator(BlockHeader::getCoinbase)
+        .accountInit(() -> FRONTIER_ACCOUNT_INIT)
         .name("Frontier");
   }
 
@@ -103,9 +109,9 @@ public abstract class MainnetProtocolSpecs {
         .gasCalculator(HomesteadGasCalculator::new)
         .evmBuilder(MainnetEvmRegistries::homestead)
         .contractCreationProcessorBuilder(
-            (gasCalculator, evm) ->
+            (gasCalculator, evm, accountInit) ->
                 new MainnetContractCreationProcessor(
-                    gasCalculator, evm, true, FRONTIER_CONTRACT_SIZE_LIMIT, 0))
+                    gasCalculator, evm, true, FRONTIER_CONTRACT_SIZE_LIMIT, 0, accountInit))
         .transactionValidatorBuilder(
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, true))
         .difficultyCalculator(MainnetDifficultyCalculators.HOMESTEAD)
@@ -120,14 +126,17 @@ public abstract class MainnetProtocolSpecs {
                 transactionReceiptFactory,
                 rentProcessor,
                 blockReward,
-                miningBeneficiaryCalculator) ->
+                miningBeneficiaryCalculator,
+                accountInit) ->
                 new DaoBlockProcessor(
                     new MainnetBlockProcessor(
                         transactionProcessor,
                         transactionReceiptFactory,
                         rentProcessor,
                         blockReward,
-                        miningBeneficiaryCalculator)))
+                        miningBeneficiaryCalculator,
+                        accountInit),
+                    accountInit))
         .name("DaoRecoveryInit");
   }
 
@@ -147,19 +156,21 @@ public abstract class MainnetProtocolSpecs {
     return tangerineWhistleDefinition()
         .gasCalculator(SpuriousDragonGasCalculator::new)
         .messageCallProcessorBuilder(
-            (evm, precompileContractRegistry) ->
+            (evm, precompileContractRegistry, accountInit) ->
                 new MainnetMessageCallProcessor(
                     evm,
                     precompileContractRegistry,
+                    accountInit,
                     SPURIOUS_DRAGON_FORCE_DELETE_WHEN_EMPTY_ADDRESSES))
         .contractCreationProcessorBuilder(
-            (gasCalculator, evm) ->
+            (gasCalculator, evm, accountInit) ->
                 new MainnetContractCreationProcessor(
                     gasCalculator,
                     evm,
                     true,
                     SPURIOUS_DRAGON_CONTRACT_SIZE_LIMIT,
                     1,
+                    accountInit,
                     SPURIOUS_DRAGON_FORCE_DELETE_WHEN_EMPTY_ADDRESSES))
         .transactionValidatorBuilder(
             gasCalculator -> new MainnetTransactionValidator(gasCalculator, true, chainId))
@@ -167,12 +178,14 @@ public abstract class MainnetProtocolSpecs {
             (gasCalculator,
                 transactionValidator,
                 contractCreationProcessor,
-                messageCallProcessor) ->
+                messageCallProcessor,
+                accountInit) ->
                 new MainnetTransactionProcessor(
                     gasCalculator,
                     transactionValidator,
                     contractCreationProcessor,
                     messageCallProcessor,
+                    accountInit,
                     true))
         .name("SpuriousDragon");
   }
@@ -226,9 +239,11 @@ public abstract class MainnetProtocolSpecs {
   private static class DaoBlockProcessor implements BlockProcessor {
 
     private final BlockProcessor wrapped;
+    private final AccountInit accountInit;
 
-    public DaoBlockProcessor(final BlockProcessor wrapped) {
+    public DaoBlockProcessor(final BlockProcessor wrapped, final AccountInit accountInit) {
       this.wrapped = wrapped;
+      this.accountInit = accountInit;
     }
 
     @Override
@@ -238,14 +253,15 @@ public abstract class MainnetProtocolSpecs {
         final BlockHeader blockHeader,
         final List<Transaction> transactions,
         final List<BlockHeader> ommers) {
-      updateWorldStateForDao(worldState);
+      updateWorldStateForDao(worldState, blockHeader.getNumber());
       return wrapped.processBlock(blockchain, worldState, blockHeader, transactions, ommers);
     }
 
     private static final Address DAO_REFUND_CONTRACT_ADDRESS =
         Address.fromHexString("0xbf4ed7b27f1d666546e30d74d50d173d20bca754");
 
-    private void updateWorldStateForDao(final MutableWorldState worldState) {
+    private void updateWorldStateForDao(
+        final MutableWorldState worldState, final long blockNumber) {
       try {
         final JsonArray json =
             new JsonArray(
@@ -258,9 +274,10 @@ public abstract class MainnetProtocolSpecs {
                 .collect(Collectors.toList());
         final WorldUpdater worldUpdater = worldState.updater();
         final MutableAccount daoRefundContract =
-            worldUpdater.getOrCreate(DAO_REFUND_CONTRACT_ADDRESS);
+            worldUpdater.getOrCreate(DAO_REFUND_CONTRACT_ADDRESS, accountInit, blockNumber);
         for (final Address address : addresses) {
-          final MutableAccount account = worldUpdater.getOrCreate(address);
+          final MutableAccount account =
+              worldUpdater.getOrCreate(address, accountInit, blockNumber);
           final Wei balance = account.getBalance();
           account.decrementBalance(balance);
           daoRefundContract.incrementBalance(balance);

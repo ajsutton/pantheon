@@ -24,6 +24,7 @@ import tech.pegasys.pantheon.ethereum.core.TransactionReceipt;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 
@@ -89,18 +90,21 @@ public class MainnetBlockProcessor implements BlockProcessor {
   private final Wei blockReward;
 
   private final MiningBeneficiaryCalculator miningBeneficiaryCalculator;
+  private final AccountInit accountInit;
 
   public MainnetBlockProcessor(
       final TransactionProcessor transactionProcessor,
       final TransactionReceiptFactory transactionReceiptFactory,
       final RentProcessor rentProcessor,
       final Wei blockReward,
-      final MiningBeneficiaryCalculator miningBeneficiaryCalculator) {
+      final MiningBeneficiaryCalculator miningBeneficiaryCalculator,
+      final AccountInit accountInit) {
     this.transactionProcessor = transactionProcessor;
     this.transactionReceiptFactory = transactionReceiptFactory;
     this.rentProcessor = rentProcessor;
     this.blockReward = blockReward;
     this.miningBeneficiaryCalculator = miningBeneficiaryCalculator;
+    this.accountInit = accountInit;
   }
 
   @Override
@@ -182,7 +186,8 @@ public class MainnetBlockProcessor implements BlockProcessor {
     }
     final Wei coinbaseReward = blockReward.plus(blockReward.times(ommers.size()).dividedBy(32));
     final WorldUpdater updater = worldState.updater();
-    final MutableAccount coinbase = updater.getOrCreate(miningBeneficiary);
+    final MutableAccount coinbase =
+        updater.getOrCreate(miningBeneficiary, accountInit, header.getNumber());
     modifiedAccounts.add(miningBeneficiary);
     coinbase.incrementBalance(coinbaseReward);
     for (final BlockHeader ommerHeader : ommers) {
@@ -198,7 +203,8 @@ public class MainnetBlockProcessor implements BlockProcessor {
       final Address ommerBeneficiary =
           miningBeneficiaryCalculator.calculateBeneficiary(ommerHeader);
       modifiedAccounts.add(ommerBeneficiary);
-      final MutableAccount ommerCoinbase = updater.getOrCreate(ommerBeneficiary);
+      final MutableAccount ommerCoinbase =
+          updater.getOrCreate(ommerBeneficiary, accountInit, header.getNumber());
       final long distance = header.getNumber() - ommerHeader.getNumber();
       final Wei ommerReward = blockReward.minus(blockReward.times(distance).dividedBy(8));
       ommerCoinbase.incrementBalance(ommerReward);

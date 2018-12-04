@@ -20,6 +20,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockBody;
 import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
 import tech.pegasys.pantheon.ethereum.core.ExecutionContextTestFixture;
 import tech.pegasys.pantheon.ethereum.core.MessageFrameTestFixture;
+import tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit;
 import tech.pegasys.pantheon.ethereum.vm.MessageFrame;
 import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
 import tech.pegasys.pantheon.services.kvstore.RocksDbKeyValueStorage;
@@ -104,7 +105,8 @@ public class OperationBenchmarkHelper {
         .isStatic(messageFrame.isStatic())
         .completer(messageFrame -> {})
         .miningBeneficiary(messageFrame.getMiningBeneficiary())
-        .blockHashLookup(messageFrame.getBlockHashLookup());
+        .blockHashLookup(messageFrame.getBlockHashLookup())
+        .accountInit(FrontierAccountInit.FRONTIER_ACCOUNT_INIT);
   }
 
   public void cleanUp() throws IOException {

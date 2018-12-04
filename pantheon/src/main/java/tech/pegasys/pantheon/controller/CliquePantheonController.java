@@ -123,7 +123,7 @@ public class CliquePantheonController implements PantheonController<CliqueContex
 
     final WorldStateStorage worldStateStorage = storageProvider.createWorldStateStorage();
     final WorldStateArchive worldStateArchive = new WorldStateArchive(worldStateStorage);
-    genesisState.writeStateTo(worldStateArchive.getMutable(Hash.EMPTY_TRIE_HASH));
+    genesisState.writeStateTo(worldStateArchive.getMutable(Hash.EMPTY_TRIE_HASH), protocolSchedule);
 
     final ProtocolContext<CliqueContext> protocolContext =
         new ProtocolContext<>(

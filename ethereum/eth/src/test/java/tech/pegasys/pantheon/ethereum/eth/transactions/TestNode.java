@@ -96,7 +96,7 @@ public class TestNode implements Closeable {
     final MutableBlockchain blockchain =
         createInMemoryBlockchain(genesisState.getBlock(), blockHashFunction);
     final WorldStateArchive worldStateArchive = createInMemoryWorldStateArchive();
-    genesisState.writeStateTo(worldStateArchive.getMutable());
+    genesisState.writeStateTo(worldStateArchive.getMutable(), protocolSchedule);
     final ProtocolContext<Void> protocolContext =
         new ProtocolContext<>(blockchain, worldStateArchive, null);
     final EthProtocolManager ethProtocolManager =

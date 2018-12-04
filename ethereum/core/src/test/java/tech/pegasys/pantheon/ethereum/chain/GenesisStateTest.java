@@ -19,6 +19,7 @@ import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.mainnet.MainnetProtocolSchedule;
+import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.rlp.BytesValueRLPOutput;
 import tech.pegasys.pantheon.ethereum.storage.keyvalue.KeyValueStorageWorldStateStorage;
 import tech.pegasys.pantheon.ethereum.worldstate.DefaultMutableWorldState;
@@ -42,10 +43,11 @@ public final class GenesisStateTest {
 
   @Test
   public void createFromJsonWithAllocs() throws Exception {
+    final ProtocolSchedule<Void> protocolSchedule = MainnetProtocolSchedule.create();
     final GenesisState genesisState =
         GenesisState.fromJson(
             Resources.toString(GenesisStateTest.class.getResource("genesis1.json"), Charsets.UTF_8),
-            MainnetProtocolSchedule.create());
+            protocolSchedule);
     final BlockHeader header = genesisState.getBlock().getHeader();
     assertThat(header.getStateRoot())
         .isEqualTo(
@@ -59,7 +61,7 @@ public final class GenesisStateTest {
     final DefaultMutableWorldState worldState =
         new DefaultMutableWorldState(
             new KeyValueStorageWorldStateStorage(new InMemoryKeyValueStorage()));
-    genesisState.writeStateTo(worldState);
+    genesisState.writeStateTo(worldState, protocolSchedule);
     final Account first =
         worldState.get(Address.fromHexString("0x0000000000000000000000000000000000000001"));
     final Account second =

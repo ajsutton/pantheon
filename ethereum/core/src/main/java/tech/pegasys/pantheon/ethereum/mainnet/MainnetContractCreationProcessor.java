@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Gas;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.vm.EVM;
 import tech.pegasys.pantheon.ethereum.vm.GasCalculator;
 import tech.pegasys.pantheon.ethereum.vm.MessageFrame;
@@ -37,6 +38,7 @@ public class MainnetContractCreationProcessor extends AbstractMessageProcessor {
   private final GasCalculator gasCalculator;
 
   private final long initialContractNonce;
+  private final AccountInit accountInit;
 
   private final int codeSizeLimit;
 
@@ -46,12 +48,14 @@ public class MainnetContractCreationProcessor extends AbstractMessageProcessor {
       final boolean requireCodeDepositToSucceed,
       final int codeSizeLimit,
       final long initialContractNonce,
+      final AccountInit accountInit,
       final Collection<Address> forceCommitAddresses) {
     super(evm, forceCommitAddresses);
     this.gasCalculator = gasCalculator;
     this.requireCodeDepositToSucceed = requireCodeDepositToSucceed;
     this.codeSizeLimit = codeSizeLimit;
     this.initialContractNonce = initialContractNonce;
+    this.accountInit = accountInit;
   }
 
   public MainnetContractCreationProcessor(
@@ -59,13 +63,15 @@ public class MainnetContractCreationProcessor extends AbstractMessageProcessor {
       final EVM evm,
       final boolean requireCodeDepositToSucceed,
       final int codeSizeLimit,
-      final long initialContractNonce) {
+      final long initialContractNonce,
+      final AccountInit accountInit) {
     this(
         gasCalculator,
         evm,
         requireCodeDepositToSucceed,
         codeSizeLimit,
         initialContractNonce,
+        accountInit,
         ImmutableSet.of());
   }
 
@@ -88,7 +94,11 @@ public class MainnetContractCreationProcessor extends AbstractMessageProcessor {
     final MutableAccount sender = frame.getWorldState().getMutable(frame.getSenderAddress());
     sender.decrementBalance(frame.getValue());
 
-    final MutableAccount contract = frame.getWorldState().getOrCreate(frame.getContractAddress());
+    final MutableAccount contract =
+        frame
+            .getWorldState()
+            .getOrCreate(
+                frame.getContractAddress(), accountInit, frame.getBlockHeader().getNumber());
     if (accountExists(contract)) {
       LOG.trace(
           "Contract creation error: account as already been created for address {}",
@@ -133,7 +143,10 @@ public class MainnetContractCreationProcessor extends AbstractMessageProcessor {
 
         // Finalize contract creation, setting the contract code.
         final MutableAccount contract =
-            frame.getWorldState().getOrCreate(frame.getContractAddress());
+            frame
+                .getWorldState()
+                .getOrCreate(
+                    frame.getContractAddress(), accountInit, frame.getBlockHeader().getNumber());
         contract.setCode(contractCode);
         LOG.trace(
             "Successful creation of contract {} with code of size {} (Gas remaining: {})",

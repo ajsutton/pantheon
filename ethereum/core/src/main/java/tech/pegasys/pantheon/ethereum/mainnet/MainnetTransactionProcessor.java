@@ -23,6 +23,7 @@ import tech.pegasys.pantheon.ethereum.core.Transaction;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionValidator.TransactionInvalidReason;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.vm.Code;
 import tech.pegasys.pantheon.ethereum.vm.GasCalculator;
@@ -120,6 +121,7 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
     }
   }
 
+  private final AccountInit accountInit;
   private final boolean clearEmptyAccounts;
 
   public MainnetTransactionProcessor(
@@ -127,11 +129,13 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
       final TransactionValidator transactionValidator,
       final AbstractMessageProcessor contractCreationProcessor,
       final AbstractMessageProcessor messageCallProcessor,
+      final AccountInit accountInit,
       final boolean clearEmptyAccounts) {
     this.gasCalculator = gasCalculator;
     this.transactionValidator = transactionValidator;
     this.contractCreationProcessor = contractCreationProcessor;
     this.messageCallProcessor = messageCallProcessor;
+    this.accountInit = accountInit;
     this.clearEmptyAccounts = clearEmptyAccounts;
   }
 
@@ -157,7 +161,8 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
     }
 
     final Address senderAddress = transaction.getSender();
-    final MutableAccount sender = worldState.getOrCreate(senderAddress);
+    final MutableAccount sender =
+        worldState.getOrCreate(senderAddress, accountInit, blockHeader.getNumber());
     validationResult =
         transactionValidator.validateForSender(transaction, sender, OptionalLong.empty());
     if (!validationResult.isValid()) {
@@ -214,6 +219,7 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
               .completer(c -> {})
               .miningBeneficiary(miningBenficiary)
               .blockHashLookup(blockHashLookup)
+              .accountInit(accountInit)
               .build();
 
     } else {
@@ -241,6 +247,7 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
               .completer(c -> {})
               .miningBeneficiary(miningBenficiary)
               .blockHashLookup(blockHashLookup)
+              .accountInit(accountInit)
               .build();
     }
 
@@ -270,7 +277,8 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
     final Wei refundedWei = refunded.priceFor(transaction.getGasPrice());
     sender.incrementBalance(refundedWei);
 
-    final MutableAccount coinbase = worldState.getOrCreate(miningBenficiary);
+    final MutableAccount coinbase =
+        worldState.getOrCreate(miningBenficiary, accountInit, blockHeader.getNumber());
     final Gas coinbaseFee = Gas.of(transaction.getGasLimit()).minus(refunded);
     final Wei coinbaseWei = coinbaseFee.priceFor(transaction.getGasPrice());
     coinbase.incrementBalance(coinbaseWei);

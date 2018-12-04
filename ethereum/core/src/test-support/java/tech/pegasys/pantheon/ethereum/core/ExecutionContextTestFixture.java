@@ -59,7 +59,8 @@ public class ExecutionContextTestFixture {
     this.protocolContext = new ProtocolContext<>(blockchain, stateArchive, null);
 
     genesisState.writeStateTo(
-        new DefaultMutableWorldState(new KeyValueStorageWorldStateStorage(keyValueStorage)));
+        new DefaultMutableWorldState(new KeyValueStorageWorldStateStorage(keyValueStorage)),
+        protocolSchedule);
   }
 
   public static ExecutionContextTestFixture create() {

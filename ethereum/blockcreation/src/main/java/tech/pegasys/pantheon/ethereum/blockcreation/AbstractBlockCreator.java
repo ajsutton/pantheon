@@ -32,6 +32,7 @@ import tech.pegasys.pantheon.ethereum.mainnet.MainnetBlockProcessor.TransactionR
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSpec;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
@@ -273,7 +274,10 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
     }
     final Wei coinbaseReward = blockReward.plus(blockReward.times(ommers.size()).dividedBy(32));
     final WorldUpdater updater = worldState.updater();
-    final MutableAccount beneficiary = updater.getOrCreate(miningBeneficiary);
+    final AccountInit accountInit =
+        protocolSchedule.getByBlockNumber(header.getNumber()).getAccountInit();
+    final MutableAccount beneficiary =
+        updater.getOrCreate(miningBeneficiary, accountInit, header.getNumber());
     modifiedAccounts.add(miningBeneficiary);
 
     beneficiary.incrementBalance(coinbaseReward);
@@ -287,7 +291,8 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
         return false;
       }
       modifiedAccounts.add(ommerHeader.getCoinbase());
-      final MutableAccount ommerCoinbase = updater.getOrCreate(ommerHeader.getCoinbase());
+      final MutableAccount ommerCoinbase =
+          updater.getOrCreate(ommerHeader.getCoinbase(), accountInit, header.getNumber());
       final long distance = header.getNumber() - ommerHeader.getNumber();
       final Wei ommerReward = blockReward.minus(blockReward.times(distance).dividedBy(8));
       ommerCoinbase.incrementBalance(ommerReward);

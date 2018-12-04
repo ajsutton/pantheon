@@ -22,6 +22,7 @@ import tech.pegasys.pantheon.ethereum.core.MutableWorldState;
 import tech.pegasys.pantheon.ethereum.core.Transaction;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
+import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSpec;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionProcessor;
 import tech.pegasys.pantheon.ethereum.rlp.RLP;
 import tech.pegasys.pantheon.ethereum.worldstate.DebuggableMutableWorldState;
@@ -38,11 +39,8 @@ public class GeneralStateReferenceTestTools {
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
 
-  private static TransactionProcessor transactionProcessor(final String name) {
-    return REFERENCE_TEST_PROTOCOL_SCHEDULES
-        .getByName(name)
-        .getByBlockNumber(0)
-        .getTransactionProcessor();
+  private static ProtocolSpec<Void> protocolSpec(final String name) {
+    return REFERENCE_TEST_PROTOCOL_SCHEDULES.getByName(name).getByBlockNumber(0);
   }
 
   private static final List<String> EIPS_TO_RUN;
@@ -105,7 +103,8 @@ public class GeneralStateReferenceTestTools {
       return;
     }
 
-    final TransactionProcessor processor = transactionProcessor(spec.eip());
+    final ProtocolSpec<Void> protocolSpec = protocolSpec(spec.eip());
+    final TransactionProcessor processor = protocolSpec.getTransactionProcessor();
     final WorldUpdater worldStateUpdater = worldState.updater();
     final TestBlockchain blockchain = new TestBlockchain(blockHeader.getNumber());
     final TransactionProcessor.Result result =
@@ -116,7 +115,11 @@ public class GeneralStateReferenceTestTools {
             transaction,
             blockHeader.getCoinbase(),
             new BlockHashLookup(blockHeader, blockchain));
-    final Account coinbase = worldStateUpdater.getOrCreate(spec.blockHeader().getCoinbase());
+    final Account coinbase =
+        worldStateUpdater.getOrCreate(
+            spec.blockHeader().getCoinbase(),
+            protocolSpec.getAccountInit(),
+            blockHeader.getNumber());
     if (coinbase != null && coinbase.isEmpty() && shouldClearEmptyAccounts(spec.eip())) {
       worldStateUpdater.deleteAccount(coinbase.getAddress());
     }

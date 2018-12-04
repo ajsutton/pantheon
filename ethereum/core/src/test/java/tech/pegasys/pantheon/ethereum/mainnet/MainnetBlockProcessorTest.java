@@ -16,6 +16,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static tech.pegasys.pantheon.ethereum.mainnet.account.FrontierAccountInit.FRONTIER_ACCOUNT_INIT;
 
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
@@ -43,7 +44,8 @@ public class MainnetBlockProcessorTest {
           transactionReceiptFactory,
           rentProcessor,
           Wei.ZERO,
-          BlockHeader::getCoinbase);
+          BlockHeader::getCoinbase,
+          FRONTIER_ACCOUNT_INIT);
 
   @Test
   public void noAccountCreatedWhenBlockRewardIsZero() {

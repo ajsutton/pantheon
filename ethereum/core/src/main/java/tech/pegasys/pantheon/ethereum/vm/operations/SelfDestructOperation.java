@@ -51,7 +51,12 @@ public class SelfDestructOperation extends AbstractOperation {
     frame.addSelfDestruct(address);
 
     final MutableAccount recipient =
-        frame.getWorldState().getOrCreate(Words.toAddress(frame.popStackItem()));
+        frame
+            .getWorldState()
+            .getOrCreate(
+                Words.toAddress(frame.popStackItem()),
+                frame.getAccountInit(),
+                frame.getBlockHeader().getNumber());
 
     recipient.incrementBalance(account.getBalance());
     account.setBalance(Wei.ZERO);
