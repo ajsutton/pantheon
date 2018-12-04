@@ -28,31 +28,11 @@ public interface WorldUpdater extends MutableWorldView {
    * Creates a new account, or reset it (that is, act as if it was deleted and created anew) if it
    * already exists.
    *
-   * <p>After this call, the account will exists and will have the provided nonce and balance. His
-   * code and storage will be empty.
-   *
-   * @param address the address of the account to create (or reset).
-   * @param nonce the nonce for created/reset account.
-   * @param balance the balance for created/reset account.
-   * @return the account {@code address}, which will have nonce {@code nonce}, balance {@code
-   *     balance} and empty code and storage.
-   */
-  MutableAccount createAccount(Address address, long nonce, Wei balance);
-
-  /**
-   * Creates a new account, or reset it (that is, act as if it was deleted and created anew) if it
-   * already exists.
-   *
-   * <p>This call is equivalent to {@link #createAccount(Address, long, Wei)} but defaults both the
-   * nonce and balance to zero.
-   *
    * @param address the address of the account to create (or reset).
    * @return the account {@code address}, which will have 0 for the nonce and balance and empty code
    *     and storage.
    */
-  default MutableAccount createAccount(final Address address) {
-    return createAccount(address, 0L, Wei.ZERO);
-  }
+  MutableAccount createAccount(final Address address);
 
   /**
    * Retrieves the provided account if it exists, or create it if it doesn't.

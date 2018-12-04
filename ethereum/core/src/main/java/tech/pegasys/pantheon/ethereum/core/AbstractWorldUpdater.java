@@ -58,10 +58,8 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
   }
 
   @Override
-  public MutableAccount createAccount(final Address address, final long nonce, final Wei balance) {
+  public MutableAccount createAccount(final Address address) {
     final UpdateTrackingAccount<A> account = new UpdateTrackingAccount<>(address);
-    account.setNonce(nonce);
-    account.setBalance(balance);
     return track(account);
   }
 
