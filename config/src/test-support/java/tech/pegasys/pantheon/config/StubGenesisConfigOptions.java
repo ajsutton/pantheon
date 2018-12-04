@@ -91,7 +91,12 @@ public class StubGenesisConfigOptions implements GenesisConfigOptions {
   }
 
   @Override
-  public OptionalLong getStateRentBlockNumber() {
+  public OptionalLong getStateRentOwnedAccountsBlockNumber() {
+    return OptionalLong.empty();
+  }
+
+  @Override
+  public OptionalLong getStateRentNewStorageBlockNumber() {
     return OptionalLong.empty();
   }
 

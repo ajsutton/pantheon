@@ -197,12 +197,18 @@ public abstract class MainnetProtocolSpecs {
         .name("Constantinople");
   }
 
-  public static ProtocolSpecBuilder<Void> stateRentDefinition(
+  public static ProtocolSpecBuilder<Void> stateRentOwnedAccountsDefinition(
       final int chainId, final long rentEnabledBlockNumber) {
     return constantinopleDefinition(chainId)
         .rentCost(Wei.fromGwei(2))
         .rentProcessor(rentCost -> new ActiveRentProcessor(rentCost, rentEnabledBlockNumber))
-        .name("StateRent");
+        .name("StateRentOwnedAccounts");
+  }
+
+  public static ProtocolSpecBuilder<Void> stateRentNewStorageDefinition(
+      final int chainId, final long rentEnabledBlockNumber) {
+    return stateRentOwnedAccountsDefinition(chainId, rentEnabledBlockNumber)
+        .name("StateRentNewStorage");
   }
 
   private static TransactionReceipt frontierTransactionReceiptFactory(

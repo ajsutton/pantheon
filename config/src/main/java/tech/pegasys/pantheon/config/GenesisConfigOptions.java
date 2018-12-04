@@ -43,7 +43,9 @@ public interface GenesisConfigOptions {
 
   OptionalLong getConstantinopleBlockNumber();
 
-  OptionalLong getStateRentBlockNumber();
+  OptionalLong getStateRentOwnedAccountsBlockNumber();
+
+  OptionalLong getStateRentNewStorageBlockNumber();
 
   OptionalInt getChainId();
 }

@@ -101,8 +101,13 @@ public class JsonGenesisConfigOptions implements GenesisConfigOptions {
   }
 
   @Override
-  public OptionalLong getStateRentBlockNumber() {
-    return getOptionalLong("staterentblock");
+  public OptionalLong getStateRentOwnedAccountsBlockNumber() {
+    return getOptionalLong("staterentownedaccountsblock");
+  }
+
+  @Override
+  public OptionalLong getStateRentNewStorageBlockNumber() {
+    return getOptionalLong("staterentnewstorageblock");
   }
 
   @Override

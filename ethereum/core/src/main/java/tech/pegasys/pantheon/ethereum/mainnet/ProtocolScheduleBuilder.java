@@ -80,11 +80,17 @@ public class ProtocolScheduleBuilder<C> {
         protocolSchedule,
         config.getConstantinopleBlockNumber(),
         MainnetProtocolSpecs.constantinopleDefinition(chainId));
+
+    final long rentEnabledBlockNumber = config.getStateRentOwnedAccountsBlockNumber().orElse(0);
     addProtocolSpec(
         protocolSchedule,
-        config.getStateRentBlockNumber(),
-        activationBlockNumber ->
-            MainnetProtocolSpecs.stateRentDefinition(chainId, activationBlockNumber));
+        config.getStateRentOwnedAccountsBlockNumber(),
+        MainnetProtocolSpecs.stateRentOwnedAccountsDefinition(chainId, rentEnabledBlockNumber));
+    addProtocolSpec(
+        protocolSchedule,
+        config.getStateRentNewStorageBlockNumber(),
+        MainnetProtocolSpecs.stateRentNewStorageDefinition(chainId, rentEnabledBlockNumber));
+
     return protocolSchedule;
   }
 
@@ -92,19 +98,14 @@ public class ProtocolScheduleBuilder<C> {
       final MutableProtocolSchedule<C> protocolSchedule,
       final OptionalLong blockNumber,
       final ProtocolSpecBuilder<Void> definition) {
-    addProtocolSpec(protocolSchedule, blockNumber, number -> definition);
+    blockNumber.ifPresent(number -> addProtocolSpec(protocolSchedule, number, definition));
   }
 
   private void addProtocolSpec(
       final MutableProtocolSchedule<C> protocolSchedule,
-      final OptionalLong blockNumber,
-      final Function<Long, ProtocolSpecBuilder<Void>> definitionSupplier) {
-    blockNumber.ifPresent(
-        number ->
-            protocolSchedule.putMilestone(
-                number,
-                protocolSpecAdapter
-                    .apply(definitionSupplier.apply(number))
-                    .build(protocolSchedule)));
+      final long number,
+      final ProtocolSpecBuilder<Void> definition) {
+    protocolSchedule.putMilestone(
+        number, protocolSpecAdapter.apply(definition).build(protocolSchedule));
   }
 }
