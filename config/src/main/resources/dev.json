@@ -8,8 +8,8 @@
     "eip158Block": 0,
     "byzantiumBlock": 0,
     "constantinopleBlock": 0,
-    "stateRentOwnedAccountsBlock": 0,
-    "stateRentNewStorageBlock": 0,
+    "stateRentOwnedAccountsBlock": 10,
+    "stateRentNewStorageBlock": 20,
     "ethash": {
     }
   },
