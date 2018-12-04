@@ -20,6 +20,8 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries
 
 import java.math.BigInteger;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+
 public class EthGetRentBalance extends AbstractBlockParameterMethod {
 
   public EthGetRentBalance(final BlockchainQueries blockchain, final JsonRpcParameter parameters) {
@@ -37,11 +39,31 @@ public class EthGetRentBalance extends AbstractBlockParameterMethod {
   }
 
   @Override
-  protected String resultByBlockNumber(final JsonRpcRequest request, final long blockNumber) {
+  protected RentInfo resultByBlockNumber(final JsonRpcRequest request, final long blockNumber) {
     final Address address = parameters().required(request.getParams(), 0, Address.class);
     return blockchainQueries()
-        .getRentBalance(address, blockNumber)
-        .map(BigInteger::toString)
+        .getAccount(address, blockNumber)
+        .map(account -> new RentInfo(account.getRentBalance(), account.getStorageSize()))
         .orElse(null);
+  }
+
+  private static class RentInfo {
+    private final String rentBalance;
+    private final String storageSize;
+
+    private RentInfo(final BigInteger rentBalance, final BigInteger storageSize) {
+      this.rentBalance = rentBalance.toString();
+      this.storageSize = storageSize != null ? storageSize.toString() : null;
+    }
+
+    @JsonGetter(value = "rentBalance")
+    public String getRentBalance() {
+      return rentBalance;
+    }
+
+    @JsonGetter(value = "storageSize")
+    public String getStorageSize() {
+      return storageSize;
+    }
   }
 }

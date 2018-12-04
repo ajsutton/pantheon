@@ -116,4 +116,8 @@ public interface MutableAccount extends Account {
    * @return a map of storage that has been modified.
    */
   Map<UInt256, UInt256> getUpdatedStorage();
+
+  void adjustStorageSize(int adjustmentAmount);
+
+  void setStorageSize(BigInteger storageSize);
 }

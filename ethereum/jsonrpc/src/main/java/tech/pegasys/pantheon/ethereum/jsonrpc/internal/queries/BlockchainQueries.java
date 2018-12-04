@@ -128,6 +128,16 @@ public class BlockchainQueries {
         getAccount(address, blockNumber).map(Account::getRentBalance).orElse(BigInteger.ZERO));
   }
 
+  public Optional<Account> getAccount(final Address address, final long blockNumber) {
+    if (!withinValidRange(blockNumber)) {
+      return Optional.empty();
+    }
+    return blockchain
+        .getBlockHeader(blockNumber)
+        .map(header -> worldStateArchive.get(header.getStateRoot()))
+        .map(worldState -> worldState.get(address));
+  }
+
   /**
    * Retrieves the code associated with the given account at a particular block number.
    *
@@ -610,12 +620,5 @@ public class BlockchainQueries {
 
   private boolean withinValidRange(final long blockNumber) {
     return blockNumber <= headBlockNumber() && blockNumber >= BlockHeader.GENESIS_BLOCK_NUMBER;
-  }
-
-  private Optional<Account> getAccount(final Address address, final long blockNumber) {
-    return blockchain
-        .getBlockHeader(blockNumber)
-        .map(header -> worldStateArchive.get(header.getStateRoot()))
-        .map(worldState -> worldState.get(address));
   }
 }

@@ -102,18 +102,16 @@ public abstract class MainnetEvmRegistries {
 
   private interface OperationFactory extends Function<GasCalculator, Operation> {}
 
-  private static final List<OperationFactory> FRONTIER_OPERATION_FACTORIES;
-  private static final List<OperationFactory> HOMESTEAD_OPERATION_FACTORIES;
-  private static final List<OperationFactory> BYZANTIUM_OPERATION_FACTORIES;
-  private static final List<OperationFactory> CONSTANTINOPLE_OPERATION_FACTORIES;
-
-  static {
-    FRONTIER_OPERATION_FACTORIES = buildFrontierFactories();
-    HOMESTEAD_OPERATION_FACTORIES = buildHomesteadFactories(FRONTIER_OPERATION_FACTORIES);
-    BYZANTIUM_OPERATION_FACTORIES = buildByzantiumFactories(HOMESTEAD_OPERATION_FACTORIES);
-    CONSTANTINOPLE_OPERATION_FACTORIES =
-        buildConstantinopleFactories(BYZANTIUM_OPERATION_FACTORIES);
-  }
+  private static final List<OperationFactory> FRONTIER_OPERATION_FACTORIES =
+      buildFrontierFactories();
+  private static final List<OperationFactory> HOMESTEAD_OPERATION_FACTORIES =
+      buildHomesteadFactories();
+  private static final List<OperationFactory> BYZANTIUM_OPERATION_FACTORIES =
+      buildByzantiumFactories();
+  private static final List<OperationFactory> CONSTANTINOPLE_OPERATION_FACTORIES =
+      buildConstantinopleFactories();
+  private static final List<OperationFactory> STATE_RENT_NEW_STORAGE =
+      buildStateRentNewStorageFactories();
 
   private static EVM createAndPopulate(
       final List<OperationFactory> factories, final GasCalculator gasCalculator) {
@@ -141,6 +139,10 @@ public abstract class MainnetEvmRegistries {
 
   public static EVM constantinople(final GasCalculator gasCalculator) {
     return createAndPopulate(CONSTANTINOPLE_OPERATION_FACTORIES, gasCalculator);
+  }
+
+  public static EVM stateRentNewStorage(final GasCalculator gasCalculator) {
+    return createAndPopulate(STATE_RENT_NEW_STORAGE, gasCalculator);
   }
 
   private static List<OperationFactory> buildFrontierFactories() {
@@ -194,7 +196,7 @@ public abstract class MainnetEvmRegistries {
     builder.add(MStoreOperation::new);
     builder.add(MStore8Operation::new);
     builder.add(SLoadOperation::new);
-    builder.add(SStoreOperation::new);
+    builder.add(gasCalculator -> new SStoreOperation(gasCalculator, false));
     builder.add(JumpOperation::new);
     builder.add(JumpiOperation::new);
     builder.add(PCOperation::new);
@@ -236,21 +238,19 @@ public abstract class MainnetEvmRegistries {
     return builder.build();
   }
 
-  private static List<OperationFactory> buildHomesteadFactories(
-      final List<OperationFactory> factories) {
+  private static List<OperationFactory> buildHomesteadFactories() {
     final ImmutableList.Builder<OperationFactory> builder = ImmutableList.builder();
 
-    builder.addAll(factories);
+    builder.addAll(MainnetEvmRegistries.FRONTIER_OPERATION_FACTORIES);
     builder.add(DelegateCallOperation::new);
 
     return builder.build();
   }
 
-  private static List<OperationFactory> buildByzantiumFactories(
-      final List<OperationFactory> factories) {
+  private static List<OperationFactory> buildByzantiumFactories() {
     final ImmutableList.Builder<OperationFactory> builder = ImmutableList.builder();
 
-    builder.addAll(factories);
+    builder.addAll(MainnetEvmRegistries.HOMESTEAD_OPERATION_FACTORIES);
     builder.add(ReturnDataCopyOperation::new);
     builder.add(ReturnDataSizeOperation::new);
     builder.add(RevertOperation::new);
@@ -259,18 +259,26 @@ public abstract class MainnetEvmRegistries {
     return builder.build();
   }
 
-  private static List<OperationFactory> buildConstantinopleFactories(
-      final List<OperationFactory> factories) {
+  private static List<OperationFactory> buildConstantinopleFactories() {
 
     final ImmutableList.Builder<OperationFactory> builder = ImmutableList.builder();
 
-    builder.addAll(factories);
+    builder.addAll(MainnetEvmRegistries.BYZANTIUM_OPERATION_FACTORIES);
     builder.add(Create2Operation::new);
     builder.add(SarOperation::new);
     builder.add(ShlOperation::new);
     builder.add(ShrOperation::new);
     builder.add(ExtCodeHashOperation::new);
 
+    return builder.build();
+  }
+
+  private static List<OperationFactory> buildStateRentNewStorageFactories() {
+
+    final ImmutableList.Builder<OperationFactory> builder = ImmutableList.builder();
+
+    builder.addAll(MainnetEvmRegistries.CONSTANTINOPLE_OPERATION_FACTORIES);
+    builder.add(gasCalculator -> new SStoreOperation(gasCalculator, true));
     return builder.build();
   }
 }

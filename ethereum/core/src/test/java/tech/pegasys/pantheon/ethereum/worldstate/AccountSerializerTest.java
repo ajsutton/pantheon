@@ -38,6 +38,7 @@ public class AccountSerializerTest {
             Wei.of(99283),
             BigInteger.valueOf(11313),
             1993,
+            null,
             Hash.EMPTY_TRIE_HASH,
             Hash.EMPTY);
 
@@ -58,6 +59,7 @@ public class AccountSerializerTest {
             Wei.of(99283),
             BigInteger.ZERO,
             Account.NO_RENT_BLOCK,
+            null,
             Hash.EMPTY_TRIE_HASH,
             Hash.EMPTY);
 
@@ -69,6 +71,53 @@ public class AccountSerializerTest {
     assertThat(output).isEqualToComparingFieldByField(input);
   }
 
+  @Test
+  public void shouldRoundTripAccountWithStorageSizeButNoRentBlock() {
+    final TestAccountState input =
+        new TestAccountState(
+            AddressHelpers.ofValue(424824),
+            42424,
+            Wei.of(99283),
+            BigInteger.ZERO,
+            Account.NO_RENT_BLOCK,
+            BigInteger.valueOf(103),
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY);
+    final TestAccountState expected =
+        new TestAccountState(
+            AddressHelpers.ofValue(424824),
+            42424,
+            Wei.of(99283),
+            BigInteger.ZERO,
+            0,
+            BigInteger.valueOf(103),
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY);
+
+    final BytesValue serialized = input.serialize(serializer);
+
+    final TestAccountState output =
+        serializer.deserializeAccount(input.address, input.addressHash, serialized);
+
+    assertThat(output).isEqualToComparingFieldByField(expected);
+  }
+
+  @Test
+  public void shouldUseExpectedNumberOfBytesForEmptyAccount() {
+    final TestAccountState emptyAccount =
+        new TestAccountState(
+            Address.ECREC,
+            0,
+            Wei.ZERO,
+            BigInteger.ZERO,
+            0,
+            BigInteger.ZERO,
+            Hash.EMPTY_TRIE_HASH,
+            Hash.EMPTY);
+    final BytesValue result = emptyAccount.serialize(serializer);
+    assertThat(result.size()).isEqualTo(Account.EMPTY_ACCOUNT_STORAGE_SIZE.intValue());
+  }
+
   private static class TestAccountState {
     private final Address address;
     private final Hash addressHash;
@@ -78,6 +127,7 @@ public class AccountSerializerTest {
     private final long rentBlock;
     private final Hash storageRoot;
     private final Hash codeHash;
+    private final BigInteger storageSize;
 
     private TestAccountState(
         final Address address,
@@ -85,6 +135,7 @@ public class AccountSerializerTest {
         final Wei balance,
         final BigInteger rentBalance,
         final long rentBlock,
+        final BigInteger storageSize,
         final Hash storageRoot,
         final Hash codeHash) {
       this(
@@ -94,6 +145,7 @@ public class AccountSerializerTest {
           balance,
           rentBalance,
           rentBlock,
+          storageSize,
           storageRoot,
           codeHash);
     }
@@ -105,6 +157,7 @@ public class AccountSerializerTest {
         final Wei balance,
         final BigInteger rentBalance,
         final long rentBlock,
+        final BigInteger storageSize,
         final Hash storageRoot,
         final Hash codeHash) {
       this.address = address;
@@ -113,13 +166,14 @@ public class AccountSerializerTest {
       this.balance = balance;
       this.rentBalance = rentBalance;
       this.rentBlock = rentBlock;
+      this.storageSize = storageSize;
       this.storageRoot = storageRoot;
       this.codeHash = codeHash;
     }
 
     public BytesValue serialize(final AccountSerializer<?> serializer) {
       return serializer.serializeAccount(
-          nonce, balance, codeHash, storageRoot, rentBalance, rentBlock);
+          nonce, balance, codeHash, storageRoot, rentBalance, rentBlock, storageSize);
     }
   }
 }

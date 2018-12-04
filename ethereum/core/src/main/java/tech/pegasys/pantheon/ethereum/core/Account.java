@@ -41,6 +41,10 @@ public interface Account {
   // account and get rid of this hack
   long NEW_ACCOUNT_RENT_BLOCK = -2;
 
+  // Number of bytes required to serialize a new account including rent balance, rent block and
+  // storage size.
+  BigInteger EMPTY_ACCOUNT_STORAGE_SIZE = BigInteger.valueOf(73);
+
   /**
    * The Keccak-256 hash of the account address.
    *
@@ -90,6 +94,8 @@ public interface Account {
    * @return the rent block of the account.
    */
   long getRentBlock();
+
+  BigInteger getStorageSize();
 
   /**
    * The EVM bytecode associated with this account.

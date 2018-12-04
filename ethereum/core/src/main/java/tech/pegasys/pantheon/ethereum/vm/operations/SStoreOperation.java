@@ -27,8 +27,11 @@ import java.util.Optional;
 
 public class SStoreOperation extends AbstractOperation {
 
-  public SStoreOperation(final GasCalculator gasCalculator) {
+  private final boolean adjustStorageSize;
+
+  public SStoreOperation(final GasCalculator gasCalculator, final boolean adjustStorageSize) {
     super(0x55, "SSTORE", 2, 0, false, 1, gasCalculator);
+    this.adjustStorageSize = adjustStorageSize;
   }
 
   @Override
@@ -51,6 +54,13 @@ public class SStoreOperation extends AbstractOperation {
     // Increment the refund counter.
     frame.incrementGasRefund(gasCalculator().calculateStorageRefundAmount(account, key, value));
 
+    if (adjustStorageSize && account.getStorageValue(key).isZero() != value.isZero()) {
+      if (value.isZero()) {
+        account.adjustStorageSize(-UInt256.SIZE);
+      } else {
+        account.adjustStorageSize(UInt256.SIZE);
+      }
+    }
     account.setStorageValue(key.copy(), value.copy());
   }
 

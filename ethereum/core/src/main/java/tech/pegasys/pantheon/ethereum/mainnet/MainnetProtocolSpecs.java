@@ -209,6 +209,7 @@ public abstract class MainnetProtocolSpecs {
       final int chainId, final long rentEnabledBlockNumber) {
     return stateRentOwnedAccountsDefinition(chainId, rentEnabledBlockNumber)
         .gasCalculator(StateRentNewStorageGasCalculator::new)
+        .evmBuilder(MainnetEvmRegistries::stateRentNewStorage)
         .name("StateRentNewStorage");
   }
 

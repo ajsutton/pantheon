@@ -50,10 +50,25 @@ public class AccountSerializer<T> {
       rentBlock = Account.NO_RENT_BLOCK;
     }
 
+    final BigInteger storageSize;
+    if (!in.isEndOfCurrentList()) {
+      storageSize = new BigInteger(in.readBytesValue().getArrayUnsafe());
+    } else {
+      storageSize = null;
+    }
+
     in.leaveList();
 
     return accountStateConstructor.create(
-        address, addressHash, nonce, balance, rentBalance, rentBlock, storageRoot, codeHash);
+        address,
+        addressHash,
+        nonce,
+        balance,
+        rentBalance,
+        rentBlock,
+        storageSize,
+        storageRoot,
+        codeHash);
   }
 
   public BytesValue serializeAccount(
@@ -62,7 +77,8 @@ public class AccountSerializer<T> {
       final Hash codeHash,
       final Hash storageRoot,
       final BigInteger rentBalance,
-      final long rentBlock) {
+      final long rentBlock,
+      final BigInteger storageSize) {
     return RLP.encode(
         out -> {
           out.startList();
@@ -71,9 +87,16 @@ public class AccountSerializer<T> {
           out.writeUInt256Scalar(balance);
           out.writeBytesValue(storageRoot);
           out.writeBytesValue(codeHash);
-          if (rentBlock != Account.NO_RENT_BLOCK && rentBlock != Account.NEW_ACCOUNT_RENT_BLOCK) {
+          final boolean hasRentBlock =
+              rentBlock != Account.NO_RENT_BLOCK && rentBlock != Account.NEW_ACCOUNT_RENT_BLOCK;
+          final boolean hasStorageSize = storageSize != null;
+          if (hasRentBlock || hasStorageSize) {
             out.writeBytesValue(BytesValue.wrap(rentBalance.toByteArray()));
-            out.writeLongScalar(rentBlock);
+            out.writeLongScalar(hasRentBlock ? rentBlock : 0);
+          }
+
+          if (hasStorageSize) {
+            out.writeBytesValue(BytesValue.wrap(storageSize.toByteArray()));
           }
 
           out.endList();
@@ -88,6 +111,7 @@ public class AccountSerializer<T> {
         final Wei balance,
         final BigInteger rentBalance,
         final long rentBlock,
+        final BigInteger storageSize,
         final Hash storageRoot,
         final Hash codeHash);
   }

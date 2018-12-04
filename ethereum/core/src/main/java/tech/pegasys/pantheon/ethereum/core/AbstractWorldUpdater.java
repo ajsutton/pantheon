@@ -166,6 +166,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     private Wei balance;
     private BigInteger rentBalance;
     private long rentBlock;
+    private BigInteger storageSize;
 
     @Nullable private BytesValue updatedCode; // Null if the underlying code has not been updated.
     @Nullable private Hash updatedCodeHash;
@@ -184,6 +185,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
       this.balance = Wei.ZERO;
       this.rentBalance = BigInteger.ZERO;
       this.rentBlock = NEW_ACCOUNT_RENT_BLOCK;
+      this.storageSize = null;
 
       this.updatedCode = BytesValue.EMPTY;
       this.updatedStorage = new TreeMap<>();
@@ -199,6 +201,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
       this.balance = account.getBalance();
       this.rentBalance = account.getRentBalance();
       this.rentBlock = account.getRentBlock();
+      this.storageSize = account.getStorageSize();
 
       this.updatedStorage = new TreeMap<>();
     }
@@ -231,6 +234,18 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     @Override
     public SortedMap<UInt256, UInt256> getUpdatedStorage() {
       return updatedStorage;
+    }
+
+    @Override
+    public void adjustStorageSize(final int adjustmentAmount) {
+      final BigInteger currentStorageSize =
+          storageSize != null ? storageSize : Account.EMPTY_ACCOUNT_STORAGE_SIZE;
+      this.storageSize = currentStorageSize.add(BigInteger.valueOf(adjustmentAmount));
+    }
+
+    @Override
+    public void setStorageSize(final BigInteger storageSize) {
+      this.storageSize = storageSize;
     }
 
     @Override
@@ -271,6 +286,11 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     @Override
     public long getRentBlock() {
       return rentBlock;
+    }
+
+    @Override
+    public BigInteger getStorageSize() {
+      return storageSize;
     }
 
     @Override
@@ -450,6 +470,9 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
         }
         existing.setNonce(update.getNonce());
         existing.setBalance(update.getBalance());
+        existing.setRentBalance(update.getRentBalance());
+        existing.setRentBlock(update.getRentBlock());
+        existing.setStorageSize(update.getStorageSize());
         if (update.codeWasUpdated()) {
           existing.setCode(update.getCode());
         }

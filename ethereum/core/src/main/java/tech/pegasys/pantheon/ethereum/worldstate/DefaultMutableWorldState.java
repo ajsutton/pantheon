@@ -169,6 +169,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
     private final long nonce;
     private final Wei balance;
+    private final BigInteger storageSize;
     private final Hash storageRoot;
     private final Hash codeHash;
     private final BigInteger rentBalance;
@@ -184,6 +185,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
         final Wei balance,
         final BigInteger rentBalance,
         final long rentBlock,
+        final BigInteger storageSize,
         final Hash storageRoot,
         final Hash codeHash) {
 
@@ -193,6 +195,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
       this.balance = balance;
       this.rentBalance = rentBalance;
       this.rentBlock = rentBlock;
+      this.storageSize = storageSize;
       this.storageRoot = storageRoot;
       this.codeHash = codeHash;
     }
@@ -236,6 +239,11 @@ public class DefaultMutableWorldState implements MutableWorldState {
     @Override
     public long getRentBlock() {
       return rentBlock;
+    }
+
+    @Override
+    public BigInteger getStorageSize() {
+      return storageSize;
     }
 
     @Override
@@ -389,7 +397,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
                 codeHash,
                 storageRoot,
                 updated.getRentBalance(),
-                updated.getRentBlock());
+                updated.getRentBlock(),
+                updated.getStorageSize());
 
         wrapped.accountStateTrie.put(updated.getAddressHash(), account);
       }

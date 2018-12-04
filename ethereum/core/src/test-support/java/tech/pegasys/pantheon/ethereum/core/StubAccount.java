@@ -27,6 +27,7 @@ public class StubAccount implements MutableAccount {
   private Wei balance = Wei.ZERO;
   private BigInteger rentBalance = BigInteger.ZERO;
   private long rentBlock = NO_RENT_BLOCK;
+  private BigInteger storageSize = BigInteger.ZERO;
   private BytesValue code = BytesValue.EMPTY;
   private final Map<UInt256, UInt256> storage = new HashMap<>();
   private final Address address;
@@ -77,6 +78,21 @@ public class StubAccount implements MutableAccount {
   @Override
   public long getRentBlock() {
     return rentBlock;
+  }
+
+  @Override
+  public BigInteger getStorageSize() {
+    return storageSize;
+  }
+
+  @Override
+  public void adjustStorageSize(final int adjustmentAmount) {
+    storageSize = storageSize.add(BigInteger.valueOf(adjustmentAmount));
+  }
+
+  @Override
+  public void setStorageSize(final BigInteger storageSize) {
+    this.storageSize = storageSize;
   }
 
   @Override
