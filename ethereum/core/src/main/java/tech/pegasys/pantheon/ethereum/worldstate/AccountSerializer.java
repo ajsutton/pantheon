@@ -87,8 +87,7 @@ public class AccountSerializer<T> {
           out.writeUInt256Scalar(balance);
           out.writeBytesValue(storageRoot);
           out.writeBytesValue(codeHash);
-          final boolean hasRentBlock =
-              rentBlock != Account.NO_RENT_BLOCK && rentBlock != Account.NEW_ACCOUNT_RENT_BLOCK;
+          final boolean hasRentBlock = rentBlock != Account.NO_RENT_BLOCK;
           final boolean hasStorageSize = storageSize != null;
           if (hasRentBlock || hasStorageSize) {
             out.writeBytesValue(BytesValue.wrap(rentBalance.toByteArray()));

@@ -37,10 +37,6 @@ public class ActiveRentProcessor implements RentProcessor {
     if (account.hasCode()) {
       return;
     }
-    if (account.getRentBlock() == Account.NEW_ACCOUNT_RENT_BLOCK) {
-      account.setRentBlock(currentBlockNumber);
-      return;
-    }
     final BigInteger rentDue = calculateRentDue(account, currentBlockNumber);
     LOG.debug(
         "Charging {} wei in rent for {} since {}",

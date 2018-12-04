@@ -185,7 +185,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
       this.nonce = 0;
       this.balance = Wei.ZERO;
       this.rentBalance = BigInteger.ZERO;
-      this.rentBlock = NEW_ACCOUNT_RENT_BLOCK;
+      this.rentBlock = NO_RENT_BLOCK;
       this.storageSize = null;
 
       this.updatedCode = BytesValue.EMPTY;
