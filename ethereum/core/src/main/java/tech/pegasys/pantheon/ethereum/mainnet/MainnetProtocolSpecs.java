@@ -208,6 +208,7 @@ public abstract class MainnetProtocolSpecs {
   public static ProtocolSpecBuilder<Void> stateRentNewStorageDefinition(
       final int chainId, final long rentEnabledBlockNumber) {
     return stateRentOwnedAccountsDefinition(chainId, rentEnabledBlockNumber)
+        .gasCalculator(StateRentNewStorageGasCalculator::new)
         .name("StateRentNewStorage");
   }
 
