@@ -12,6 +12,7 @@
  */
 package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 
 public class InactiveRentProcessor implements RentProcessor {
@@ -20,7 +21,12 @@ public class InactiveRentProcessor implements RentProcessor {
   public void chargeRent(final MutableAccount account, final long currentBlockNumber) {}
 
   @Override
-  public boolean isRentCharged() {
+  public boolean isRentEnabled() {
+    return false;
+  }
+
+  @Override
+  public boolean isEligibleForEviction(final Account account, final long number) {
     return false;
   }
 }

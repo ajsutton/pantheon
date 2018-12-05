@@ -82,13 +82,15 @@ public abstract class MainnetProtocolSpecs {
                 transactionValidator,
                 contractCreationProcessor,
                 messageCallProcessor,
-                accountInit) ->
+                accountInit,
+                rentProcessor) ->
                 new MainnetTransactionProcessor(
                     gasCalculator,
                     transactionValidator,
                     contractCreationProcessor,
                     messageCallProcessor,
                     accountInit,
+                    rentProcessor,
                     false))
         .difficultyCalculator(MainnetDifficultyCalculators.FRONTIER)
         .blockHeaderValidatorBuilder(MainnetBlockHeaderValidator::create)
@@ -180,13 +182,15 @@ public abstract class MainnetProtocolSpecs {
                 transactionValidator,
                 contractCreationProcessor,
                 messageCallProcessor,
-                accountInit) ->
+                accountInit,
+                rentProcessor) ->
                 new MainnetTransactionProcessor(
                     gasCalculator,
                     transactionValidator,
                     contractCreationProcessor,
                     messageCallProcessor,
                     accountInit,
+                    rentProcessor,
                     true))
         .name("SpuriousDragon");
   }

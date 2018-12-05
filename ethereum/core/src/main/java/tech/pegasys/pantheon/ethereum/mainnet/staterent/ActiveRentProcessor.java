@@ -37,13 +37,7 @@ public class ActiveRentProcessor implements RentProcessor {
     if (account.hasCode()) {
       return;
     }
-    final BigInteger rentDue = calculateRentDue(account, currentBlockNumber);
-    LOG.debug(
-        "Charging {} wei in rent for {} since {}",
-        rentDue,
-        account.getAddress(),
-        account.getRentBlock());
-    BigInteger newRentBalance = account.getRentBalance().subtract(rentDue);
+    BigInteger newRentBalance = calculateNewRentBalance(account, currentBlockNumber);
     if (newRentBalance.signum() < 0) {
       final Wei rentStillOwing = Wei.of(newRentBalance.negate());
       final Wei repayment =
@@ -58,7 +52,17 @@ public class ActiveRentProcessor implements RentProcessor {
     account.setRentBlock(currentBlockNumber);
   }
 
-  private BigInteger calculateRentDue(final MutableAccount account, final long currentBlockNumber) {
+  private BigInteger calculateNewRentBalance(final Account account, final long currentBlockNumber) {
+    final BigInteger rentDue = calculateRentDue(account, currentBlockNumber);
+    LOG.debug(
+        "Rent charge for {} calculated as {} wei from blocks {} to {}",
+        rentDue,
+        account.getAddress(),
+        account.getRentBlock());
+    return account.getRentBalance().subtract(rentDue);
+  }
+
+  private BigInteger calculateRentDue(final Account account, final long currentBlockNumber) {
     final long rentBlock =
         account.getRentBlock() == Account.NO_RENT_BLOCK
             ? rentEnabledBlockNumber
@@ -67,7 +71,14 @@ public class ActiveRentProcessor implements RentProcessor {
   }
 
   @Override
-  public boolean isRentCharged() {
+  public boolean isRentEnabled() {
     return true;
+  }
+
+  @Override
+  public boolean isEligibleForEviction(final Account account, final long currentBlockNumber) {
+    final BigInteger newRentBalance = calculateNewRentBalance(account, currentBlockNumber);
+    return newRentBalance.signum() < 0
+        && account.getBalance().asBigInteger().compareTo(newRentBalance.abs()) < 0;
   }
 }

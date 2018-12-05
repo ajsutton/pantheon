@@ -161,7 +161,7 @@ public class MainnetBlockProcessor implements BlockProcessor {
       return Result.failed();
     }
 
-    if (rentProcessor.isRentCharged()) {
+    if (rentProcessor.isRentEnabled()) {
       final WorldUpdater updater = worldState.updater();
       modifiedAccounts
           .stream()

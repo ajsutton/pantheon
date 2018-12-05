@@ -144,7 +144,7 @@ public abstract class AbstractBlockCreator<C> implements AsyncBlockCreator {
       throwIfStopped();
 
       final RentProcessor rentProcessor = protocolSpec.getRentProcessor();
-      if (rentProcessor.isRentCharged()) {
+      if (rentProcessor.isRentEnabled()) {
         final WorldUpdater updater = disposableWorldState.updater();
         modifiedAccounts
             .stream()

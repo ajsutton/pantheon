@@ -249,7 +249,8 @@ public class ProtocolSpecBuilder<T> {
             transactionValidator,
             contractCreationProcessor,
             messageCallProcessor,
-            accountInit);
+            accountInit,
+            rentProcessor);
     final BlockHeaderValidator<T> blockHeaderValidator =
         blockHeaderValidatorBuilder.apply(difficultyCalculator);
     final BlockHeaderValidator<T> ommerHeaderValidator =
@@ -292,7 +293,8 @@ public class ProtocolSpecBuilder<T> {
         TransactionValidator transactionValidator,
         AbstractMessageProcessor contractCreationProcessor,
         AbstractMessageProcessor messageCallProcessor,
-        AccountInit accountInit);
+        AccountInit accountInit,
+        RentProcessor rentProcessor);
   }
 
   public interface BlockProcessorBuilder {

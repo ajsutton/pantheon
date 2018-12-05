@@ -35,7 +35,7 @@ public class ActiveRentProcessorTest {
 
   @Test
   public void shouldReportRentAsActive() {
-    assertThat(rentProcessor.isRentCharged()).isTrue();
+    assertThat(rentProcessor.isRentEnabled()).isTrue();
   }
 
   @Test

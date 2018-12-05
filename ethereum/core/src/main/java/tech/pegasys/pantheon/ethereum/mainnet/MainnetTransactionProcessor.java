@@ -24,6 +24,7 @@ import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionValidator.TransactionInvalidReason;
 import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.RentProcessor;
 import tech.pegasys.pantheon.ethereum.vm.BlockHashLookup;
 import tech.pegasys.pantheon.ethereum.vm.Code;
 import tech.pegasys.pantheon.ethereum.vm.GasCalculator;
@@ -50,78 +51,9 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
 
   private final AbstractMessageProcessor messageCallProcessor;
 
-  public static class Result implements TransactionProcessor.Result {
-
-    private final Status status;
-
-    private final long gasRemaining;
-
-    private final LogSeries logs;
-
-    private final BytesValue output;
-
-    private final ValidationResult<TransactionInvalidReason> validationResult;
-
-    public static Result invalid(
-        final ValidationResult<TransactionInvalidReason> validationResult) {
-      return new Result(Status.INVALID, LogSeries.empty(), -1, BytesValue.EMPTY, validationResult);
-    }
-
-    public static Result failed(
-        final long gasRemaining,
-        final ValidationResult<TransactionInvalidReason> validationResult) {
-      return new Result(
-          Status.FAILED, LogSeries.empty(), gasRemaining, BytesValue.EMPTY, validationResult);
-    }
-
-    public static Result successful(
-        final LogSeries logs,
-        final long gasRemaining,
-        final BytesValue output,
-        final ValidationResult<TransactionInvalidReason> validationResult) {
-      return new Result(Status.SUCCESSFUL, logs, gasRemaining, output, validationResult);
-    }
-
-    Result(
-        final Status status,
-        final LogSeries logs,
-        final long gasRemaining,
-        final BytesValue output,
-        final ValidationResult<TransactionInvalidReason> validationResult) {
-      this.status = status;
-      this.logs = logs;
-      this.gasRemaining = gasRemaining;
-      this.output = output;
-      this.validationResult = validationResult;
-    }
-
-    @Override
-    public LogSeries getLogs() {
-      return logs;
-    }
-
-    @Override
-    public long getGasRemaining() {
-      return gasRemaining;
-    }
-
-    @Override
-    public Status getStatus() {
-      return status;
-    }
-
-    @Override
-    public BytesValue getOutput() {
-      return output;
-    }
-
-    @Override
-    public ValidationResult<TransactionInvalidReason> getValidationResult() {
-      return validationResult;
-    }
-  }
-
   private final AccountInit accountInit;
+
+  private final RentProcessor rentProcessor;
   private final boolean clearEmptyAccounts;
 
   public MainnetTransactionProcessor(
@@ -130,12 +62,14 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
       final AbstractMessageProcessor contractCreationProcessor,
       final AbstractMessageProcessor messageCallProcessor,
       final AccountInit accountInit,
+      final RentProcessor rentProcessor,
       final boolean clearEmptyAccounts) {
     this.gasCalculator = gasCalculator;
     this.transactionValidator = transactionValidator;
     this.contractCreationProcessor = contractCreationProcessor;
     this.messageCallProcessor = messageCallProcessor;
     this.accountInit = accountInit;
+    this.rentProcessor = rentProcessor;
     this.clearEmptyAccounts = clearEmptyAccounts;
   }
 
@@ -289,6 +223,14 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
       clearEmptyAccounts(worldState);
     }
 
+    if (rentProcessor.isRentEnabled()) {
+      worldState
+          .getTouchedAccounts()
+          .stream()
+          .filter(account -> rentProcessor.isEligibleForEviction(account, blockHeader.getNumber()))
+          .forEach(account -> worldState.deleteAccount(account.getAddress()));
+    }
+
     if (initialFrame.getState() == MessageFrame.State.COMPLETED_SUCCESS) {
       return Result.successful(
           initialFrame.getLogs(),
@@ -332,5 +274,76 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
         Gas.of(transaction.getGasLimit()).minus(gasRemaining).dividedBy(2);
     final Gas refundAllowance = maxRefundAllowance.min(gasRefund);
     return gasRemaining.plus(refundAllowance);
+  }
+
+  public static class Result implements TransactionProcessor.Result {
+
+    private final Status status;
+
+    private final long gasRemaining;
+
+    private final LogSeries logs;
+
+    private final BytesValue output;
+
+    private final ValidationResult<TransactionInvalidReason> validationResult;
+
+    public static Result invalid(
+        final ValidationResult<TransactionInvalidReason> validationResult) {
+      return new Result(Status.INVALID, LogSeries.empty(), -1, BytesValue.EMPTY, validationResult);
+    }
+
+    public static Result failed(
+        final long gasRemaining,
+        final ValidationResult<TransactionInvalidReason> validationResult) {
+      return new Result(
+          Status.FAILED, LogSeries.empty(), gasRemaining, BytesValue.EMPTY, validationResult);
+    }
+
+    public static Result successful(
+        final LogSeries logs,
+        final long gasRemaining,
+        final BytesValue output,
+        final ValidationResult<TransactionInvalidReason> validationResult) {
+      return new Result(Status.SUCCESSFUL, logs, gasRemaining, output, validationResult);
+    }
+
+    Result(
+        final Status status,
+        final LogSeries logs,
+        final long gasRemaining,
+        final BytesValue output,
+        final ValidationResult<TransactionInvalidReason> validationResult) {
+      this.status = status;
+      this.logs = logs;
+      this.gasRemaining = gasRemaining;
+      this.output = output;
+      this.validationResult = validationResult;
+    }
+
+    @Override
+    public LogSeries getLogs() {
+      return logs;
+    }
+
+    @Override
+    public long getGasRemaining() {
+      return gasRemaining;
+    }
+
+    @Override
+    public Status getStatus() {
+      return status;
+    }
+
+    @Override
+    public BytesValue getOutput() {
+      return output;
+    }
+
+    @Override
+    public ValidationResult<TransactionInvalidReason> getValidationResult() {
+      return validationResult;
+    }
   }
 }

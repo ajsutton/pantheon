@@ -12,10 +12,13 @@
  */
 package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
+import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 
 public interface RentProcessor {
   void chargeRent(MutableAccount account, long currentBlockNumber);
 
-  boolean isRentCharged();
+  boolean isRentEnabled();
+
+  boolean isEligibleForEviction(Account account, long number);
 }
