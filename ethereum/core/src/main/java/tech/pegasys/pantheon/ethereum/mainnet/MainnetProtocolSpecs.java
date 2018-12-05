@@ -25,6 +25,7 @@ import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
+import tech.pegasys.pantheon.ethereum.mainnet.account.StateRentNewStorageAccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.account.StateRentOwnedAccountsAccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.ActiveRentProcessor;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.InactiveRentProcessor;
@@ -229,6 +230,7 @@ public abstract class MainnetProtocolSpecs {
     return stateRentOwnedAccountsDefinition(chainId, rentEnabledBlockNumber)
         .gasCalculator(StateRentNewStorageGasCalculator::new)
         .evmBuilder(MainnetEvmRegistries::stateRentNewStorage)
+        .accountInit(StateRentNewStorageAccountInit::new)
         .name("StateRentNewStorage");
   }
 
