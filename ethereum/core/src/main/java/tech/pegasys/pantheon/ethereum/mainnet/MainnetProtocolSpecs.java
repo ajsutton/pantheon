@@ -27,8 +27,9 @@ import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 import tech.pegasys.pantheon.ethereum.mainnet.account.AccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.account.StateRentNewStorageAccountInit;
 import tech.pegasys.pantheon.ethereum.mainnet.account.StateRentOwnedAccountsAccountInit;
-import tech.pegasys.pantheon.ethereum.mainnet.staterent.ActiveRentProcessor;
 import tech.pegasys.pantheon.ethereum.mainnet.staterent.InactiveRentProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.OwnedAccountsStateRentProcessor;
+import tech.pegasys.pantheon.ethereum.mainnet.staterent.StorageSizeStateRentProcessor;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -220,7 +221,8 @@ public abstract class MainnetProtocolSpecs {
       final int chainId, final long rentEnabledBlockNumber) {
     return constantinopleDefinition(chainId)
         .rentCost(Wei.fromGwei(2))
-        .rentProcessor(rentCost -> new ActiveRentProcessor(rentCost, rentEnabledBlockNumber))
+        .rentProcessor(
+            rentCost -> new OwnedAccountsStateRentProcessor(rentCost, rentEnabledBlockNumber))
         .accountInit(StateRentOwnedAccountsAccountInit::new)
         .name("StateRentOwnedAccounts");
   }
@@ -230,6 +232,9 @@ public abstract class MainnetProtocolSpecs {
     return stateRentOwnedAccountsDefinition(chainId, rentEnabledBlockNumber)
         .gasCalculator(StateRentNewStorageGasCalculator::new)
         .evmBuilder(MainnetEvmRegistries::stateRentNewStorage)
+        .rentCost(Wei.fromGwei(1))
+        .rentProcessor(
+            rentCost -> new StorageSizeStateRentProcessor(rentCost, rentEnabledBlockNumber))
         .accountInit(StateRentNewStorageAccountInit::new)
         .name("StateRentNewStorage");
   }

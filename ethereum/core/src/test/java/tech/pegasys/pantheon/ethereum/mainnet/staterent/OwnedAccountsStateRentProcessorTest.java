@@ -23,7 +23,7 @@ import java.math.BigInteger;
 
 import org.junit.Test;
 
-public class ActiveRentProcessorTest {
+public class OwnedAccountsStateRentProcessorTest {
 
   private static final Wei RENT_COST = Wei.of(2);
   private static final int RENT_ENABLED_BLOCK_NUMBER = 1000;
@@ -31,7 +31,7 @@ public class ActiveRentProcessorTest {
   private final MutableAccount account = new StubAccount();
 
   private final RentProcessor rentProcessor =
-      new ActiveRentProcessor(RENT_COST, RENT_ENABLED_BLOCK_NUMBER);
+      new OwnedAccountsStateRentProcessor(RENT_COST, RENT_ENABLED_BLOCK_NUMBER);
 
   @Test
   public void shouldReportRentAsActive() {

@@ -21,22 +21,12 @@ import java.math.BigInteger;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class ActiveRentProcessor implements RentProcessor {
+public abstract class AbstractRentProcessor implements RentProcessor {
+
   private static final Logger LOG = LogManager.getLogger();
-
-  private final BigInteger rentCost;
-  private final long rentEnabledBlockNumber;
-
-  public ActiveRentProcessor(final Wei rentCost, final long rentEnabledBlockNumber) {
-    this.rentCost = rentCost.asBigInteger();
-    this.rentEnabledBlockNumber = rentEnabledBlockNumber;
-  }
 
   @Override
   public void chargeRent(final MutableAccount account, final long currentBlockNumber) {
-    if (account.hasCode()) {
-      return;
-    }
     BigInteger newRentBalance = calculateNewRentBalance(account, currentBlockNumber);
     if (newRentBalance.signum() < 0) {
       final Wei rentStillOwing = Wei.of(newRentBalance.negate());
@@ -62,13 +52,7 @@ public class ActiveRentProcessor implements RentProcessor {
     return account.getRentBalance().subtract(rentDue);
   }
 
-  private BigInteger calculateRentDue(final Account account, final long currentBlockNumber) {
-    final long rentBlock =
-        account.getRentBlock() == Account.NO_RENT_BLOCK
-            ? rentEnabledBlockNumber
-            : account.getRentBlock();
-    return rentCost.multiply(BigInteger.valueOf(currentBlockNumber - rentBlock));
-  }
+  protected abstract BigInteger calculateRentDue(Account account, long currentBlockNumber);
 
   @Override
   public boolean isRentEnabled() {
