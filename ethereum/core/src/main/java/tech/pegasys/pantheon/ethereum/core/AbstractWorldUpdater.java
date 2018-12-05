@@ -329,6 +329,10 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     @Override
     public void setCode(final BytesValue code) {
       this.updatedCode = code;
+
+      if (this.storageSize != null) {
+        this.storageSize = this.storageSize.add(BigInteger.valueOf(updatedCode.size()));
+      }
     }
 
     @Override

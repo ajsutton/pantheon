@@ -31,13 +31,9 @@ public class StorageSizeStateRentProcessor extends AbstractRentProcessor {
   @Override
   public void chargeRent(final MutableAccount account, final long currentBlockNumber) {
     if (account.getStorageSize() == null) {
-      account.setStorageSize(getInitialStorageSize(account));
+      account.setStorageSize(Account.EMPTY_ACCOUNT_STORAGE_SIZE);
     }
     super.chargeRent(account, currentBlockNumber);
-  }
-
-  private BigInteger getInitialStorageSize(final Account account) {
-    return Account.EMPTY_ACCOUNT_STORAGE_SIZE.add(BigInteger.valueOf(account.getCode().size()));
   }
 
   @Override
@@ -49,7 +45,7 @@ public class StorageSizeStateRentProcessor extends AbstractRentProcessor {
     final BigInteger storageSize =
         account.getStorageSize() != null
             ? account.getStorageSize()
-            : getInitialStorageSize(account);
+            : Account.EMPTY_ACCOUNT_STORAGE_SIZE;
     return rentCost
         .multiply(storageSize)
         .multiply(BigInteger.valueOf(currentBlockNumber - rentBlock));
