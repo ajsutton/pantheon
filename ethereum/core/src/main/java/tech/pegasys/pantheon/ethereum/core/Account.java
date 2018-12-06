@@ -94,6 +94,8 @@ public interface Account {
 
   BigInteger getStorageSize();
 
+  BigInteger getOriginalStorageSize();
+
   /**
    * The EVM bytecode associated with this account.
    *

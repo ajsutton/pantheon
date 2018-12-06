@@ -43,8 +43,8 @@ public class StorageSizeStateRentProcessor extends AbstractRentProcessor {
             ? rentEnabledBlockNumber
             : account.getRentBlock();
     final BigInteger storageSize =
-        account.getStorageSize() != null
-            ? account.getStorageSize()
+        account.getOriginalStorageSize() != null
+            ? account.getOriginalStorageSize()
             : Account.EMPTY_ACCOUNT_STORAGE_SIZE;
     return rentCost
         .multiply(storageSize)

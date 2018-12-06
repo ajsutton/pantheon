@@ -86,6 +86,11 @@ public class StubAccount implements MutableAccount {
   }
 
   @Override
+  public BigInteger getOriginalStorageSize() {
+    return storageSize;
+  }
+
+  @Override
   public void adjustStorageSize(final int adjustmentAmount) {
     storageSize = storageSize.add(BigInteger.valueOf(adjustmentAmount));
   }

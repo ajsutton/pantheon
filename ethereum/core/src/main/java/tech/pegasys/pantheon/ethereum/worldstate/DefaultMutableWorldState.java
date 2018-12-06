@@ -247,6 +247,11 @@ public class DefaultMutableWorldState implements MutableWorldState {
     }
 
     @Override
+    public BigInteger getOriginalStorageSize() {
+      return storageSize;
+    }
+
+    @Override
     public BytesValue getCode() {
       final BytesValue updatedCode = updatedAccountCode.get(address);
       if (updatedCode != null) {

@@ -295,6 +295,11 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     }
 
     @Override
+    public BigInteger getOriginalStorageSize() {
+      return getWrappedAccount() != null ? getWrappedAccount().getOriginalStorageSize() : null;
+    }
+
+    @Override
     public void setRentBlock(final long rentBlock) {
       this.rentBlock = rentBlock;
     }
