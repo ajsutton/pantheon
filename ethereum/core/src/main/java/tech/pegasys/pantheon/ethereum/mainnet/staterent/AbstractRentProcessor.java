@@ -15,6 +15,7 @@ package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 
 import java.math.BigInteger;
 
@@ -41,6 +42,19 @@ public abstract class AbstractRentProcessor implements RentProcessor {
     account.setRentBalance(newRentBalance);
     account.setRentBlock(currentBlockNumber);
   }
+
+  @Override
+  public void performEvictions(final WorldUpdater worldState, final long currentBlockNumber) {
+    if (isRentEnabled()) {
+      worldState
+          .getTouchedAccounts()
+          .stream()
+          .filter(account -> isEligibleForEviction(account, currentBlockNumber))
+          .forEach(account -> evictAccount(worldState, account));
+    }
+  }
+
+  protected abstract void evictAccount(WorldUpdater worldState, MutableAccount account);
 
   private BigInteger calculateNewRentBalance(final Account account, final long currentBlockNumber) {
     final BigInteger rentDue = calculateRentDue(account, currentBlockNumber);

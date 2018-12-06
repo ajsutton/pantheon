@@ -15,6 +15,7 @@ package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 
 import java.math.BigInteger;
 
@@ -34,6 +35,14 @@ public class StorageSizeStateRentProcessor extends AbstractRentProcessor {
       account.setStorageSize(Account.EMPTY_ACCOUNT_STORAGE_SIZE);
     }
     super.chargeRent(account, currentBlockNumber);
+  }
+
+  @Override
+  protected void evictAccount(final WorldUpdater worldState, final MutableAccount account) {
+    //    if (account.hasCode()) {
+    //    } else {
+    worldState.deleteAccount(account.getAddress());
+    //    }
   }
 
   @Override

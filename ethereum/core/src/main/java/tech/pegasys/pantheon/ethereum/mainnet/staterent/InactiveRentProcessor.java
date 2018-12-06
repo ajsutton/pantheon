@@ -14,6 +14,7 @@ package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
+import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 
 public class InactiveRentProcessor implements RentProcessor {
 
@@ -29,4 +30,7 @@ public class InactiveRentProcessor implements RentProcessor {
   public boolean isEligibleForEviction(final Account account, final long number) {
     return false;
   }
+
+  @Override
+  public void performEvictions(final WorldUpdater worldState, final long currentBlockNumber) {}
 }

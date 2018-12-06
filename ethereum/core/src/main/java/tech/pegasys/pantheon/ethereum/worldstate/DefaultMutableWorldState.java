@@ -396,14 +396,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
         // Lastly, save the new account.
         final BytesValue account =
-            wrapped.accountSerializer.serializeAccount(
-                updated.getNonce(),
-                updated.getBalance(),
-                codeHash,
-                storageRoot,
-                updated.getRentBalance(),
-                updated.getRentBlock(),
-                updated.getStorageSize());
+            wrapped.accountSerializer.serializeAccount(updated, codeHash, storageRoot);
 
         wrapped.accountStateTrie.put(updated.getAddressHash(), account);
       }

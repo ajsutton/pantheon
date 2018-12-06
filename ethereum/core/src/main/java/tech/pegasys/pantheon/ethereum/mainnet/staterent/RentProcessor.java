@@ -14,6 +14,7 @@ package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
+import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 
 public interface RentProcessor {
   void chargeRent(MutableAccount account, long currentBlockNumber);
@@ -21,4 +22,6 @@ public interface RentProcessor {
   boolean isRentEnabled();
 
   boolean isEligibleForEviction(Account account, long number);
+
+  void performEvictions(WorldUpdater worldState, long currentBlockNumber);
 }

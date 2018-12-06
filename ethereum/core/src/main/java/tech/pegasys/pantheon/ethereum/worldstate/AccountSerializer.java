@@ -72,25 +72,21 @@ public class AccountSerializer<T> {
   }
 
   public BytesValue serializeAccount(
-      final long nonce,
-      final Wei balance,
-      final Hash codeHash,
-      final Hash storageRoot,
-      final BigInteger rentBalance,
-      final long rentBlock,
-      final BigInteger storageSize) {
+      final Account account, final Hash codeHash, final Hash storageRoot) {
     return RLP.encode(
         out -> {
           out.startList();
 
-          out.writeLongScalar(nonce);
-          out.writeUInt256Scalar(balance);
+          out.writeLongScalar(account.getNonce());
+          out.writeUInt256Scalar(account.getBalance());
           out.writeBytesValue(storageRoot);
           out.writeBytesValue(codeHash);
+          final long rentBlock = account.getRentBlock();
+          final BigInteger storageSize = account.getStorageSize();
           final boolean hasRentBlock = rentBlock != Account.NO_RENT_BLOCK;
           final boolean hasStorageSize = storageSize != null;
           if (hasRentBlock || hasStorageSize) {
-            out.writeBytesValue(BytesValue.wrap(rentBalance.toByteArray()));
+            out.writeBytesValue(BytesValue.wrap(account.getRentBalance().toByteArray()));
             out.writeLongScalar(hasRentBlock ? rentBlock : 0);
           }
 

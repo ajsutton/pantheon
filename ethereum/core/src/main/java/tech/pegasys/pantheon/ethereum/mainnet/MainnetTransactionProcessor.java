@@ -223,13 +223,7 @@ public class MainnetTransactionProcessor implements TransactionProcessor {
       clearEmptyAccounts(worldState);
     }
 
-    if (rentProcessor.isRentEnabled()) {
-      worldState
-          .getTouchedAccounts()
-          .stream()
-          .filter(account -> rentProcessor.isEligibleForEviction(account, blockHeader.getNumber()))
-          .forEach(account -> worldState.deleteAccount(account.getAddress()));
-    }
+    rentProcessor.performEvictions(worldState, blockHeader.getNumber());
 
     if (initialFrame.getState() == MessageFrame.State.COMPLETED_SUCCESS) {
       return Result.successful(

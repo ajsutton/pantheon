@@ -19,9 +19,12 @@ import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.AddressHelpers;
 import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
+import tech.pegasys.pantheon.util.uint.UInt256;
 
 import java.math.BigInteger;
+import java.util.NavigableMap;
 
 import org.junit.Test;
 
@@ -118,7 +121,7 @@ public class AccountSerializerTest {
     assertThat(result.size()).isEqualTo(Account.EMPTY_ACCOUNT_STORAGE_SIZE.intValue());
   }
 
-  private static class TestAccountState {
+  private static class TestAccountState implements Account {
     private final Address address;
     private final Hash addressHash;
     private final long nonce;
@@ -171,9 +174,74 @@ public class AccountSerializerTest {
       this.codeHash = codeHash;
     }
 
+    @Override
+    public Address getAddress() {
+      return address;
+    }
+
+    @Override
+    public Hash getAddressHash() {
+      return addressHash;
+    }
+
+    @Override
+    public long getNonce() {
+      return nonce;
+    }
+
+    @Override
+    public Wei getBalance() {
+      return balance;
+    }
+
+    @Override
+    public BigInteger getRentBalance() {
+      return rentBalance;
+    }
+
+    @Override
+    public long getRentBlock() {
+      return rentBlock;
+    }
+
+    @Override
+    public Hash getCodeHash() {
+      return codeHash;
+    }
+
+    @Override
+    public UInt256 getStorageValue(final UInt256 key) {
+      throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Override
+    public UInt256 getOriginalStorageValue(final UInt256 key) {
+      throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Override
+    public NavigableMap<Bytes32, UInt256> storageEntriesFrom(
+        final Bytes32 startKeyHash, final int limit) {
+      return null;
+    }
+
+    @Override
+    public BigInteger getStorageSize() {
+      return storageSize;
+    }
+
+    @Override
+    public BigInteger getOriginalStorageSize() {
+      throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Override
+    public BytesValue getCode() {
+      throw new UnsupportedOperationException("Not implemented");
+    }
+
     public BytesValue serialize(final AccountSerializer<?> serializer) {
-      return serializer.serializeAccount(
-          nonce, balance, codeHash, storageRoot, rentBalance, rentBlock, storageSize);
+      return serializer.serializeAccount(this, codeHash, storageRoot);
     }
   }
 }

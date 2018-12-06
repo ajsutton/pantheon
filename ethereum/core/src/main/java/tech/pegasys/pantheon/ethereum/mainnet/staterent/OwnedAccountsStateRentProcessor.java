@@ -15,6 +15,7 @@ package tech.pegasys.pantheon.ethereum.mainnet.staterent;
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.Wei;
+import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
 
 import java.math.BigInteger;
 
@@ -42,6 +43,11 @@ public class OwnedAccountsStateRentProcessor extends AbstractRentProcessor {
       return false;
     }
     return super.isEligibleForEviction(account, currentBlockNumber);
+  }
+
+  @Override
+  protected void evictAccount(final WorldUpdater worldState, final MutableAccount account) {
+    worldState.deleteAccount(account.getAddress());
   }
 
   @Override
