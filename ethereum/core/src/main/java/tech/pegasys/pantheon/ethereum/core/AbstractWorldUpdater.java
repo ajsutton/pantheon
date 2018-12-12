@@ -44,6 +44,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
 
   private final Map<Address, UpdateTrackingAccount<A>> updatedAccounts = new HashMap<>();
   private final Set<Address> deletedAccounts = new HashSet<>();
+  private final Map<Address, UpdateTrackingAccount<A>> evictedAccounts = new HashMap<>();
 
   protected AbstractWorldUpdater(final W world) {
     this.world = world;
@@ -55,6 +56,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     final Address address = account.getAddress();
     updatedAccounts.put(address, account);
     deletedAccounts.remove(address);
+    evictedAccounts.remove(address);
     return account;
   }
 
@@ -73,7 +75,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     if (existing != null) {
       return existing;
     }
-    if (deletedAccounts.contains(address)) {
+    if (deletedAccounts.contains(address) || evictedAccounts.containsKey(address)) {
       return null;
     }
     return world.get(address);
@@ -86,7 +88,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     if (existing != null) {
       return existing;
     }
-    if (deletedAccounts.contains(address)) {
+    if (deletedAccounts.contains(address) || evictedAccounts.containsKey(address)) {
       return null;
     }
 
@@ -103,6 +105,19 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
   public void deleteAccount(final Address address) {
     deletedAccounts.add(address);
     updatedAccounts.remove(address);
+    evictedAccounts.remove(address);
+  }
+
+  @Override
+  public void evictAccount(final Address address) {
+    final UpdateTrackingAccount<A> existingAccount = updatedAccounts.get(address);
+    final UpdateTrackingAccount<A> account =
+        existingAccount != null ? existingAccount : new UpdateTrackingAccount<>(address);
+
+    updatedAccounts.remove(address);
+    deletedAccounts.remove(address);
+
+    evictedAccounts.put(address, account);
   }
 
   /**
@@ -147,6 +162,10 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
    */
   protected Collection<Address> deletedAccounts() {
     return deletedAccounts;
+  }
+
+  protected Collection<UpdateTrackingAccount<A>> evictedAccounts() {
+    return evictedAccounts.values();
   }
 
   /**
@@ -452,6 +471,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     public void revert() {
       deletedAccounts().clear();
       updatedAccounts().clear();
+      evictedAccounts().clear();
     }
 
     @Override
@@ -460,11 +480,43 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
       // Our own updates should apply on top of the updates we're stacked on top, so our deletions
       // may kill some of "their" updates, and our updates may review some of the account "they"
       // deleted.
-      deletedAccounts().forEach(wrapped.updatedAccounts::remove);
-      updatedAccounts().forEach(a -> wrapped.deletedAccounts.remove(a.getAddress()));
+      deletedAccounts()
+          .forEach(
+              address -> {
+                wrapped.updatedAccounts.remove(address);
+                wrapped.evictedAccounts.remove(address);
+              });
+      updatedAccounts()
+          .forEach(
+              account -> {
+                wrapped.deletedAccounts.remove(account.getAddress());
+                wrapped.evictedAccounts.remove(account.getAddress());
+              });
+      evictedAccounts()
+          .forEach(
+              account -> {
+                wrapped.deletedAccounts.remove(account.getAddress());
+                wrapped.updatedAccounts.remove(account.getAddress());
+              });
 
       // Then push our deletes and updates to the stacked ones.
       wrapped.deletedAccounts.addAll(deletedAccounts());
+
+      for (final UpdateTrackingAccount<UpdateTrackingAccount<A>> evicted : evictedAccounts()) {
+        UpdateTrackingAccount<A> existing = wrapped.evictedAccounts.get(evicted.getAddress());
+        if (existing == null) {
+          // If we don't track this account, it's either a new one or getForMutation above had
+          // created a tracker to satisfy the type system above and we can reuse that now.
+          existing = evicted.getWrappedAccount();
+          if (existing == null) {
+            // Brand new account, create our own version
+            existing = new UpdateTrackingAccount<>(evicted.address);
+          }
+          wrapped.evictedAccounts.put(existing.address, existing);
+        }
+        wrapped.deletedAccounts.remove(evicted.address);
+        wrapped.updatedAccounts.remove(evicted.address);
+      }
 
       for (final UpdateTrackingAccount<UpdateTrackingAccount<A>> update : updatedAccounts()) {
         UpdateTrackingAccount<A> existing = wrapped.updatedAccounts.get(update.getAddress());

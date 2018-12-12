@@ -98,6 +98,16 @@ public class AccountSerializer<T> {
         });
   }
 
+  public BytesValue serializeHashStub(final Hash codeHash, final Hash storageRoot) {
+    return RLP.encode(
+        out -> {
+          out.startList();
+          out.writeBytesValue(codeHash);
+          out.writeBytesValue(storageRoot);
+          out.endList();
+        });
+  }
+
   public interface AccountStateConstructor<T> {
     T create(
         final Address address,

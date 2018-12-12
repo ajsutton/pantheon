@@ -345,6 +345,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
     @Override
     public void revert() {
       deletedAccounts().clear();
+      evictedAccounts().clear();
       updatedAccounts().clear();
     }
 
@@ -352,12 +353,30 @@ public class DefaultMutableWorldState implements MutableWorldState {
     public void commit() {
       final DefaultMutableWorldState wrapped = wrappedWorldView();
 
-      for (final Address address : deletedAccounts()) {
-        final Hash addressHash = Hash.hash(address);
-        wrapped.accountStateTrie.remove(addressHash);
-        wrapped.updatedStorageTries.remove(address);
-        wrapped.updatedAccountCode.remove(address);
-      }
+      deletedAccounts()
+          .forEach(
+              address -> {
+                final Hash addressHash = Hash.hash(address);
+                wrapped.accountStateTrie.remove(addressHash);
+                wrapped.updatedStorageTries.remove(address);
+                wrapped.updatedAccountCode.remove(address);
+              });
+
+      evictedAccounts()
+          .forEach(
+              (evictedAccount) -> {
+                final Address address = evictedAccount.getAddress();
+                wrapped.updatedStorageTries.remove(address);
+                wrapped.updatedAccountCode.remove(address);
+
+                final Hash storageRootHash =
+                    updateStorageTrie(wrapped, evictedAccount, evictedAccount.getWrappedAccount());
+                final BytesValue hashStub =
+                    wrapped.accountSerializer.serializeHashStub(
+                        evictedAccount.getCodeHash(), storageRootHash);
+                wrapped.accountStateTrie.put(evictedAccount.getAddressHash(), hashStub);
+                wrapped.updatedStorageTries.remove(address);
+              });
 
       for (final UpdateTrackingAccount<AccountState> updated : updatedAccounts()) {
         final AccountState origin = updated.getWrappedAccount();
@@ -369,30 +388,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
           wrapped.updatedAccountCode.put(updated.getAddress(), updated.getCode());
         }
         // ...and storage in the account trie first.
-        final boolean freshState = origin == null || updated.getStorageWasCleared();
-        Hash storageRoot = freshState ? Hash.EMPTY_TRIE_HASH : origin.storageRoot;
-        if (freshState) {
-          wrapped.updatedStorageTries.remove(updated.getAddress());
-        }
-        final SortedMap<UInt256, UInt256> updatedStorage = updated.getUpdatedStorage();
-        if (!updatedStorage.isEmpty()) {
-          // Apply any storage updates
-          final MerklePatriciaTrie<Bytes32, BytesValue> storageTrie =
-              freshState
-                  ? wrapped.newAccountStorageTrie(Hash.EMPTY_TRIE_HASH)
-                  : origin.storageTrie();
-          wrapped.updatedStorageTries.put(updated.getAddress(), storageTrie);
-          for (final Map.Entry<UInt256, UInt256> entry : updatedStorage.entrySet()) {
-            final UInt256 value = entry.getValue();
-            final Hash keyHash = Hash.hash(entry.getKey().getBytes());
-            if (value.isZero()) {
-              storageTrie.remove(keyHash);
-            } else {
-              storageTrie.put(keyHash, RLP.encode(out -> out.writeUInt256Scalar(entry.getValue())));
-            }
-          }
-          storageRoot = Hash.wrap(storageTrie.getRootHash());
-        }
+        final Hash storageRoot = updateStorageTrie(wrapped, updated, origin);
 
         // Lastly, save the new account.
         final BytesValue account =
@@ -400,6 +396,35 @@ public class DefaultMutableWorldState implements MutableWorldState {
 
         wrapped.accountStateTrie.put(updated.getAddressHash(), account);
       }
+    }
+
+    private Hash updateStorageTrie(
+        final DefaultMutableWorldState wrapped,
+        final UpdateTrackingAccount<AccountState> updated,
+        final AccountState origin) {
+      final boolean freshState = origin == null || updated.getStorageWasCleared();
+      Hash storageRoot = freshState ? Hash.EMPTY_TRIE_HASH : origin.storageRoot;
+      if (freshState) {
+        wrapped.updatedStorageTries.remove(updated.getAddress());
+      }
+      final SortedMap<UInt256, UInt256> updatedStorage = updated.getUpdatedStorage();
+      if (!updatedStorage.isEmpty()) {
+        // Apply any storage updates
+        final MerklePatriciaTrie<Bytes32, BytesValue> storageTrie =
+            freshState ? wrapped.newAccountStorageTrie(Hash.EMPTY_TRIE_HASH) : origin.storageTrie();
+        wrapped.updatedStorageTries.put(updated.getAddress(), storageTrie);
+        for (final Map.Entry<UInt256, UInt256> entry : updatedStorage.entrySet()) {
+          final UInt256 value = entry.getValue();
+          final Hash keyHash = Hash.hash(entry.getKey().getBytes());
+          if (value.isZero()) {
+            storageTrie.remove(keyHash);
+          } else {
+            storageTrie.put(keyHash, RLP.encode(out -> out.writeUInt256Scalar(entry.getValue())));
+          }
+        }
+        storageRoot = Hash.wrap(storageTrie.getRootHash());
+      }
+      return storageRoot;
     }
   }
 }

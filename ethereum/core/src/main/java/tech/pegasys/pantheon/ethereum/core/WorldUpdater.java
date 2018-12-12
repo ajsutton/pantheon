@@ -72,6 +72,8 @@ public interface WorldUpdater extends MutableWorldView {
    */
   void deleteAccount(Address address);
 
+  void evictAccount(Address address);
+
   /**
    * Returns the accounts that have been touched within the scope of this updater.
    *

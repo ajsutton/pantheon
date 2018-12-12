@@ -138,6 +138,11 @@ public class DebuggableMutableWorldState extends DefaultMutableWorldState {
     }
 
     @Override
+    public void evictAccount(final Address address) {
+      wrapped.evictAccount(address);
+    }
+
+    @Override
     public Collection<MutableAccount> getTouchedAccounts() {
       return wrapped.getTouchedAccounts();
     }

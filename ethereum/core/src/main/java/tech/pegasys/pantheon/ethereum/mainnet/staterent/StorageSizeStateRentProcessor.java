@@ -39,10 +39,11 @@ public class StorageSizeStateRentProcessor extends AbstractRentProcessor {
 
   @Override
   protected void evictAccount(final WorldUpdater worldState, final MutableAccount account) {
-    //    if (account.hasCode()) {
-    //    } else {
-    worldState.deleteAccount(account.getAddress());
-    //    }
+    if (account.hasCode()) {
+      worldState.evictAccount(account.getAddress());
+    } else {
+      worldState.deleteAccount(account.getAddress());
+    }
   }
 
   @Override
