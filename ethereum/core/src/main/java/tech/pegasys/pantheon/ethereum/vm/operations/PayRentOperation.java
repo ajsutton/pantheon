@@ -26,7 +26,7 @@ import java.math.BigInteger;
 public class PayRentOperation extends AbstractOperation {
 
   public PayRentOperation(final GasCalculator gasCalculator) {
-    super(0x4F, "PAYRENT", 2, 0, false, 1, gasCalculator);
+    super(0x46, "PAYRENT", 2, 0, false, 1, gasCalculator);
   }
 
   @Override

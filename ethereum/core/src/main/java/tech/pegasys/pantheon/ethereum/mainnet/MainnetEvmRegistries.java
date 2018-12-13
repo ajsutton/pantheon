@@ -70,6 +70,7 @@ import tech.pegasys.pantheon.ethereum.vm.operations.PCOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PayRentOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PopOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PushOperation;
+import tech.pegasys.pantheon.ethereum.vm.operations.RentBalanceOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnDataCopyOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnDataSizeOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnOperation;
@@ -79,6 +80,7 @@ import tech.pegasys.pantheon.ethereum.vm.operations.SGtOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.SLoadOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.SLtOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.SModOperation;
+import tech.pegasys.pantheon.ethereum.vm.operations.SSizeOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.SStoreOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.SarOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.SelfDestructOperation;
@@ -281,6 +283,8 @@ public abstract class MainnetEvmRegistries {
     builder.addAll(MainnetEvmRegistries.CONSTANTINOPLE_OPERATION_FACTORIES);
     builder.add(gasCalculator -> new SStoreOperation(gasCalculator, true));
     builder.add(PayRentOperation::new);
+    builder.add(RentBalanceOperation::new);
+    builder.add(SSizeOperation::new);
     return builder.build();
   }
 }
