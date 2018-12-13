@@ -67,6 +67,7 @@ import tech.pegasys.pantheon.ethereum.vm.operations.NumberOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.OrOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.OriginOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PCOperation;
+import tech.pegasys.pantheon.ethereum.vm.operations.PayRentOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PopOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PushOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnDataCopyOperation;
@@ -279,6 +280,7 @@ public abstract class MainnetEvmRegistries {
 
     builder.addAll(MainnetEvmRegistries.CONSTANTINOPLE_OPERATION_FACTORIES);
     builder.add(gasCalculator -> new SStoreOperation(gasCalculator, true));
+    builder.add(PayRentOperation::new);
     return builder.build();
   }
 }
