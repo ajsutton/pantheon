@@ -48,7 +48,7 @@ public class AccountSerializerTest {
     final BytesValue serialized = input.serialize(serializer);
 
     final TestAccountState output =
-        serializer.deserializeAccount(input.address, input.addressHash, serialized);
+        serializer.deserializeAccount(input.address, input.addressHash, serialized).get();
 
     assertThat(output).isEqualToComparingFieldByField(input);
   }
@@ -69,7 +69,7 @@ public class AccountSerializerTest {
     final BytesValue serialized = input.serialize(serializer);
 
     final TestAccountState output =
-        serializer.deserializeAccount(input.address, input.addressHash, serialized);
+        serializer.deserializeAccount(input.address, input.addressHash, serialized).get();
 
     assertThat(output).isEqualToComparingFieldByField(input);
   }
@@ -100,7 +100,7 @@ public class AccountSerializerTest {
     final BytesValue serialized = input.serialize(serializer);
 
     final TestAccountState output =
-        serializer.deserializeAccount(input.address, input.addressHash, serialized);
+        serializer.deserializeAccount(input.address, input.addressHash, serialized).get();
 
     assertThat(output).isEqualToComparingFieldByField(expected);
   }
@@ -223,6 +223,11 @@ public class AccountSerializerTest {
     public NavigableMap<Bytes32, UInt256> storageEntriesFrom(
         final Bytes32 startKeyHash, final int limit) {
       return null;
+    }
+
+    @Override
+    public Hash calculateStorageRoot() {
+      return storageRoot;
     }
 
     @Override

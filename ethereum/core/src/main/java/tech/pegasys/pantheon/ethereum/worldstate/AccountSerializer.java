@@ -15,6 +15,7 @@ package tech.pegasys.pantheon.ethereum.worldstate;
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.HashStub;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.rlp.RLP;
 import tech.pegasys.pantheon.ethereum.rlp.RLPException;
@@ -22,6 +23,7 @@ import tech.pegasys.pantheon.ethereum.rlp.RLPInput;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.math.BigInteger;
+import java.util.Optional;
 
 public class AccountSerializer<T> {
   private final AccountStateConstructor<T> accountStateConstructor;
@@ -30,11 +32,15 @@ public class AccountSerializer<T> {
     this.accountStateConstructor = accountStateConstructor;
   }
 
-  public T deserializeAccount(
+  public Optional<T> deserializeAccount(
       final Address address, final Hash addressHash, final BytesValue encoded) throws RLPException {
     final RLPInput in = RLP.input(encoded);
     in.enterList();
 
+    if (!in.isLongScalar()) {
+      // We have a hash stub, not a full account.
+      return Optional.empty();
+    }
     final long nonce = in.readLongScalar();
     final Wei balance = in.readUInt256Scalar(Wei::wrap);
     final Hash storageRoot = Hash.wrap(in.readBytes32());
@@ -59,16 +65,17 @@ public class AccountSerializer<T> {
 
     in.leaveList();
 
-    return accountStateConstructor.create(
-        address,
-        addressHash,
-        nonce,
-        balance,
-        rentBalance,
-        rentBlock,
-        storageSize,
-        storageRoot,
-        codeHash);
+    return Optional.of(
+        accountStateConstructor.create(
+            address,
+            addressHash,
+            nonce,
+            balance,
+            rentBalance,
+            rentBlock,
+            storageSize,
+            storageRoot,
+            codeHash));
   }
 
   public BytesValue serializeAccount(
@@ -106,6 +113,20 @@ public class AccountSerializer<T> {
           out.writeBytesValue(storageRoot);
           out.endList();
         });
+  }
+
+  public Optional<HashStub> deserializeHashStub(
+      final Address address, final Hash addressHash, final BytesValue encoded) throws RLPException {
+    final RLPInput in = RLP.input(encoded);
+    in.enterList();
+    if (in.isLongScalar()) {
+      // This is an actual account, not a hash stub.
+      return Optional.empty();
+    }
+    final Hash storageRoot = Hash.wrap(in.readBytes32());
+    final Hash codeHash = Hash.wrap(in.readBytes32());
+    in.leaveList();
+    return Optional.of(new HashStub(address, addressHash, storageRoot, codeHash));
   }
 
   public interface AccountStateConstructor<T> {

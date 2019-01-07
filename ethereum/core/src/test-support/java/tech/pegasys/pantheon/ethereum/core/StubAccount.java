@@ -101,6 +101,11 @@ public class StubAccount implements MutableAccount {
   }
 
   @Override
+  public void copyStorageFrom(final Account account) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  @Override
   public void setRentBlock(final long rentBlock) {
     this.rentBlock = rentBlock;
   }
@@ -128,6 +133,11 @@ public class StubAccount implements MutableAccount {
   @Override
   public NavigableMap<Bytes32, UInt256> storageEntriesFrom(
       final Bytes32 startKeyHash, final int limit) {
+    throw new UnsupportedOperationException("Not implemented");
+  }
+
+  @Override
+  public Hash calculateStorageRoot() {
     throw new UnsupportedOperationException("Not implemented");
   }
 

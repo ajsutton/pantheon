@@ -14,6 +14,8 @@ package tech.pegasys.pantheon.ethereum.worldstate;
 
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
+import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.HashStub;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.WorldState;
 import tech.pegasys.pantheon.ethereum.core.WorldUpdater;
@@ -41,9 +43,11 @@ public class DebuggableMutableWorldState extends DefaultMutableWorldState {
 
   private static class DebugInfo {
     private final Set<Address> accounts = new HashSet<>();
+    private final Set<Address> stubs = new HashSet<>();
 
     private void addAll(final DebugInfo other) {
       this.accounts.addAll(other.accounts);
+      this.stubs.addAll(other.stubs);
     }
   }
 
@@ -95,6 +99,22 @@ public class DebuggableMutableWorldState extends DefaultMutableWorldState {
               builder.append("    balance: ").append(account.getBalance()).append('\n');
               builder.append("    code: ").append(account.getCode()).append('\n');
             });
+    info.stubs.forEach(
+        address -> {
+          final HashStub hashStub = getHashStub(address);
+          if (hashStub == null) {
+            return;
+          }
+          builder
+              .append("  ")
+              .append(address)
+              .append(" [")
+              .append(Hash.hash(address))
+              .append("] (Evicted):\n");
+
+          builder.append("    storageRoot: ").append(hashStub.getStorageRoot()).append('\n');
+          builder.append("    codeHash: ").append(hashStub.getCodeHash()).append('\n');
+        });
     return builder.toString();
   }
 
@@ -168,6 +188,12 @@ public class DebuggableMutableWorldState extends DefaultMutableWorldState {
     public Account get(final Address address) {
       record(address);
       return wrapped.get(address);
+    }
+
+    @Override
+    public HashStub getHashStub(final Address address) {
+      ownInfo.stubs.add(address);
+      return wrapped.getHashStub(address);
     }
   }
 }

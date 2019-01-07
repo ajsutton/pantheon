@@ -146,6 +146,13 @@ public interface RLPInput {
   long readLongScalar();
 
   /**
+   * Check if the next item can be interpreted as a long scalar.
+   *
+   * @return true if the next item of this input could be read with {@link #readLongScalar()}.
+   */
+  boolean isLongScalar();
+
+  /**
    * Reads a scalar from the input and return is as an int value.
    *
    * @return The next scalar item of this input as an int value.

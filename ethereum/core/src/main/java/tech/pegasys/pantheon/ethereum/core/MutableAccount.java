@@ -120,4 +120,6 @@ public interface MutableAccount extends Account {
   void adjustStorageSize(int adjustmentAmount);
 
   void setStorageSize(BigInteger storageSize);
+
+  void copyStorageFrom(Account account);
 }

@@ -302,6 +302,17 @@ abstract class AbstractRLPInput implements RLPInput {
   }
 
   @Override
+  public boolean isLongScalar() {
+    // This is an awful way to do this. Need to refactor checkScalar to have an isScalar version.
+    try {
+      checkScalar("long scalar", 8);
+      return true;
+    } catch (final RLPException e) {
+      return false;
+    }
+  }
+
+  @Override
   public int readIntScalar() {
     checkScalar("int scalar", 4);
     int res = 0;

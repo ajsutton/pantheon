@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.ethereum.core.AbstractWorldUpdater;
 import tech.pegasys.pantheon.ethereum.core.Account;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Hash;
+import tech.pegasys.pantheon.ethereum.core.HashStub;
 import tech.pegasys.pantheon.ethereum.core.MutableAccount;
 import tech.pegasys.pantheon.ethereum.core.MutableWorldState;
 import tech.pegasys.pantheon.ethereum.core.Wei;
@@ -100,8 +101,17 @@ public class DefaultMutableWorldState implements MutableWorldState {
   public Account get(final Address address) {
     final Hash addressHash = Hash.hash(address);
     return accountStateTrie
-        .get(Hash.hash(address))
-        .map(bytes -> accountSerializer.deserializeAccount(address, addressHash, bytes))
+        .get(addressHash)
+        .flatMap(bytes -> accountSerializer.deserializeAccount(address, addressHash, bytes))
+        .orElse(null);
+  }
+
+  @Override
+  public HashStub getHashStub(final Address address) {
+    final Hash addressHash = Hash.hash(address);
+    return accountStateTrie
+        .get(addressHash)
+        .flatMap(bytes -> accountSerializer.deserializeHashStub(address, addressHash, bytes))
         .orElse(null);
   }
 
@@ -298,6 +308,11 @@ public class DefaultMutableWorldState implements MutableWorldState {
       return storageEntries;
     }
 
+    @Override
+    public Hash calculateStorageRoot() {
+      return storageRoot;
+    }
+
     private UInt256 convertToUInt256(final BytesValue value) {
       // TODO: we could probably have an optimized method to decode a single scalar since it's used
       // pretty often.
@@ -333,7 +348,8 @@ public class DefaultMutableWorldState implements MutableWorldState {
       return wrapped
           .accountStateTrie
           .get(addressHash)
-          .map(bytes -> wrapped.accountSerializer.deserializeAccount(address, addressHash, bytes))
+          .flatMap(
+              bytes -> wrapped.accountSerializer.deserializeAccount(address, addressHash, bytes))
           .orElse(null);
     }
 
@@ -369,8 +385,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
                 wrapped.updatedStorageTries.remove(address);
                 wrapped.updatedAccountCode.remove(address);
 
-                final Hash storageRootHash =
-                    updateStorageTrie(wrapped, evictedAccount, evictedAccount.getWrappedAccount());
+                final Hash storageRootHash = evictedAccount.getStorageRoot();
                 final BytesValue hashStub =
                     wrapped.accountSerializer.serializeHashStub(
                         evictedAccount.getCodeHash(), storageRootHash);
@@ -413,15 +428,7 @@ public class DefaultMutableWorldState implements MutableWorldState {
         final MerklePatriciaTrie<Bytes32, BytesValue> storageTrie =
             freshState ? wrapped.newAccountStorageTrie(Hash.EMPTY_TRIE_HASH) : origin.storageTrie();
         wrapped.updatedStorageTries.put(updated.getAddress(), storageTrie);
-        for (final Map.Entry<UInt256, UInt256> entry : updatedStorage.entrySet()) {
-          final UInt256 value = entry.getValue();
-          final Hash keyHash = Hash.hash(entry.getKey().getBytes());
-          if (value.isZero()) {
-            storageTrie.remove(keyHash);
-          } else {
-            storageTrie.put(keyHash, RLP.encode(out -> out.writeUInt256Scalar(entry.getValue())));
-          }
-        }
+        StorageTrieUpdater.updateStorageTrie(storageTrie, updatedStorage);
         storageRoot = Hash.wrap(storageTrie.getRootHash());
       }
       return storageRoot;

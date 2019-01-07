@@ -44,7 +44,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
 
   private final Map<Address, UpdateTrackingAccount<A>> updatedAccounts = new HashMap<>();
   private final Set<Address> deletedAccounts = new HashSet<>();
-  private final Map<Address, UpdateTrackingAccount<A>> evictedAccounts = new HashMap<>();
+  private final Map<Address, HashStub> evictedAccounts = new HashMap<>();
 
   protected AbstractWorldUpdater(final W world) {
     this.world = world;
@@ -79,6 +79,22 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
       return null;
     }
     return world.get(address);
+  }
+
+  @Override
+  public HashStub getHashStub(final Address address) {
+    final HashStub hashStub = evictedAccounts.get(address);
+    if (hashStub != null) {
+      return hashStub;
+    }
+    if (updatedAccounts.containsKey(address)) {
+      // We have a real account, not an evicted one.
+      return null;
+    }
+    if (deletedAccounts.contains(address)) {
+      return null;
+    }
+    return world.getHashStub(address);
   }
 
   @Override
@@ -117,7 +133,10 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     updatedAccounts.remove(address);
     deletedAccounts.remove(address);
 
-    evictedAccounts.put(address, account);
+    evictedAccounts.put(
+        address,
+        new HashStub(
+            address, Hash.hash(address), account.calculateStorageRoot(), account.getCodeHash()));
   }
 
   /**
@@ -164,7 +183,7 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     return deletedAccounts;
   }
 
-  protected Collection<UpdateTrackingAccount<A>> evictedAccounts() {
+  protected Collection<HashStub> evictedAccounts() {
     return evictedAccounts.values();
   }
 
@@ -266,6 +285,11 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     @Override
     public void setStorageSize(final BigInteger storageSize) {
       this.storageSize = storageSize;
+    }
+
+    @Override
+    public void copyStorageFrom(final Account account) {
+      throw new UnsupportedOperationException("TODO: Work out how to implement this");
     }
 
     @Override
@@ -405,6 +429,11 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
     }
 
     @Override
+    public Hash calculateStorageRoot() {
+      throw new UnsupportedOperationException("TODO: Work out how to implement this");
+    }
+
+    @Override
     public void setStorageValue(final UInt256 key, final UInt256 value) {
       updatedStorage.put(key, value);
     }
@@ -502,20 +531,10 @@ public abstract class AbstractWorldUpdater<W extends WorldView, A extends Accoun
       // Then push our deletes and updates to the stacked ones.
       wrapped.deletedAccounts.addAll(deletedAccounts());
 
-      for (final UpdateTrackingAccount<UpdateTrackingAccount<A>> evicted : evictedAccounts()) {
-        UpdateTrackingAccount<A> existing = wrapped.evictedAccounts.get(evicted.getAddress());
-        if (existing == null) {
-          // If we don't track this account, it's either a new one or getForMutation above had
-          // created a tracker to satisfy the type system above and we can reuse that now.
-          existing = evicted.getWrappedAccount();
-          if (existing == null) {
-            // Brand new account, create our own version
-            existing = new UpdateTrackingAccount<>(evicted.address);
-          }
-          wrapped.evictedAccounts.put(existing.address, existing);
-        }
-        wrapped.deletedAccounts.remove(evicted.address);
-        wrapped.updatedAccounts.remove(evicted.address);
+      for (final HashStub evicted : evictedAccounts()) {
+        wrapped.evictedAccounts.put(evicted.getAddress(), evicted);
+        wrapped.deletedAccounts.remove(evicted.getAddress());
+        wrapped.updatedAccounts.remove(evicted.getAddress());
       }
 
       for (final UpdateTrackingAccount<UpdateTrackingAccount<A>> update : updatedAccounts()) {

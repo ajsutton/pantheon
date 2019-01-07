@@ -168,4 +168,6 @@ public interface Account {
    * @return the requested storage entries as a map of key hash to value.
    */
   NavigableMap<Bytes32, UInt256> storageEntriesFrom(Bytes32 startKeyHash, int limit);
+
+  Hash calculateStorageRoot();
 }
