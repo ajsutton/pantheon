@@ -71,6 +71,7 @@ import tech.pegasys.pantheon.ethereum.vm.operations.PayRentOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PopOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.PushOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.RentBalanceOperation;
+import tech.pegasys.pantheon.ethereum.vm.operations.RestoreToOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnDataCopyOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnDataSizeOperation;
 import tech.pegasys.pantheon.ethereum.vm.operations.ReturnOperation;
@@ -285,6 +286,7 @@ public abstract class MainnetEvmRegistries {
     builder.add(PayRentOperation::new);
     builder.add(RentBalanceOperation::new);
     builder.add(SSizeOperation::new);
+    builder.add(RestoreToOperation::new);
     return builder.build();
   }
 }
