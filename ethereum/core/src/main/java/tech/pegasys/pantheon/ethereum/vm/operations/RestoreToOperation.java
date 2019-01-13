@@ -84,5 +84,6 @@ public class RestoreToOperation extends AbstractOperation {
     restoredAccount.copyStorageFrom(account);
     restoredAccount.setBalance(inheritance);
     restoredAccount.setRentBalance(account != null ? account.getRentBalance() : BigInteger.ZERO);
+    frame.addSelfDestruct(account.getAddress());
   }
 }
