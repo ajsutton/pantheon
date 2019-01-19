@@ -209,14 +209,13 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
   )
   private final Collection<String> bannedNodeIds = new ArrayList<>();
 
-  // TODO: Re-enable as per NC-1057/NC-1681
-  //  @Option(
-  //    names = {"--sync-mode"},
-  //    paramLabel = MANDATORY_MODE_FORMAT_HELP,
-  //    description =
-  //        "Synchronization mode (Value can be one of ${COMPLETION-CANDIDATES}, default:
-  // ${DEFAULT-VALUE})"
-  //  )
+  @Option(
+    hidden = true,
+    names = {"--sync-mode"},
+    paramLabel = MANDATORY_MODE_FORMAT_HELP,
+    description =
+        "Synchronization mode (Value can be one of ${COMPLETION-CANDIDATES}, default: ${DEFAULT-VALUE})"
+  )
   private final SyncMode syncMode = DEFAULT_SYNC_MODE;
 
   // Boolean option to indicate if the client have to sync against the ottoman test network
@@ -511,7 +510,7 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
     }
 
     final EthNetworkConfig ethNetworkConfig = ethNetworkConfig();
-    PermissioningConfiguration permissioningConfiguration = permissioningConfiguration();
+    final PermissioningConfiguration permissioningConfiguration = permissioningConfiguration();
     ensureAllBootnodesAreInWhitelist(ethNetworkConfig, permissioningConfiguration);
 
     synchronize(
@@ -529,17 +528,17 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
   private void ensureAllBootnodesAreInWhitelist(
       final EthNetworkConfig ethNetworkConfig,
       final PermissioningConfiguration permissioningConfiguration) {
-    List<Peer> bootnodes =
+    final List<Peer> bootnodes =
         DiscoveryConfiguration.getBootstrapPeersFromGenericCollection(
             ethNetworkConfig.getBootNodes());
     if (permissioningConfiguration.isNodeWhitelistSet() && bootnodes != null) {
-      List<Peer> whitelist =
+      final List<Peer> whitelist =
           permissioningConfiguration
               .getNodeWhitelist()
               .stream()
               .map(DefaultPeer::fromURI)
               .collect(Collectors.toList());
-      for (Peer bootnode : bootnodes) {
+      for (final Peer bootnode : bootnodes) {
         if (!whitelist.contains(bootnode)) {
           throw new ParameterException(
               new CommandLine(this),
@@ -638,7 +637,7 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
 
     checkNotNull(runnerBuilder);
 
-    Runner runner =
+    final Runner runner =
         runnerBuilder
             .vertx(Vertx.vertx())
             .pantheonController(controller)
@@ -723,7 +722,7 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
   private String genesisConfig() {
     try {
       return Resources.toString(genesisFile().toURI().toURL(), UTF_8);
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new ParameterException(
           new CommandLine(this),
           String.format("Unable to load genesis file %s.", genesisFile()),
