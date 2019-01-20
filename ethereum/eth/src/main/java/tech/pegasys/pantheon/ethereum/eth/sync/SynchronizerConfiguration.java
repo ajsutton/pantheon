@@ -30,10 +30,12 @@ public class SynchronizerConfiguration {
   // TODO: Determine reasonable defaults here
   public static int DEFAULT_PIVOT_DISTANCE_FROM_HEAD = 500;
   public static float DEFAULT_FULL_VALIDATION_RATE = .1f;
+  public static int DEFAULT_FAST_SYNC_MINIMUM_PEERS = 5;
 
   // Fast sync config
   private final int fastSyncPivotDistance;
   private final float fastSyncFullValidationRate;
+  private final int fastSyncMinimumPeerCount;
 
   // Block propagation config
   private final Range<Long> blockPropagationRange;
@@ -58,6 +60,7 @@ public class SynchronizerConfiguration {
       final SyncMode requestedSyncMode,
       final int fastSyncPivotDistance,
       final float fastSyncFullValidationRate,
+      final int fastSyncMinimumPeerCount,
       final Range<Long> blockPropagationRange,
       final Optional<SyncMode> syncMode,
       final long downloaderChangeTargetThresholdByHeight,
@@ -73,6 +76,7 @@ public class SynchronizerConfiguration {
     this.requestedSyncMode = requestedSyncMode;
     this.fastSyncPivotDistance = fastSyncPivotDistance;
     this.fastSyncFullValidationRate = fastSyncFullValidationRate;
+    this.fastSyncMinimumPeerCount = fastSyncMinimumPeerCount;
     this.blockPropagationRange = blockPropagationRange;
     this.syncMode = syncMode;
     this.downloaderChangeTargetThresholdByHeight = downloaderChangeTargetThresholdByHeight;
@@ -115,6 +119,7 @@ public class SynchronizerConfiguration {
         requestedSyncMode,
         fastSyncPivotDistance,
         fastSyncFullValidationRate,
+        fastSyncMinimumPeerCount,
         blockPropagationRange,
         Optional.of(actualSyncMode),
         downloaderChangeTargetThresholdByHeight,
@@ -222,6 +227,10 @@ public class SynchronizerConfiguration {
     return fastSyncFullValidationRate;
   }
 
+  public int fastSyncMinimumPeerCount() {
+    return fastSyncMinimumPeerCount;
+  }
+
   public static class Builder {
     private int fastSyncPivotDistance = DEFAULT_PIVOT_DISTANCE_FROM_HEAD;
     private float fastSyncFullValidationRate = DEFAULT_FULL_VALIDATION_RATE;
@@ -318,6 +327,7 @@ public class SynchronizerConfiguration {
           syncMode,
           fastSyncPivotDistance,
           fastSyncFullValidationRate,
+          DEFAULT_FAST_SYNC_MINIMUM_PEERS,
           blockPropagationRange,
           Optional.empty(),
           downloaderChangeTargetThresholdByHeight,

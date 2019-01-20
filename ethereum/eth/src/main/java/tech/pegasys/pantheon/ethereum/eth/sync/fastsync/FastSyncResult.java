@@ -14,5 +14,6 @@ package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
 public enum FastSyncResult {
   FAST_SYNC_COMPLETE,
-  FAST_SYNC_UNAVAILABLE
+  FAST_SYNC_UNAVAILABLE,
+  UNEXPECTED_ERROR
 }

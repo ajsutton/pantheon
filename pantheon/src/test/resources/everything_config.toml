@@ -28,7 +28,7 @@ host-whitelist=["all"]
 
 # chain
 genesis="~/genesis.json"
-#sync-mode="fast"
+sync-mode="fast"
 ottoman=false
 ropsten=false
 goerli=false
