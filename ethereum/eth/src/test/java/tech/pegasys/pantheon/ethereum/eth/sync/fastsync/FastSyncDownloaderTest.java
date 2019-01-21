@@ -18,10 +18,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.CHAIN_TOO_SHORT;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.SUCCESS;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.UNEXPECTED_ERROR;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.CHAIN_TOO_SHORT;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.UNEXPECTED_ERROR;
 
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 
@@ -36,30 +36,29 @@ public class FastSyncDownloaderTest {
 
   @Test
   public void shouldCompleteFastSyncSuccessfully() {
-    when(fastSyncActions.waitForSuitablePeers())
-        .thenReturn(completedFuture(FastSyncState.withResult(SUCCESS)));
-    final FastSyncState selectPivotBlockState = new FastSyncState(SUCCESS, OptionalLong.of(50));
+    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(new FastSyncState()));
+    final FastSyncState selectPivotBlockState = new FastSyncState(OptionalLong.of(50));
     when(fastSyncActions.selectPivotBlock()).thenReturn(selectPivotBlockState);
     when(fastSyncActions.downloadPivotBlockHeader(selectPivotBlockState))
         .thenReturn(completedFuture(selectPivotBlockState));
 
-    final CompletableFuture<FastSyncResult> result = downloader.start();
+    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
 
     verify(fastSyncActions).waitForSuitablePeers();
     verify(fastSyncActions).selectPivotBlock();
     verify(fastSyncActions).downloadPivotBlockHeader(selectPivotBlockState);
     verifyNoMoreInteractions(fastSyncActions);
-    assertThat(result).isCompletedWithValue(FastSyncResult.FAST_SYNC_UNAVAILABLE);
+    assertThat(result).isCompletedWithValue(Optional.of(FastSyncError.FAST_SYNC_UNAVAILABLE));
   }
 
   @Test
   public void shouldAbortIfWaitForSuitablePeersFails() {
     when(fastSyncActions.waitForSuitablePeers())
-        .thenReturn(completedFuture(FastSyncState.withResult(UNEXPECTED_ERROR)));
+        .thenReturn(completedExceptionally(new FastSyncException(UNEXPECTED_ERROR)));
 
-    final CompletableFuture<FastSyncResult> result = downloader.start();
+    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
 
-    assertThat(result).isCompletedWithValue(UNEXPECTED_ERROR);
+    assertThat(result).isCompletedWithValue(Optional.of(UNEXPECTED_ERROR));
 
     verify(fastSyncActions).waitForSuitablePeers();
     verifyNoMoreInteractions(fastSyncActions);
@@ -67,16 +66,21 @@ public class FastSyncDownloaderTest {
 
   @Test
   public void shouldAbortIfSelectPivotBlockFails() {
-    when(fastSyncActions.waitForSuitablePeers())
-        .thenReturn(completedFuture(FastSyncState.withResult(SUCCESS)));
-    when(fastSyncActions.selectPivotBlock()).thenReturn(FastSyncState.withResult(CHAIN_TOO_SHORT));
+    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(new FastSyncState()));
+    when(fastSyncActions.selectPivotBlock()).thenThrow(new FastSyncException(CHAIN_TOO_SHORT));
 
-    final CompletableFuture<FastSyncResult> result = downloader.start();
+    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
 
-    assertThat(result).isCompletedWithValue(CHAIN_TOO_SHORT);
+    assertThat(result).isCompletedWithValue(Optional.of(CHAIN_TOO_SHORT));
 
     verify(fastSyncActions).waitForSuitablePeers();
     verify(fastSyncActions).selectPivotBlock();
     verifyNoMoreInteractions(fastSyncActions);
+  }
+
+  private CompletableFuture<FastSyncState> completedExceptionally(final Throwable error) {
+    final CompletableFuture<FastSyncState> result = new CompletableFuture<>();
+    result.completeExceptionally(error);
+    return result;
   }
 }

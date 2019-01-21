@@ -12,12 +12,13 @@
  */
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.FAST_SYNC_UNAVAILABLE;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.FAST_SYNC_UNAVAILABLE;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.UNEXPECTED_ERROR;
 
+import tech.pegasys.pantheon.util.ExceptionUtils;
+
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,36 +31,27 @@ public class FastSyncDownloader<C> {
     this.fastSyncActions = fastSyncActions;
   }
 
-  public CompletableFuture<FastSyncResult> start() {
+  public CompletableFuture<Optional<FastSyncError>> start() {
     LOG.info("Fast sync enabled");
     return fastSyncActions
         .waitForSuitablePeers()
-        .thenCompose(ifSuccessful(fastSyncActions::selectPivotBlock))
-        .thenCompose(ifSuccessful(fastSyncActions::downloadPivotBlockHeader))
+        .thenApply(state -> fastSyncActions.selectPivotBlock())
+        .thenCompose(fastSyncActions::downloadPivotBlockHeader)
         .thenCompose(
-            ifSuccessful(
-                state -> {
-                  LOG.info("Reached end of current fast sync implementation with state {}", state);
-                  return completedFuture(FastSyncState.withResult(FAST_SYNC_UNAVAILABLE));
-                }))
-        .thenApply(FastSyncState::getLastActionResult);
-  }
-
-  private Function<FastSyncState, CompletableFuture<FastSyncState>> ifSuccessful(
-      final Supplier<FastSyncState> nextAction) {
-    return state -> ifSuccessful(state, ignored -> completedFuture(nextAction.get()));
-  }
-
-  private Function<FastSyncState, CompletableFuture<FastSyncState>> ifSuccessful(
-      final Function<FastSyncState, CompletableFuture<FastSyncState>> nextAction) {
-    return state -> ifSuccessful(state, nextAction);
-  }
-
-  private CompletableFuture<FastSyncState> ifSuccessful(
-      final FastSyncState state,
-      final Function<FastSyncState, CompletableFuture<FastSyncState>> nextAction) {
-    return state.getLastActionResult() == FastSyncResult.SUCCESS
-        ? nextAction.apply(state)
-        : completedFuture(state);
+            state -> {
+              LOG.info("Reached end of current fast sync implementation with state {}", state);
+              throw new FastSyncException(FAST_SYNC_UNAVAILABLE);
+            })
+        .thenApply(state -> Optional.<FastSyncError>empty())
+        .exceptionally(
+            error -> {
+              final Throwable rootCause = ExceptionUtils.rootCause(error);
+              if (rootCause instanceof FastSyncException) {
+                return Optional.of(((FastSyncException) rootCause).getError());
+              } else {
+                LOG.error("Fast sync encountered an unexpected error", error);
+                return Optional.of(UNEXPECTED_ERROR);
+              }
+            });
   }
 }

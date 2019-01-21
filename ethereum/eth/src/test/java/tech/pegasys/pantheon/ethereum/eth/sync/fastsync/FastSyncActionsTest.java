@@ -13,10 +13,10 @@
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.CHAIN_TOO_SHORT;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.NO_PEERS_AVAILABLE;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.SUCCESS;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.CHAIN_TOO_SHORT;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.NO_PEERS_AVAILABLE;
 import static tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem.NO_OP_LABELLED_TIMER;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
@@ -32,6 +32,7 @@ import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -72,7 +73,7 @@ public class FastSyncActionsTest {
       EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
     }
     final CompletableFuture<FastSyncState> result = fastSyncActions.waitForSuitablePeers();
-    assertThat(result).isCompletedWithValue(FastSyncState.withResult(SUCCESS));
+    assertThat(result).isCompletedWithValue(new FastSyncState());
   }
 
   @Test
@@ -80,7 +81,7 @@ public class FastSyncActionsTest {
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
     timeout.set(true);
     final CompletableFuture<FastSyncState> result = fastSyncActions.waitForSuitablePeers();
-    assertThat(result).isCompletedWithValue(FastSyncState.withResult(SUCCESS));
+    assertThat(result).isCompletedWithValue(new FastSyncState());
   }
 
   @Test
@@ -90,7 +91,7 @@ public class FastSyncActionsTest {
     assertThat(result).isNotCompleted();
 
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
-    assertThat(result).isCompletedWithValue(FastSyncState.withResult(SUCCESS));
+    assertThat(result).isCompletedWithValue(new FastSyncState());
   }
 
   @Test
@@ -98,14 +99,13 @@ public class FastSyncActionsTest {
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager, 5000);
 
     final FastSyncState result = fastSyncActions.selectPivotBlock();
-    final FastSyncState expected = new FastSyncState(SUCCESS, OptionalLong.of(4000));
+    final FastSyncState expected = new FastSyncState(OptionalLong.of(4000));
     assertThat(result).isEqualTo(expected);
   }
 
   @Test
   public void selectPivotBlockShouldFailIfNoPeersAreAvailable() {
-    assertThat(fastSyncActions.selectPivotBlock())
-        .isEqualTo(FastSyncState.withResult(NO_PEERS_AVAILABLE));
+    assertThrowsFastSyncException(NO_PEERS_AVAILABLE, fastSyncActions::selectPivotBlock);
   }
 
   @Test
@@ -113,15 +113,21 @@ public class FastSyncActionsTest {
     EthProtocolManagerTestUtil.createPeer(
         ethProtocolManager, syncConfig.fastSyncPivotDistance() - 1);
 
-    final FastSyncState result = fastSyncActions.selectPivotBlock();
-    assertThat(result).isEqualTo(FastSyncState.withResult(CHAIN_TOO_SHORT));
+    assertThrowsFastSyncException(CHAIN_TOO_SHORT, fastSyncActions::selectPivotBlock);
   }
 
   @Test
   public void selectPivotBlockShouldFailIfBestPeerChainIsEqualToPivotDistance() {
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager, syncConfig.fastSyncPivotDistance());
 
-    final FastSyncState result = fastSyncActions.selectPivotBlock();
-    assertThat(result).isEqualTo(FastSyncState.withResult(CHAIN_TOO_SHORT));
+    assertThrowsFastSyncException(CHAIN_TOO_SHORT, fastSyncActions::selectPivotBlock);
+  }
+
+  private void assertThrowsFastSyncException(
+      final FastSyncError expectedError, final ThrowingCallable callable) {
+    assertThatThrownBy(callable)
+        .isInstanceOf(FastSyncException.class)
+        .extracting(exception -> ((FastSyncException) exception).getError())
+        .isEqualTo(expectedError);
   }
 }

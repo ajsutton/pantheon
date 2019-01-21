@@ -22,29 +22,21 @@ import com.google.common.base.MoreObjects;
 
 public class FastSyncState {
 
-  private final FastSyncResult lastActionResult;
   private final OptionalLong pivotBlockNumber;
   private final Optional<BlockHeader> pivotBlockHeader;
 
-  public FastSyncState(final FastSyncResult lastActionResult, final OptionalLong pivotBlockNumber) {
-    this(lastActionResult, pivotBlockNumber, Optional.empty());
+  public FastSyncState() {
+    this(OptionalLong.empty(), Optional.empty());
+  }
+
+  public FastSyncState(final OptionalLong pivotBlockNumber) {
+    this(pivotBlockNumber, Optional.empty());
   }
 
   public FastSyncState(
-      final FastSyncResult lastActionResult,
-      final OptionalLong pivotBlockNumber,
-      final Optional<BlockHeader> pivotBlockHeader) {
-    this.lastActionResult = lastActionResult;
+      final OptionalLong pivotBlockNumber, final Optional<BlockHeader> pivotBlockHeader) {
     this.pivotBlockNumber = pivotBlockNumber;
     this.pivotBlockHeader = pivotBlockHeader;
-  }
-
-  public static FastSyncState withResult(final FastSyncResult result) {
-    return new FastSyncState(result, OptionalLong.empty(), Optional.empty());
-  }
-
-  public FastSyncResult getLastActionResult() {
-    return lastActionResult;
   }
 
   public OptionalLong getPivotBlockNumber() {
@@ -64,20 +56,18 @@ public class FastSyncState {
       return false;
     }
     final FastSyncState that = (FastSyncState) o;
-    return lastActionResult == that.lastActionResult
-        && Objects.equals(pivotBlockNumber, that.pivotBlockNumber)
+    return Objects.equals(pivotBlockNumber, that.pivotBlockNumber)
         && Objects.equals(pivotBlockHeader, that.pivotBlockHeader);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(lastActionResult, pivotBlockNumber, pivotBlockHeader);
+    return Objects.hash(pivotBlockNumber, pivotBlockHeader);
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("lastActionResult", lastActionResult)
         .add("pivotBlockNumber", pivotBlockNumber)
         .add("pivotBlockHeader", pivotBlockHeader)
         .toString();

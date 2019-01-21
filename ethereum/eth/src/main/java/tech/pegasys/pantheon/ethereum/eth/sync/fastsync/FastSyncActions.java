@@ -12,11 +12,8 @@
  */
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
-import static java.util.concurrent.CompletableFuture.completedFuture;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.CHAIN_TOO_SHORT;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.NO_PEERS_AVAILABLE;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.SUCCESS;
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.UNEXPECTED_ERROR;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.CHAIN_TOO_SHORT;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.NO_PEERS_AVAILABLE;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
@@ -35,7 +32,6 @@ import tech.pegasys.pantheon.util.ExceptionUtils;
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeoutException;
 
 import org.apache.logging.log4j.LogManager;
@@ -69,38 +65,45 @@ public class FastSyncActions<C> {
             ethContext, syncConfig.getFastSyncMinimumPeerCount(), ethTasksTimer);
 
     final EthScheduler scheduler = ethContext.getScheduler();
-    return scheduler
+    final CompletableFuture<FastSyncState> result = new CompletableFuture<>();
+    scheduler
         .timeout(waitForPeersTask, syncConfig.getFastSyncMaximumPeerWaitTime())
         .handle(
-            (result, error) -> {
+            (waitResult, error) -> {
               if (ExceptionUtils.rootCause(error) instanceof TimeoutException) {
                 if (ethContext.getEthPeers().bestPeer().isPresent()) {
                   LOG.warn(
                       "Fast sync timed out before minimum peer count was reached. Continuing with reduced peers.");
+                  result.complete(new FastSyncState());
                 } else {
-                  return FastSyncState.withResult(NO_PEERS_AVAILABLE);
+                  waitForAnyPeer()
+                      .thenAccept(result::complete)
+                      .exceptionally(
+                          taskError -> {
+                            result.completeExceptionally(error);
+                            return null;
+                          });
                 }
               } else if (error != null) {
                 LOG.error("Failed to find peers for fast sync", error);
-                return FastSyncState.withResult(UNEXPECTED_ERROR);
+                result.completeExceptionally(error);
+              } else {
+                result.complete(new FastSyncState());
               }
-              return FastSyncState.withResult(SUCCESS);
-            })
-        .thenCompose(
-            result ->
-                result.getLastActionResult() == NO_PEERS_AVAILABLE
-                    ? waitForAnyPeer()
-                    : completedFuture(result));
+              return null;
+            });
+
+    return result;
   }
 
-  private CompletionStage<FastSyncState> waitForAnyPeer() {
+  private CompletableFuture<FastSyncState> waitForAnyPeer() {
     LOG.warn(
         "Maximum wait time for fast sync reached but no peers available. Continuing to wait for any available peer.");
     final WaitForPeerTask waitForPeerTask = WaitForPeerTask.create(ethContext, ethTasksTimer);
     return ethContext
         .getScheduler()
         .scheduleSyncWorkerTask(waitForPeerTask::run)
-        .thenApply(voidResult -> FastSyncState.withResult(SUCCESS));
+        .thenApply(voidResult -> new FastSyncState());
   }
 
   public FastSyncState selectPivotBlock() {
@@ -112,13 +115,13 @@ public class FastSyncActions<C> {
               final long pivotBlockNumber =
                   peer.chainState().getEstimatedHeight() - syncConfig.fastSyncPivotDistance();
               if (pivotBlockNumber <= BlockHeader.GENESIS_BLOCK_NUMBER) {
-                return FastSyncState.withResult(CHAIN_TOO_SHORT);
+                throw new FastSyncException(CHAIN_TOO_SHORT);
               } else {
                 LOG.info("Selecting block number {} as fast sync pivot block.", pivotBlockNumber);
-                return new FastSyncState(SUCCESS, OptionalLong.of(pivotBlockNumber));
+                return new FastSyncState(OptionalLong.of(pivotBlockNumber));
               }
             })
-        .orElseGet(() -> FastSyncState.withResult(NO_PEERS_AVAILABLE));
+        .orElseThrow(() -> new FastSyncException(NO_PEERS_AVAILABLE));
   }
 
   public CompletableFuture<FastSyncState> downloadPivotBlockHeader(
@@ -133,7 +136,6 @@ public class FastSyncActions<C> {
         .thenApply(
             taskResult ->
                 new FastSyncState(
-                    SUCCESS,
                     currentState.getPivotBlockNumber(),
                     Optional.of(taskResult.getResult().get(0))));
   }

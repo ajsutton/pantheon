@@ -18,7 +18,7 @@ import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncActions;
 import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncDownloader;
-import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult;
+import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError;
 import tech.pegasys.pantheon.ethereum.eth.sync.state.PendingBlocks;
 import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncState;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
@@ -89,14 +89,12 @@ public class DefaultSynchronizer<C> implements Synchronizer {
     }
   }
 
-  private void handleFastSyncResult(final FastSyncResult result, final Throwable error) {
+  private void handleFastSyncResult(final Optional<FastSyncError> result, final Throwable error) {
     if (error != null) {
       LOG.error("Fast sync failed. Switching to full sync.", error);
     }
-    if (result == FastSyncResult.SUCCESS) {
+    if (!result.isPresent()) {
       LOG.info("Fast sync completed successfully.");
-    } else {
-      LOG.error("Fast sync failed: {}", result);
     }
     startFullSync();
   }
