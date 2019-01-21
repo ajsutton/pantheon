@@ -12,7 +12,12 @@
  */
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.FAST_SYNC_UNAVAILABLE;
+
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,8 +34,18 @@ public class FastSyncDownloader<C> {
     LOG.info("Fast sync enabled");
     return fastSyncActions
         .waitForSuitablePeers()
-        .thenApply(
-            result ->
-                result == FastSyncResult.SUCCESS ? FastSyncResult.FAST_SYNC_UNAVAILABLE : result);
+        .thenApply(ifSuccessful(fastSyncActions::selectPivotBlock))
+        .thenApply(ifSuccessful(() -> FastSyncState.withResult(FAST_SYNC_UNAVAILABLE)))
+        .thenApply(FastSyncState::getLastActionResult);
+  }
+
+  private FastSyncState ifSuccessful(
+      final FastSyncState state, final UnaryOperator<FastSyncState> nextAction) {
+    return state.getLastActionResult() == FastSyncResult.SUCCESS ? nextAction.apply(state) : state;
+  }
+
+  private Function<FastSyncState, FastSyncState> ifSuccessful(
+      final Supplier<FastSyncState> nextAction) {
+    return state -> ifSuccessful(state, ignored -> nextAction.get());
   }
 }
