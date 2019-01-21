@@ -15,8 +15,13 @@ package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 import static java.util.concurrent.CompletableFuture.completedFuture;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.SUCCESS;
+import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.UNEXPECTED_ERROR;
 
+import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 
 import org.junit.Test;
@@ -29,9 +34,11 @@ public class FastSyncDownloaderTest {
   private final FastSyncDownloader<Void> downloader = new FastSyncDownloader<>(fastSyncActions);
 
   @Test
-  public void shouldWaitForSuitablePeersThenFail() {
+  public void shouldWaitForSuitablePeersThenSelectPivotBlock() {
     when(fastSyncActions.waitForSuitablePeers())
-        .thenReturn(completedFuture(FastSyncResult.SUCCESS));
+        .thenReturn(completedFuture(FastSyncState.withResult(SUCCESS)));
+    when(fastSyncActions.selectPivotBlock())
+        .thenReturn(new FastSyncState(SUCCESS, OptionalLong.of(50)));
 
     final CompletableFuture<FastSyncResult> result = downloader.start();
 
@@ -41,10 +48,13 @@ public class FastSyncDownloaderTest {
   @Test
   public void shouldAbortIfWaitForSuitablePeersFails() {
     when(fastSyncActions.waitForSuitablePeers())
-        .thenReturn(completedFuture(FastSyncResult.UNEXPECTED_ERROR));
+        .thenReturn(completedFuture(FastSyncState.withResult(UNEXPECTED_ERROR)));
 
     final CompletableFuture<FastSyncResult> result = downloader.start();
 
-    assertThat(result).isCompletedWithValue(FastSyncResult.UNEXPECTED_ERROR);
+    assertThat(result).isCompletedWithValue(UNEXPECTED_ERROR);
+
+    verify(fastSyncActions).waitForSuitablePeers();
+    verifyNoMoreInteractions(fastSyncActions);
   }
 }
