@@ -21,6 +21,8 @@ import static org.mockito.Mockito.when;
 import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.CHAIN_TOO_SHORT;
 import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.UNEXPECTED_ERROR;
 
+import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
+
 import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
@@ -36,11 +38,15 @@ public class FastSyncDownloaderTest {
 
   @Test
   public void shouldCompleteFastSyncSuccessfully() {
-    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(null));
     final FastSyncState selectPivotBlockState = new FastSyncState(OptionalLong.of(50));
+    final FastSyncState downloadPivotBlockHeaderState =
+        new FastSyncState(
+            OptionalLong.of(50),
+            Optional.of(new BlockHeaderTestFixture().number(50).buildHeader()));
+    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(null));
     when(fastSyncActions.selectPivotBlock()).thenReturn(selectPivotBlockState);
     when(fastSyncActions.downloadPivotBlockHeader(selectPivotBlockState))
-        .thenReturn(completedFuture(selectPivotBlockState));
+        .thenReturn(completedFuture(downloadPivotBlockHeaderState));
 
     final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
 

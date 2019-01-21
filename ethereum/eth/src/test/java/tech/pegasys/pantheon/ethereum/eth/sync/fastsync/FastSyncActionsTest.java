@@ -14,14 +14,17 @@ package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
 import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.CHAIN_TOO_SHORT;
 import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.NO_PEERS_AVAILABLE;
 import static tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem.NO_OP_LABELLED_TIMER;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
+import tech.pegasys.pantheon.ethereum.chain.MutableBlockchain;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthProtocolManager;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthProtocolManagerTestUtil;
+import tech.pegasys.pantheon.ethereum.eth.manager.RespondingEthPeer;
+import tech.pegasys.pantheon.ethereum.eth.manager.RespondingEthPeer.Responder;
+import tech.pegasys.pantheon.ethereum.eth.manager.ethtaskutils.BlockchainSetupUtil;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
@@ -44,20 +47,25 @@ public class FastSyncActionsTest {
           .fastSyncPivotDistance(1000)
           .build();
 
-  @SuppressWarnings("unchecked")
-  private final ProtocolSchedule<Void> protocolSchedule = mock(ProtocolSchedule.class);
-
-  @SuppressWarnings("unchecked")
-  private final ProtocolContext<Void> protocolContext = mock(ProtocolContext.class);
+  private ProtocolSchedule<Void> protocolSchedule;
+  private ProtocolContext<Void> protocolContext;
 
   private final LabelledMetric<OperationTimer> ethTasksTimer = NO_OP_LABELLED_TIMER;
   private final AtomicBoolean timeout = new AtomicBoolean(false);
   private FastSyncActions<Void> fastSyncActions;
   private EthProtocolManager ethProtocolManager;
+  private MutableBlockchain blockchain;
 
   @Before
   public void setUp() {
-    ethProtocolManager = EthProtocolManagerTestUtil.create(timeout::get);
+    final BlockchainSetupUtil<Void> blockchainSetupUtil = BlockchainSetupUtil.forTesting();
+    blockchainSetupUtil.importAllBlocks();
+    blockchain = blockchainSetupUtil.getBlockchain();
+    protocolSchedule = blockchainSetupUtil.getProtocolSchedule();
+    protocolContext = blockchainSetupUtil.getProtocolContext();
+    ethProtocolManager =
+        EthProtocolManagerTestUtil.create(
+            blockchain, blockchainSetupUtil.getWorldArchive(), timeout::get);
     fastSyncActions =
         new FastSyncActions<>(
             syncConfig,
@@ -120,6 +128,20 @@ public class FastSyncActionsTest {
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager, syncConfig.fastSyncPivotDistance());
 
     assertThrowsFastSyncException(CHAIN_TOO_SHORT, fastSyncActions::selectPivotBlock);
+  }
+
+  @Test
+  public void downloadPivotBlockHeaderShouldRetrievePivotBlockHeader() {
+    final RespondingEthPeer peer = EthProtocolManagerTestUtil.createPeer(ethProtocolManager, 1001);
+    final CompletableFuture<FastSyncState> result =
+        fastSyncActions.downloadPivotBlockHeader(new FastSyncState(OptionalLong.of(1)));
+    assertThat(result).isNotCompleted();
+
+    final Responder responder = RespondingEthPeer.blockchainResponder(blockchain);
+    peer.respond(responder);
+
+    assertThat(result)
+        .isCompletedWithValue(new FastSyncState(OptionalLong.of(1), blockchain.getBlockHeader(1)));
   }
 
   private void assertThrowsFastSyncException(
