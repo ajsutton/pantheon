@@ -39,6 +39,7 @@ import org.apache.logging.log4j.Logger;
 public class FastSyncActions<C> {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final int MAX_PIVOT_BLOCK_RETRIES = 5;
   private final SynchronizerConfiguration syncConfig;
   private final ProtocolSchedule<C> protocolSchedule;
   private final ProtocolContext<C> protocolContext;
@@ -124,7 +125,8 @@ public class FastSyncActions<C> {
       final FastSyncState currentState) {
     final long pivotBlockNumber = currentState.getPivotBlockNumber().getAsLong();
     final GetPivotBlockHeaderTask getHeaderTask =
-        new GetPivotBlockHeaderTask(protocolSchedule, ethContext, ethTasksTimer, pivotBlockNumber);
+        GetPivotBlockHeaderTask.forPivotBlock(
+            protocolSchedule, ethContext, ethTasksTimer, pivotBlockNumber, MAX_PIVOT_BLOCK_RETRIES);
     return ethContext
         .getScheduler()
         .scheduleSyncWorkerTask(getHeaderTask::getPivotBlockHeader)

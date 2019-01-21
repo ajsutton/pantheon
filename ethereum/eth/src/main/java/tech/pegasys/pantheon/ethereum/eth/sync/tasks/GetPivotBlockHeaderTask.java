@@ -28,22 +28,32 @@ import java.util.concurrent.TimeoutException;
 
 public class GetPivotBlockHeaderTask extends AbstractRetryingPeerTask<List<BlockHeader>> {
 
-  private static final int MAX_PIVOT_BLOCK_RETRIES = 5;
   private final ProtocolSchedule<?> protocolSchedule;
   private final EthContext ethContext;
   private final LabelledMetric<OperationTimer> ethTasksTimer;
   private final long pivotBlockNumber;
 
-  public GetPivotBlockHeaderTask(
+  private GetPivotBlockHeaderTask(
       final ProtocolSchedule<?> protocolSchedule,
       final EthContext ethContext,
       final LabelledMetric<OperationTimer> ethTasksTimer,
-      final long pivotBlockNumber) {
-    super(ethContext, MAX_PIVOT_BLOCK_RETRIES, ethTasksTimer);
+      final long pivotBlockNumber,
+      final int maxRetries) {
+    super(ethContext, maxRetries, ethTasksTimer);
     this.protocolSchedule = protocolSchedule;
     this.ethContext = ethContext;
     this.ethTasksTimer = ethTasksTimer;
     this.pivotBlockNumber = pivotBlockNumber;
+  }
+
+  public static GetPivotBlockHeaderTask forPivotBlock(
+      final ProtocolSchedule<?> protocolSchedule,
+      final EthContext ethContext,
+      final LabelledMetric<OperationTimer> ethTasksTimer,
+      final long pivotBlockNumber,
+      final int maxRetries) {
+    return new GetPivotBlockHeaderTask(
+        protocolSchedule, ethContext, ethTasksTimer, pivotBlockNumber, maxRetries);
   }
 
   @Override
