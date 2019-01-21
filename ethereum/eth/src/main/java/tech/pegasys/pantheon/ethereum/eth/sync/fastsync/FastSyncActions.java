@@ -20,8 +20,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthScheduler;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
-import tech.pegasys.pantheon.ethereum.eth.sync.tasks.AbstractGetHeadersFromPeerTask;
-import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetHeadersFromPeerByNumberTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetPivotBlockHeaderTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeerTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeersTask;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
@@ -124,16 +123,14 @@ public class FastSyncActions<C> {
   public CompletableFuture<FastSyncState> downloadPivotBlockHeader(
       final FastSyncState currentState) {
     final long pivotBlockNumber = currentState.getPivotBlockNumber().getAsLong();
-    final AbstractGetHeadersFromPeerTask getHeaderTask =
-        GetHeadersFromPeerByNumberTask.forSingleNumber(
-            protocolSchedule, ethContext, pivotBlockNumber, ethTasksTimer);
+    final GetPivotBlockHeaderTask getHeaderTask =
+        new GetPivotBlockHeaderTask(protocolSchedule, ethContext, ethTasksTimer, pivotBlockNumber);
     return ethContext
         .getScheduler()
-        .timeout(getHeaderTask)
+        .scheduleSyncWorkerTask(getHeaderTask::getPivotBlockHeader)
         .thenApply(
-            taskResult ->
+            pivotBlockHeader ->
                 new FastSyncState(
-                    currentState.getPivotBlockNumber(),
-                    Optional.of(taskResult.getResult().get(0))));
+                    currentState.getPivotBlockNumber(), Optional.of(pivotBlockHeader)));
   }
 }
