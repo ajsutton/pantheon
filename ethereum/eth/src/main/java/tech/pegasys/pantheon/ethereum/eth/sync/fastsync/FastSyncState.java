@@ -12,21 +12,35 @@
  */
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
+import tech.pegasys.pantheon.ethereum.core.BlockHeader;
+
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalLong;
+
+import com.google.common.base.MoreObjects;
 
 public class FastSyncState {
 
   private final FastSyncResult lastActionResult;
   private final OptionalLong pivotBlockNumber;
+  private final Optional<BlockHeader> pivotBlockHeader;
 
   public FastSyncState(final FastSyncResult lastActionResult, final OptionalLong pivotBlockNumber) {
+    this(lastActionResult, pivotBlockNumber, Optional.empty());
+  }
+
+  public FastSyncState(
+      final FastSyncResult lastActionResult,
+      final OptionalLong pivotBlockNumber,
+      final Optional<BlockHeader> pivotBlockHeader) {
     this.lastActionResult = lastActionResult;
     this.pivotBlockNumber = pivotBlockNumber;
+    this.pivotBlockHeader = pivotBlockHeader;
   }
 
   public static FastSyncState withResult(final FastSyncResult result) {
-    return new FastSyncState(result, OptionalLong.empty());
+    return new FastSyncState(result, OptionalLong.empty(), Optional.empty());
   }
 
   public FastSyncResult getLastActionResult() {
@@ -35,6 +49,10 @@ public class FastSyncState {
 
   public OptionalLong getPivotBlockNumber() {
     return pivotBlockNumber;
+  }
+
+  public Optional<BlockHeader> getPivotBlockHeader() {
+    return pivotBlockHeader;
   }
 
   @Override
@@ -47,11 +65,21 @@ public class FastSyncState {
     }
     final FastSyncState that = (FastSyncState) o;
     return lastActionResult == that.lastActionResult
-        && Objects.equals(pivotBlockNumber, that.pivotBlockNumber);
+        && Objects.equals(pivotBlockNumber, that.pivotBlockNumber)
+        && Objects.equals(pivotBlockHeader, that.pivotBlockHeader);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(lastActionResult, pivotBlockNumber);
+    return Objects.hash(lastActionResult, pivotBlockNumber, pivotBlockHeader);
+  }
+
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("lastActionResult", lastActionResult)
+        .add("pivotBlockNumber", pivotBlockNumber)
+        .add("pivotBlockHeader", pivotBlockHeader)
+        .toString();
   }
 }

@@ -12,12 +12,12 @@
  */
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
+import static java.util.concurrent.CompletableFuture.completedFuture;
 import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncResult.FAST_SYNC_UNAVAILABLE;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,18 +34,32 @@ public class FastSyncDownloader<C> {
     LOG.info("Fast sync enabled");
     return fastSyncActions
         .waitForSuitablePeers()
-        .thenApply(ifSuccessful(fastSyncActions::selectPivotBlock))
-        .thenApply(ifSuccessful(() -> FastSyncState.withResult(FAST_SYNC_UNAVAILABLE)))
+        .thenCompose(ifSuccessful(fastSyncActions::selectPivotBlock))
+        .thenCompose(ifSuccessful(fastSyncActions::downloadPivotBlockHeader))
+        .thenCompose(
+            ifSuccessful(
+                state -> {
+                  LOG.info("Reached end of current fast sync implementation with state {}", state);
+                  return completedFuture(FastSyncState.withResult(FAST_SYNC_UNAVAILABLE));
+                }))
         .thenApply(FastSyncState::getLastActionResult);
   }
 
-  private FastSyncState ifSuccessful(
-      final FastSyncState state, final UnaryOperator<FastSyncState> nextAction) {
-    return state.getLastActionResult() == FastSyncResult.SUCCESS ? nextAction.apply(state) : state;
+  private Function<FastSyncState, CompletableFuture<FastSyncState>> ifSuccessful(
+      final Supplier<FastSyncState> nextAction) {
+    return state -> ifSuccessful(state, ignored -> completedFuture(nextAction.get()));
   }
 
-  private Function<FastSyncState, FastSyncState> ifSuccessful(
-      final Supplier<FastSyncState> nextAction) {
-    return state -> ifSuccessful(state, ignored -> nextAction.get());
+  private Function<FastSyncState, CompletableFuture<FastSyncState>> ifSuccessful(
+      final Function<FastSyncState, CompletableFuture<FastSyncState>> nextAction) {
+    return state -> ifSuccessful(state, nextAction);
+  }
+
+  private CompletableFuture<FastSyncState> ifSuccessful(
+      final FastSyncState state,
+      final Function<FastSyncState, CompletableFuture<FastSyncState>> nextAction) {
+    return state.getLastActionResult() == FastSyncResult.SUCCESS
+        ? nextAction.apply(state)
+        : completedFuture(state);
   }
 }

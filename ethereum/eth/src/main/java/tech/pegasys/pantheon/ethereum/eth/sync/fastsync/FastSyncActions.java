@@ -23,6 +23,8 @@ import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthScheduler;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.AbstractGetHeadersFromPeerTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetHeadersFromPeerByNumberTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeerTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeersTask;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
@@ -30,6 +32,7 @@ import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.OperationTimer;
 import tech.pegasys.pantheon.util.ExceptionUtils;
 
+import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -116,5 +119,22 @@ public class FastSyncActions<C> {
               }
             })
         .orElseGet(() -> FastSyncState.withResult(NO_PEERS_AVAILABLE));
+  }
+
+  public CompletableFuture<FastSyncState> downloadPivotBlockHeader(
+      final FastSyncState currentState) {
+    final long pivotBlockNumber = currentState.getPivotBlockNumber().getAsLong();
+    final AbstractGetHeadersFromPeerTask getHeaderTask =
+        GetHeadersFromPeerByNumberTask.forSingleNumber(
+            protocolSchedule, ethContext, pivotBlockNumber, ethTasksTimer);
+    return ethContext
+        .getScheduler()
+        .timeout(getHeaderTask)
+        .thenApply(
+            taskResult ->
+                new FastSyncState(
+                    SUCCESS,
+                    currentState.getPivotBlockNumber(),
+                    Optional.of(taskResult.getResult().get(0))));
   }
 }
