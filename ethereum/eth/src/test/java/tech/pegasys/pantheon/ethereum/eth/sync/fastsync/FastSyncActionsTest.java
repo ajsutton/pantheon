@@ -72,26 +72,25 @@ public class FastSyncActionsTest {
     for (int i = 0; i < syncConfig.getFastSyncMinimumPeerCount(); i++) {
       EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
     }
-    final CompletableFuture<FastSyncState> result = fastSyncActions.waitForSuitablePeers();
-    assertThat(result).isCompletedWithValue(new FastSyncState());
+    final CompletableFuture<Void> result = fastSyncActions.waitForSuitablePeers();
+    assertThat(result).isCompleted();
   }
 
   @Test
   public void waitForPeersShouldReportSuccessWhenTimeLimitReachedAndAPeerIsAvailable() {
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
     timeout.set(true);
-    final CompletableFuture<FastSyncState> result = fastSyncActions.waitForSuitablePeers();
-    assertThat(result).isCompletedWithValue(new FastSyncState());
+    assertThat(fastSyncActions.waitForSuitablePeers()).isCompleted();
   }
 
   @Test
   public void waitForPeersShouldContinueWaitingUntilAtLeastOnePeerIsAvailable() {
     timeout.set(true);
-    final CompletableFuture<FastSyncState> result = fastSyncActions.waitForSuitablePeers();
+    final CompletableFuture<Void> result = fastSyncActions.waitForSuitablePeers();
     assertThat(result).isNotCompleted();
 
     EthProtocolManagerTestUtil.createPeer(ethProtocolManager);
-    assertThat(result).isCompletedWithValue(new FastSyncState());
+    assertThat(result).isCompleted();
   }
 
   @Test

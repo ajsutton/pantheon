@@ -59,13 +59,13 @@ public class FastSyncActions<C> {
     this.ethTasksTimer = ethTasksTimer;
   }
 
-  public CompletableFuture<FastSyncState> waitForSuitablePeers() {
+  public CompletableFuture<Void> waitForSuitablePeers() {
     final WaitForPeersTask waitForPeersTask =
         WaitForPeersTask.create(
             ethContext, syncConfig.getFastSyncMinimumPeerCount(), ethTasksTimer);
 
     final EthScheduler scheduler = ethContext.getScheduler();
-    final CompletableFuture<FastSyncState> result = new CompletableFuture<>();
+    final CompletableFuture<Void> result = new CompletableFuture<>();
     scheduler
         .timeout(waitForPeersTask, syncConfig.getFastSyncMaximumPeerWaitTime())
         .handle(
@@ -74,7 +74,7 @@ public class FastSyncActions<C> {
                 if (ethContext.getEthPeers().bestPeer().isPresent()) {
                   LOG.warn(
                       "Fast sync timed out before minimum peer count was reached. Continuing with reduced peers.");
-                  result.complete(new FastSyncState());
+                  result.complete(null);
                 } else {
                   waitForAnyPeer()
                       .thenAccept(result::complete)
@@ -88,7 +88,7 @@ public class FastSyncActions<C> {
                 LOG.error("Failed to find peers for fast sync", error);
                 result.completeExceptionally(error);
               } else {
-                result.complete(new FastSyncState());
+                result.complete(null);
               }
               return null;
             });
@@ -96,14 +96,11 @@ public class FastSyncActions<C> {
     return result;
   }
 
-  private CompletableFuture<FastSyncState> waitForAnyPeer() {
+  private CompletableFuture<Void> waitForAnyPeer() {
     LOG.warn(
         "Maximum wait time for fast sync reached but no peers available. Continuing to wait for any available peer.");
     final WaitForPeerTask waitForPeerTask = WaitForPeerTask.create(ethContext, ethTasksTimer);
-    return ethContext
-        .getScheduler()
-        .scheduleSyncWorkerTask(waitForPeerTask::run)
-        .thenApply(voidResult -> new FastSyncState());
+    return ethContext.getScheduler().scheduleSyncWorkerTask(waitForPeerTask::run);
   }
 
   public FastSyncState selectPivotBlock() {

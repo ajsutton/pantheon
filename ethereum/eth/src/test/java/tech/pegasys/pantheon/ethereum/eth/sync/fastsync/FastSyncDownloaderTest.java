@@ -36,7 +36,7 @@ public class FastSyncDownloaderTest {
 
   @Test
   public void shouldCompleteFastSyncSuccessfully() {
-    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(new FastSyncState()));
+    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(null));
     final FastSyncState selectPivotBlockState = new FastSyncState(OptionalLong.of(50));
     when(fastSyncActions.selectPivotBlock()).thenReturn(selectPivotBlockState);
     when(fastSyncActions.downloadPivotBlockHeader(selectPivotBlockState))
@@ -66,7 +66,7 @@ public class FastSyncDownloaderTest {
 
   @Test
   public void shouldAbortIfSelectPivotBlockFails() {
-    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(new FastSyncState()));
+    when(fastSyncActions.waitForSuitablePeers()).thenReturn(completedFuture(null));
     when(fastSyncActions.selectPivotBlock()).thenThrow(new FastSyncException(CHAIN_TOO_SHORT));
 
     final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
@@ -78,8 +78,8 @@ public class FastSyncDownloaderTest {
     verifyNoMoreInteractions(fastSyncActions);
   }
 
-  private CompletableFuture<FastSyncState> completedExceptionally(final Throwable error) {
-    final CompletableFuture<FastSyncState> result = new CompletableFuture<>();
+  private <T> CompletableFuture<T> completedExceptionally(final Throwable error) {
+    final CompletableFuture<T> result = new CompletableFuture<>();
     result.completeExceptionally(error);
     return result;
   }
