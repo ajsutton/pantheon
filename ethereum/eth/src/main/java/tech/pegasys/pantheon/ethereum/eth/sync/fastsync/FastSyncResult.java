@@ -13,7 +13,8 @@
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
 public enum FastSyncResult {
-  FAST_SYNC_COMPLETE,
+  SUCCESS,
   FAST_SYNC_UNAVAILABLE,
+  NO_PEERS_AVAILABLE,
   UNEXPECTED_ERROR
 }
