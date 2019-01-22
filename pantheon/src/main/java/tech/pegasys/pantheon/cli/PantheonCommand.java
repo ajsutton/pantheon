@@ -17,12 +17,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static tech.pegasys.pantheon.cli.DefaultCommandValues.getDefaultPantheonDataPath;
 import static tech.pegasys.pantheon.cli.NetworkName.MAINNET;
 import static tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration.DEFAULT_JSON_RPC_PORT;
+import static tech.pegasys.pantheon.ethereum.jsonrpc.RpcApis.DEFAULT_JSON_RPC_APIS;
 import static tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration.DEFAULT_WEBSOCKET_PORT;
 import static tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration.DEFAULT_WEBSOCKET_REFRESH_DELAY;
 import static tech.pegasys.pantheon.ethereum.p2p.peers.DefaultPeer.DEFAULT_PORT;
 import static tech.pegasys.pantheon.metrics.prometheus.MetricsConfiguration.DEFAULT_METRICS_PORT;
 import static tech.pegasys.pantheon.metrics.prometheus.MetricsConfiguration.createDefault;
 
+import java.util.Collections;
 import tech.pegasys.pantheon.Runner;
 import tech.pegasys.pantheon.RunnerBuilder;
 import tech.pegasys.pantheon.cli.custom.CorsAllowedOriginsProperty;
@@ -336,10 +338,9 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
     split = ",",
     arity = "1..*",
     converter = RpcApisConverter.class,
-    description = "Comma separated APIs to enable on JSON-RPC channel. default: ${DEFAULT-VALUE}",
-    defaultValue = "ETH,NET,WEB3,CLIQUE,IBFT"
+    description = "Comma separated APIs to enable on JSON-RPC channel. default: ${DEFAULT-VALUE}"
   )
-  private final Collection<RpcApi> rpcHttpApis = null;
+  private final Collection<RpcApi> rpcHttpApis = DEFAULT_JSON_RPC_APIS;
 
   @Option(
     names = {"--rpc-ws-enabled"},
@@ -371,10 +372,9 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
     split = ",",
     arity = "1..*",
     converter = RpcApisConverter.class,
-    description = "Comma separated APIs to enable on WebSocket channel. default: ${DEFAULT-VALUE}",
-    defaultValue = "ETH,NET,WEB3,CLIQUE,IBFT"
+    description = "Comma separated APIs to enable on WebSocket channel. default: ${DEFAULT-VALUE}"
   )
-  private final Collection<RpcApi> rpcWsApis = null;
+  private final Collection<RpcApi> rpcWsApis = DEFAULT_JSON_RPC_APIS;
 
   private Long rpcWsRefreshDelay;
 

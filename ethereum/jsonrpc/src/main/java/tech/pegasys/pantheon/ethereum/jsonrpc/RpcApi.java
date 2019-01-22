@@ -45,6 +45,6 @@ public class RpcApi {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this).add("cliValue", cliValue).toString();
+    return cliValue;
   }
 }
