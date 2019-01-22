@@ -95,6 +95,8 @@ public class DefaultSynchronizer<C> implements Synchronizer {
     }
     if (!result.isPresent()) {
       LOG.info("Fast sync completed successfully.");
+    } else {
+      LOG.error("Fast sync failed: {}", result);
     }
     startFullSync();
   }

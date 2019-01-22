@@ -20,7 +20,7 @@ import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthScheduler;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
-import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetPivotBlockHeaderTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.state.PivotBlockRetriever;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeerTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeersTask;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
@@ -28,7 +28,6 @@ import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.OperationTimer;
 import tech.pegasys.pantheon.util.ExceptionUtils;
 
-import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
@@ -39,7 +38,6 @@ import org.apache.logging.log4j.Logger;
 public class FastSyncActions<C> {
 
   private static final Logger LOG = LogManager.getLogger();
-  private static final int MAX_PIVOT_BLOCK_RETRIES = 5;
   private final SynchronizerConfiguration syncConfig;
   private final ProtocolSchedule<C> protocolSchedule;
   private final ProtocolContext<C> protocolContext;
@@ -123,16 +121,11 @@ public class FastSyncActions<C> {
 
   public CompletableFuture<FastSyncState> downloadPivotBlockHeader(
       final FastSyncState currentState) {
-    final long pivotBlockNumber = currentState.getPivotBlockNumber().getAsLong();
-    final GetPivotBlockHeaderTask getHeaderTask =
-        GetPivotBlockHeaderTask.forPivotBlock(
-            protocolSchedule, ethContext, ethTasksTimer, pivotBlockNumber, MAX_PIVOT_BLOCK_RETRIES);
-    return ethContext
-        .getScheduler()
-        .scheduleSyncWorkerTask(getHeaderTask::getPivotBlockHeader)
-        .thenApply(
-            pivotBlockHeader ->
-                new FastSyncState(
-                    currentState.getPivotBlockNumber(), Optional.of(pivotBlockHeader)));
+    return new PivotBlockRetriever<>(
+            protocolSchedule,
+            ethContext,
+            ethTasksTimer,
+            currentState.getPivotBlockNumber().getAsLong())
+        .downloadPivotBlockHeader();
   }
 }

@@ -19,11 +19,13 @@ import tech.pegasys.pantheon.ethereum.eth.manager.EthTask;
 import tech.pegasys.pantheon.ethereum.eth.manager.ethtaskutils.RetryingMessageTaskTest;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.junit.Ignore;
 import org.junit.Test;
 
-public class GetPivotBlockHeaderTaskTest extends RetryingMessageTaskTest<List<BlockHeader>> {
+public class GetPivotBlockHeaderFromPeerTaskTest
+    extends RetryingMessageTaskTest<List<BlockHeader>> {
 
   private static final long PIVOT_BLOCK_NUMBER = 10;
 
@@ -34,8 +36,13 @@ public class GetPivotBlockHeaderTaskTest extends RetryingMessageTaskTest<List<Bl
 
   @Override
   protected EthTask<List<BlockHeader>> createTask(final List<BlockHeader> requestedData) {
-    return GetPivotBlockHeaderTask.forPivotBlock(
-        protocolSchedule, ethContext, ethTasksTimer, PIVOT_BLOCK_NUMBER, maxRetries);
+    return GetPivotBlockHeaderFromPeerTask.forPivotBlock(
+        protocolSchedule,
+        ethContext,
+        ethTasksTimer,
+        Optional.empty(),
+        PIVOT_BLOCK_NUMBER,
+        maxRetries);
   }
 
   @Test
