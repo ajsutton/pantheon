@@ -68,7 +68,7 @@ public class FastSyncActions<C> {
         .handle(
             (waitResult, error) -> {
               if (ExceptionUtils.rootCause(error) instanceof TimeoutException) {
-                if (ethContext.getEthPeers().bestPeer().isPresent()) {
+                if (ethContext.getEthPeers().availablePeerCount() == 0) {
                   LOG.warn(
                       "Fast sync timed out before minimum peer count was reached. Continuing with reduced peers.");
                   result.complete(null);
