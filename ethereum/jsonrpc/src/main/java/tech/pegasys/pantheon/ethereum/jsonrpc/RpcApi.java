@@ -12,7 +12,6 @@
  */
 package tech.pegasys.pantheon.ethereum.jsonrpc;
 
-import com.google.common.base.MoreObjects;
 import com.google.common.base.Objects;
 
 public class RpcApi {

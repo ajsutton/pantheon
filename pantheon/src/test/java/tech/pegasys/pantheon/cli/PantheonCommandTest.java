@@ -24,8 +24,6 @@ import static org.mockito.Mockito.verifyZeroInteractions;
 import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.MAINNET_BOOTSTRAP_NODES;
 
 import tech.pegasys.pantheon.PantheonInfo;
-import tech.pegasys.pantheon.consensus.clique.jsonrpc.CliqueRpcApis;
-import tech.pegasys.pantheon.consensus.ibft.jsonrpc.IbftRpcApis;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.Wei;
@@ -84,13 +82,9 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
   static {
     final JsonRpcConfiguration rpcConf = JsonRpcConfiguration.createDefault();
-    rpcConf.addRpcApi(CliqueRpcApis.CLIQUE);
-    rpcConf.addRpcApi(IbftRpcApis.IBFT);
     defaultJsonRpcConfiguration = rpcConf;
 
     final WebSocketConfiguration websocketConf = WebSocketConfiguration.createDefault();
-    websocketConf.addRpcApi(CliqueRpcApis.CLIQUE);
-    websocketConf.addRpcApi(IbftRpcApis.IBFT);
     defaultWebSocketConfiguration = websocketConf;
 
     defaultMetricsConfiguration = MetricsConfiguration.createDefault();
@@ -107,7 +101,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
   @Test
   public void callingHelpDisplaysDefaultRpcApisCorrectly() {
     parseCommand("--help");
-    assertThat(commandOutput.toString()).contains("default: ETH,NET,WEB3,CLIQUE,IBFT");
+    assertThat(commandOutput.toString()).contains("default: [ETH, NET, WEB3]");
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
@@ -254,16 +248,12 @@ public class PantheonCommandTest extends CommandTestAbstract {
     jsonRpcConfiguration.setPort(5678);
     jsonRpcConfiguration.setCorsAllowedDomains(Collections.emptyList());
     jsonRpcConfiguration.setRpcApis(RpcApis.DEFAULT_JSON_RPC_APIS);
-    jsonRpcConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
-    jsonRpcConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     final WebSocketConfiguration webSocketConfiguration = WebSocketConfiguration.createDefault();
     webSocketConfiguration.setEnabled(false);
     webSocketConfiguration.setHost("9.10.11.12");
     webSocketConfiguration.setPort(9101);
     webSocketConfiguration.setRpcApis(WebSocketConfiguration.DEFAULT_WEBSOCKET_APIS);
-    webSocketConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
-    webSocketConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     final MetricsConfiguration metricsConfiguration = MetricsConfiguration.createDefault();
     metricsConfiguration.setEnabled(false);
@@ -356,12 +346,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     parseCommand("--config-file", configFile);
     final JsonRpcConfiguration jsonRpcConfiguration = JsonRpcConfiguration.createDefault();
-    jsonRpcConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
-    jsonRpcConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     final WebSocketConfiguration webSocketConfiguration = WebSocketConfiguration.createDefault();
-    webSocketConfiguration.addRpcApi(CliqueRpcApis.CLIQUE);
-    webSocketConfiguration.addRpcApi(IbftRpcApis.IBFT);
 
     final MetricsConfiguration metricsConfiguration = MetricsConfiguration.createDefault();
 
