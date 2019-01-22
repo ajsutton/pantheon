@@ -10,14 +10,11 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.ethereum.eth.sync.state;
+package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
-import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError;
-import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncException;
-import tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncState;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetPivotBlockHeaderFromPeerTask;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
