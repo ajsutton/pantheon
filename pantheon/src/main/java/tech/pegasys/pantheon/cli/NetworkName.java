@@ -17,5 +17,6 @@ public enum NetworkName {
   OTTOMAN,
   RINKEBY,
   ROPSTEN,
-  GOERLI
+  GOERLI,
+  DEV
 }

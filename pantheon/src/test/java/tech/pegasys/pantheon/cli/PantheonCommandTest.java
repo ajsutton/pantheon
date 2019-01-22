@@ -281,6 +281,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     final EthNetworkConfig networkConfig =
         new EthNetworkConfig.Builder(EthNetworkConfig.mainnet())
+            .setNetworkId(42)
             .setGenesisConfig(GENESIS_CONFIG_TESTDATA)
             .setBootNodes(nodes)
             .build();
@@ -290,8 +291,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     // TODO: Re-enable as per NC-1057/NC-1681
     // verify(mockSyncConfBuilder).syncMode(ArgumentMatchers.eq(SyncMode.FAST));
-
-    assertThat(commandErrorOutput.toString()).isEmpty();
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -455,7 +454,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
     final ArgumentCaptor<EthNetworkConfig> networkArg =
         ArgumentCaptor.forClass(EthNetworkConfig.class);
 
-    parseCommand("--private-genesis-file", genesisFile.toString());
+    parseCommand(
+        "--private-genesis-file", genesisFile.toString(), "--bootnodes", "--network-id", "42");
 
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
@@ -464,6 +464,52 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void genesisPathOptionRequiresNetworkIdAndBootnodesOptions() throws Exception {
+    assumeTrue(isFullInstantiation());
+
+    final Path genesisFile = createFakeGenesisFile();
+
+    parseCommand("--private-genesis-file", genesisFile.toString());
+
+    verifyZeroInteractions(mockControllerBuilder);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString())
+        .contains(
+            "--network-id and --bootnodes option must be defined if --private-genesis-file option is used.");
+  }
+
+  @Test
+  public void genesisPathOptionRequiresNetworkIdOptions() throws Exception {
+    assumeTrue(isFullInstantiation());
+
+    final Path genesisFile = createFakeGenesisFile();
+
+    parseCommand("--private-genesis-file", genesisFile.toString(), "--bootnodes");
+
+    verifyZeroInteractions(mockControllerBuilder);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString())
+        .contains("--network-id option must be defined if --private-genesis-file option is used.");
+  }
+
+  @Test
+  public void genesisPathOptionRequiresBootnodesOptions() throws Exception {
+    assumeTrue(isFullInstantiation());
+
+    final Path genesisFile = createFakeGenesisFile();
+
+    parseCommand("--private-genesis-file", genesisFile.toString(), "--network-id", "42");
+
+    verifyZeroInteractions(mockControllerBuilder);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString())
+        .contains("--bootnodes option must be defined if --private-genesis-file option is used.");
   }
 
   @Test
@@ -726,7 +772,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
   @Test
   public void ropstenWithNodesWhitelistOptionWhichDoesIncludeRopstenBootnodesMustNotDisplayError() {
-    parseCommand("--ropsten", "--nodes-whitelist", String.join(",", ropstenBootnodes));
+    parseCommand("--network", "ropsten", "--nodes-whitelist", String.join(",", ropstenBootnodes));
 
     verify(mockRunnerBuilder)
         .permissioningConfiguration(permissioningConfigurationArgumentCaptor.capture());
@@ -749,7 +795,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
   @Test
   public void ropstenWithNodesWhitelistOptionWhichDoesNotIncludeRopstenBootnodesMustDisplayError() {
-    parseCommand("--ropsten", "--nodes-whitelist", String.join(",", validENodeStrings));
+    parseCommand("--network", "ropsten", "--nodes-whitelist", String.join(",", validENodeStrings));
 
     verifyZeroInteractions(mockRunnerBuilder);
 
@@ -1369,18 +1415,66 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
   @Test
   public void devModeOptionMustBeUsed() throws Exception {
-    parseCommand("--dev-mode");
+    parseCommand("--network", "dev");
+
+    final ArgumentCaptor<EthNetworkConfig> networkArg =
+        ArgumentCaptor.forClass(EthNetworkConfig.class);
 
     verify(mockControllerBuilder).devMode(eq(true));
+    verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
+
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.dev());
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void ottomanModeOptionMustBeUsed() throws Exception {
+    final Path genesisFile = createFakeGenesisFile();
+
+    int networkIdOptionValue = 42;
+
+    parseCommand(
+        "--network",
+        "ottoman",
+        "--private-genesis-file",
+        genesisFile.toString(),
+        "--bootnodes",
+        "--network-id",
+        String.valueOf(networkIdOptionValue));
+
+    final ArgumentCaptor<EthNetworkConfig> networkArg =
+        ArgumentCaptor.forClass(EthNetworkConfig.class);
+
+    verify(mockControllerBuilder).syncWithOttoman(eq(true));
+    verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
+    verify(mockControllerBuilder).build();
+
+    assertThat(networkArg.getValue().getGenesisConfig()).isEqualTo("genesis_config");
+    assertThat(networkArg.getValue().getBootNodes()).isEmpty();
+    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(networkIdOptionValue);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void ottomanModeOptionRequiresGenesisFile() throws Exception {
+    parseCommand("--network", "ottoman");
+
+    verifyZeroInteractions(mockControllerBuilder);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString())
+        .contains(
+            "A genesis file must be defined with --private-genesis-file option to use Ottoman network.");
   }
 
   @Test
   public void rinkebyValuesAreUsed() throws Exception {
-    parseCommand("--rinkeby");
+    parseCommand("--network", "rinkeby");
 
     final ArgumentCaptor<EthNetworkConfig> networkArg =
         ArgumentCaptor.forClass(EthNetworkConfig.class);
@@ -1388,14 +1482,15 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.rinkeby());
+
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.rinkeby());
   }
 
   @Test
   public void ropstenValuesAreUsed() throws Exception {
-    parseCommand("--ropsten");
+    parseCommand("--network", "ropsten");
 
     final ArgumentCaptor<EthNetworkConfig> networkArg =
         ArgumentCaptor.forClass(EthNetworkConfig.class);
@@ -1403,14 +1498,15 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.ropsten());
+
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.ropsten());
   }
 
   @Test
   public void goerliValuesAreUsed() throws Exception {
-    parseCommand("--goerli");
+    parseCommand("--network", "goerli");
 
     final ArgumentCaptor<EthNetworkConfig> networkArg =
         ArgumentCaptor.forClass(EthNetworkConfig.class);
@@ -1418,19 +1514,10 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.goerli());
+
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.goerli());
-  }
-
-  @Test
-  public void noSeveralNetworkOptions() {
-    parseCommand("--goerli", "--rinkeby");
-
-    verifyZeroInteractions(mockRunnerBuilder);
-
-    assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString()).contains("Unable to connect to multiple networks");
   }
 
   @Test
@@ -1443,12 +1530,23 @@ public class PantheonCommandTest extends CommandTestAbstract {
     networkValuesCanBeOverridden("goerli");
   }
 
+  @Test
+  public void ropstenValuesCanBeOverridden() throws Exception {
+    networkValuesCanBeOverridden("ropsten");
+  }
+
+  @Test
+  public void devValuesCanBeOverridden() throws Exception {
+    networkValuesCanBeOverridden("dev");
+  }
+
   private void networkValuesCanBeOverridden(final String network) throws Exception {
     final Path genesisFile = createFakeGenesisFile();
     parseCommand(
-        "--" + network,
+        "--network",
+        network,
         "--network-id",
-        "1",
+        "1234567",
         "--bootnodes",
         String.join(",", validENodeStrings),
         "--private-genesis-file",
@@ -1465,7 +1563,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(networkArg.getValue().getGenesisConfig()).isEqualTo("genesis_config");
     assertThat(networkArg.getValue().getBootNodes())
         .isEqualTo(Stream.of(validENodeStrings).map(URI::create).collect(Collectors.toList()));
-    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(1);
+    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(1234567);
   }
 
   @Test

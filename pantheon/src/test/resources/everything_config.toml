@@ -33,12 +33,7 @@ host-whitelist=["all"]
 network="MAINNET"
 private-genesis-file="~/genesis.json"
 #sync-mode="fast"
-ottoman=false
-ropsten=false
-goerli=false
-network-id=303
-rinkeby=false
-dev-mode=false
+network-id=42
 
 # JSON-RPC
 rpc-http-enabled=false
@@ -63,7 +58,7 @@ metrics-port=309
 # Mining
 miner-enabled=false
 miner-coinbase="0x0000000000000000000000000000000000000002"
-miner-extra-data="Protocol Engineering Group And SYStems"
+miner-extra-data="0x444F4E27542050414E4943202120484F444C2C20484F444C2C20484F444C2021"
 min-gas-price="1"
 
 # Permissioning

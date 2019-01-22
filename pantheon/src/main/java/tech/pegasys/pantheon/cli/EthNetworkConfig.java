@@ -21,6 +21,7 @@ import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.R
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
 
@@ -33,10 +34,13 @@ public class EthNetworkConfig {
   private static final int RINKEBY_NETWORK_ID = 4;
   private static final int ROPSTEN_NETWORK_ID = 3;
   private static final int GOERLI_NETWORK_ID = 6284;
+  private static final int DEV_NETWORK_ID = 2018;
+  private static final int OTTOMAN_NETWORK_ID = 5;
   private static final String MAINNET_GENESIS = "mainnet.json";
   private static final String RINKEBY_GENESIS = "rinkeby.json";
   private static final String ROPSTEN_GENESIS = "ropsten.json";
   private static final String GOERLI_GENESIS = "goerli.json";
+  private static final String DEV_GENESIS = "dev.json";
   private final String genesisConfig;
   private final int networkId;
   private final Collection<?> bootNodes;
@@ -111,6 +115,14 @@ public class EthNetworkConfig {
   public static EthNetworkConfig goerli() {
     return new EthNetworkConfig(
         jsonConfig(GOERLI_GENESIS), GOERLI_NETWORK_ID, GOERLI_BOOTSTRAP_NODES);
+  }
+
+  public static EthNetworkConfig dev() {
+    return new EthNetworkConfig(jsonConfig(DEV_GENESIS), DEV_NETWORK_ID, new ArrayList<>());
+  }
+
+  public static EthNetworkConfig ottoman() {
+    return new EthNetworkConfig("", OTTOMAN_NETWORK_ID, new ArrayList<>());
   }
 
   private static String jsonConfig(final String resourceName) {
