@@ -96,8 +96,7 @@ public class FastSyncActions<C> {
   private CompletableFuture<Void> waitForAnyPeer() {
     LOG.warn(
         "Maximum wait time for fast sync reached but no peers available. Continuing to wait for any available peer.");
-    final WaitForPeerTask waitForPeerTask = WaitForPeerTask.create(ethContext, ethTasksTimer);
-    return ethContext.getScheduler().scheduleSyncWorkerTask(waitForPeerTask::run);
+    return WaitForPeerTask.create(ethContext, ethTasksTimer).run();
   }
 
   public FastSyncState selectPivotBlock() {
