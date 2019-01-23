@@ -26,6 +26,7 @@ import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncState;
 import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncTarget;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetHeadersFromPeerByHashTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.PipelinedImportChainSegmentTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeerTask;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
@@ -36,7 +37,9 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
+import com.google.common.collect.Lists;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -87,7 +90,7 @@ public class FastSyncChainDownloader<C> {
 
   private EthTask<PeerTaskResult<List<BlockHeader>>> checkpointHeadersTask(
       final BlockHeader lastHeader, final SyncTarget syncTarget) {
-    LOG.debug("Requesting checkpoint headers from {}", lastHeader.getNumber());
+    LOG.debug("Requesting checkpoint headers to {}", lastHeader.getNumber());
     return GetHeadersFromPeerByHashTask.endingAtHash(
             protocolSchedule,
             ethContext,
@@ -101,8 +104,43 @@ public class FastSyncChainDownloader<C> {
 
   private CompletableFuture<List<Block>> importBlocksForCheckpoints(
       final Deque<BlockHeader> checkpointHeaders) {
-
-    throw new UnsupportedOperationException("Not implemented");
+    final List<BlockHeader> checkpoints;
+    if (checkpointHeaders.size() < 2) {
+      checkpoints =
+          Lists.newArrayList(
+              checkpointHeaders.getFirst(),
+              protocolContext
+                  .getBlockchain()
+                  .getBlockHeader(BlockHeader.GENESIS_BLOCK_NUMBER)
+                  .get());
+    } else {
+      checkpoints = Lists.newArrayList(checkpointHeaders);
+    }
+    final PipelinedImportChainSegmentTask<C> importTask =
+        PipelinedImportChainSegmentTask.forCheckpoints(
+            protocolSchedule,
+            protocolContext,
+            ethContext,
+            config.downloaderParallelism(),
+            ethTasksTimer,
+            blocks ->
+                () -> {
+                  LOG.info(
+                      "Storing blocks "
+                          + blocks
+                              .stream()
+                              .map(Block::getHeader)
+                              .map(BlockHeader::getNumber)
+                              .map(Object::toString)
+                              .collect(Collectors.joining(", ")));
+                  protocolContext.getBlockchain().storeBlocks(blocks);
+                  if (!blocks.isEmpty()) {
+                    lastImportedBlockHash = blocks.get(0).getHash();
+                  }
+                  return CompletableFuture.completedFuture(blocks);
+                },
+            checkpoints);
+    return importTask.run();
   }
 
   private class FastSyncTargetManager implements SyncTargetManager {

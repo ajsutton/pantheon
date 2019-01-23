@@ -155,6 +155,18 @@ public class DefaultMutableBlockchain implements MutableBlockchain {
     notifyBlockAdded(blockAddedEvent);
   }
 
+  @Override
+  public void storeBlocks(final Collection<Block> blocks) {
+
+    final BlockchainStorage.Updater updater = blockchainStorage.updater();
+    for (final Block block : blocks) {
+      final Hash hash = block.getHash();
+      updater.putBlockHeader(hash, block.getHeader());
+      updater.putBlockBody(hash, block.getBody());
+    }
+    updater.commit();
+  }
+
   private BlockAddedEvent appendBlockHelper(
       final Block block, final List<TransactionReceipt> receipts) {
     final Hash hash = block.getHash();

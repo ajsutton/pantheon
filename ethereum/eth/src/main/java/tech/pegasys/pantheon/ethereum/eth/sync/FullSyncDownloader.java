@@ -27,8 +27,10 @@ import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncTarget;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.DetermineCommonAncestorTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetHeadersFromPeerByHashTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.ImportBlocksTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.PersistBlockTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.PipelinedImportChainSegmentTask;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.WaitForPeerTask;
+import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.OperationTimer;
@@ -39,6 +41,7 @@ import java.util.Deque;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
@@ -125,10 +128,21 @@ public class FullSyncDownloader<C> {
               ethContext,
               config.downloaderParallelism(),
               ethTasksTimer,
+              this::createPersistBlocksTask,
               Lists.newArrayList(checkpointHeaders));
       importedBlocks = importTask.run();
     }
     return importedBlocks;
+  }
+
+  private Supplier<CompletableFuture<List<Block>>> createPersistBlocksTask(
+      final List<Block> blocks) {
+    return PersistBlockTask.forSequentialBlocks(
+        protocolSchedule,
+        protocolContext,
+        blocks,
+        HeaderValidationMode.SKIP_DETACHED,
+        ethTasksTimer);
   }
 
   private class FullSyncTargetManager implements SyncTargetManager {

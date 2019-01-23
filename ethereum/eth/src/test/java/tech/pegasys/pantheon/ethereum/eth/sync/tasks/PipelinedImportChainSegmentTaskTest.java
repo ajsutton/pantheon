@@ -32,6 +32,7 @@ import tech.pegasys.pantheon.ethereum.eth.manager.ethtaskutils.AbstractMessageTa
 import tech.pegasys.pantheon.ethereum.eth.messages.EthPV62;
 import tech.pegasys.pantheon.ethereum.eth.messages.EthPV63;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.exceptions.InvalidBlockException;
+import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
 import tech.pegasys.pantheon.ethereum.p2p.api.MessageData;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 
@@ -42,6 +43,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
@@ -49,6 +51,16 @@ import org.junit.Test;
 
 public class PipelinedImportChainSegmentTaskTest
     extends AbstractMessageTaskTest<List<Block>, List<Block>> {
+
+  private static Supplier<CompletableFuture<List<Block>>> createPersistBlocksTask(
+      final List<Block> blocks) {
+    return PersistBlockTask.forSequentialBlocks(
+        protocolSchedule,
+        protocolContext,
+        blocks,
+        HeaderValidationMode.SKIP_DETACHED,
+        ethTasksTimer);
+  }
 
   @Override
   protected List<Block> generateDataToBeRequested() {
@@ -85,6 +97,7 @@ public class PipelinedImportChainSegmentTaskTest
         ethContext,
         1,
         ethTasksTimer,
+        PipelinedImportChainSegmentTaskTest::createPersistBlocksTask,
         previousBlock.getHeader(),
         lastBlock.getHeader());
   }
@@ -119,6 +132,7 @@ public class PipelinedImportChainSegmentTaskTest
             ethContext,
             1,
             ethTasksTimer,
+            PipelinedImportChainSegmentTaskTest::createPersistBlocksTask,
             firstBlock.getHeader(),
             secondBlock.getHeader());
 
@@ -169,6 +183,7 @@ public class PipelinedImportChainSegmentTaskTest
             ethContext,
             1,
             ethTasksTimer,
+            PipelinedImportChainSegmentTaskTest::createPersistBlocksTask,
             fakeFirstBlock.getHeader(),
             thirdBlock.getHeader());
 
@@ -218,7 +233,13 @@ public class PipelinedImportChainSegmentTaskTest
             protocolContext.getConsensusState());
     final EthTask<List<Block>> task =
         PipelinedImportChainSegmentTask.forCheckpoints(
-            protocolSchedule, modifiedContext, ethContext, 1, ethTasksTimer, checkpointHeaders);
+            protocolSchedule,
+            modifiedContext,
+            ethContext,
+            1,
+            ethTasksTimer,
+            PipelinedImportChainSegmentTaskTest::createPersistBlocksTask,
+            checkpointHeaders);
 
     // Execute task and wait for response
     final AtomicReference<List<Block>> actualResult = new AtomicReference<>();
@@ -274,7 +295,13 @@ public class PipelinedImportChainSegmentTaskTest
             protocolContext.getConsensusState());
     final EthTask<List<Block>> task =
         PipelinedImportChainSegmentTask.forCheckpoints(
-            protocolSchedule, modifiedContext, ethContext, 2, ethTasksTimer, checkpointHeaders);
+            protocolSchedule,
+            modifiedContext,
+            ethContext,
+            2,
+            ethTasksTimer,
+            PipelinedImportChainSegmentTaskTest::createPersistBlocksTask,
+            checkpointHeaders);
 
     // Execute task and wait for response
     final AtomicReference<List<Block>> actualResult = new AtomicReference<>();
@@ -334,7 +361,13 @@ public class PipelinedImportChainSegmentTaskTest
             protocolContext.getConsensusState());
     final EthTask<List<Block>> task =
         PipelinedImportChainSegmentTask.forCheckpoints(
-            protocolSchedule, modifiedContext, ethContext, 3, ethTasksTimer, checkpointHeaders);
+            protocolSchedule,
+            modifiedContext,
+            ethContext,
+            3,
+            ethTasksTimer,
+            PipelinedImportChainSegmentTaskTest::createPersistBlocksTask,
+            checkpointHeaders);
 
     // Execute task and wait for response
     final AtomicReference<List<Block>> actualResult = new AtomicReference<>();

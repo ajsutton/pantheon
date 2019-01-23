@@ -52,6 +52,7 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
   // First header is assumed  to already be imported
   private final List<BlockHeader> checkpointHeaders;
   private final int chunksInTotal;
+  private final PersistBlocksTaskFactory persistBlocksTaskFactory;
   private int chunksIssued;
   private int chunksCompleted;
   private final int maxActiveChunks;
@@ -71,7 +72,8 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
       final EthContext ethContext,
       final int maxActiveChunks,
       final List<BlockHeader> checkpointHeaders,
-      final LabelledMetric<OperationTimer> ethTasksTimer) {
+      final LabelledMetric<OperationTimer> ethTasksTimer,
+      final PersistBlocksTaskFactory persistBlocksTaskFactory) {
     super(ethTasksTimer);
     this.protocolSchedule = protocolSchedule;
     this.protocolContext = protocolContext;
@@ -79,6 +81,7 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
     this.ethTasksTimer = ethTasksTimer;
     this.checkpointHeaders = checkpointHeaders;
     this.chunksInTotal = checkpointHeaders.size() - 1;
+    this.persistBlocksTaskFactory = persistBlocksTaskFactory;
     this.chunksIssued = 0;
     this.chunksCompleted = 0;
     this.maxActiveChunks = maxActiveChunks;
@@ -90,6 +93,7 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
       final EthContext ethContext,
       final int maxActiveChunks,
       final LabelledMetric<OperationTimer> ethTasksTimer,
+      final PersistBlocksTaskFactory persistBlocksTaskFactory,
       final BlockHeader... checkpointHeaders) {
     return forCheckpoints(
         protocolSchedule,
@@ -97,6 +101,7 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
         ethContext,
         maxActiveChunks,
         ethTasksTimer,
+        persistBlocksTaskFactory,
         Arrays.asList(checkpointHeaders));
   }
 
@@ -106,6 +111,7 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
       final EthContext ethContext,
       final int maxActiveChunks,
       final LabelledMetric<OperationTimer> ethTasksTimer,
+      final PersistBlocksTaskFactory persistBlocksTaskFactory,
       final List<BlockHeader> checkpointHeaders) {
     return new PipelinedImportChainSegmentTask<>(
         protocolSchedule,
@@ -113,7 +119,8 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
         ethContext,
         maxActiveChunks,
         checkpointHeaders,
-        ethTasksTimer);
+        ethTasksTimer,
+        persistBlocksTaskFactory);
   }
 
   @Override
@@ -128,8 +135,17 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
   }
 
   private void createNextChunkPipeline() {
-    final BlockHeader firstChunkHeader = checkpointHeaders.get(chunksIssued);
-    final BlockHeader lastChunkHeader = checkpointHeaders.get(chunksIssued + 1);
+    final BlockHeader firstChunkHeader;
+    final BlockHeader lastChunkHeader;
+    final BlockHeader header1 = checkpointHeaders.get(chunksIssued);
+    final BlockHeader header2 = checkpointHeaders.get(chunksIssued + 1);
+    if (header1.getNumber() < header2.getNumber()) {
+      firstChunkHeader = header1;
+      lastChunkHeader = header2;
+    } else {
+      firstChunkHeader = header2;
+      lastChunkHeader = header1;
+    }
 
     final CompletableFuture<List<BlockHeader>> downloadAndValidateHeadersTask =
         lastDownloadAndValidateHeadersTask()
@@ -268,12 +284,7 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
         blocks.get(0).getHeader().getNumber(),
         blocks.get(blocks.size() - 1).getHeader().getNumber());
     final Supplier<CompletableFuture<List<Block>>> task =
-        PersistBlockTask.forSequentialBlocks(
-            protocolSchedule,
-            protocolContext,
-            blocks,
-            HeaderValidationMode.SKIP_DETACHED,
-            ethTasksTimer);
+        persistBlocksTaskFactory.createPersistBlocksTask(blocks);
     return executeWorkerSubTask(ethContext.getScheduler(), task);
   }
 
@@ -335,5 +346,9 @@ public class PipelinedImportChainSegmentTask<C> extends AbstractEthTask<List<Blo
     } else {
       return extractTransactionSendersTasks.getLast();
     }
+  }
+
+  public interface PersistBlocksTaskFactory {
+    Supplier<CompletableFuture<List<Block>>> createPersistBlocksTask(final List<Block> blocks);
   }
 }
