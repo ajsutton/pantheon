@@ -46,7 +46,6 @@ import tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.config.NetworkingConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.config.RlpxConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.config.SubProtocolConfiguration;
-import tech.pegasys.pantheon.ethereum.p2p.discovery.internal.PeerRequirement;
 import tech.pegasys.pantheon.ethereum.p2p.netty.NettyP2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
 import tech.pegasys.pantheon.ethereum.p2p.permissioning.NodeWhitelistController;
@@ -57,7 +56,7 @@ import tech.pegasys.pantheon.ethereum.permissioning.PermissioningConfiguration;
 import tech.pegasys.pantheon.ethereum.worldstate.WorldStateArchive;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.prometheus.MetricsConfiguration;
-import tech.pegasys.pantheon.metrics.prometheus.MetricsHttpService;
+import tech.pegasys.pantheon.metrics.prometheus.MetricsService;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.nio.file.Path;
@@ -213,8 +212,10 @@ public class RunnerBuilder {
         new PeerBlacklist(
             bannedNodeIds.stream().map(BytesValue::fromHexString).collect(Collectors.toSet()));
 
-    NodeWhitelistController nodeWhitelistController =
+    final NodeWhitelistController nodeWhitelistController =
         new NodeWhitelistController(permissioningConfiguration);
+
+    final Synchronizer synchronizer = pantheonController.getSynchronizer();
 
     final NetworkRunner networkRunner =
         NetworkRunner.builder()
@@ -228,7 +229,7 @@ public class RunnerBuilder {
                             keyPair,
                             networkConfig,
                             caps,
-                            PeerRequirement.aggregateOf(protocolManagers),
+                            synchronizer::hasSufficientPeers,
                             peerBlacklist,
                             metricsSystem,
                             nodeWhitelistController)
@@ -236,7 +237,6 @@ public class RunnerBuilder {
             .metricsSystem(metricsSystem)
             .build();
 
-    final Synchronizer synchronizer = pantheonController.getSynchronizer();
     final TransactionPool transactionPool = pantheonController.getTransactionPool();
     final MiningCoordinator miningCoordinator = pantheonController.getMiningCoordinator();
 
@@ -305,7 +305,7 @@ public class RunnerBuilder {
                   vertx, webSocketConfiguration, subscriptionManager, webSocketsJsonRpcMethods));
     }
 
-    Optional<MetricsHttpService> metricsService = Optional.empty();
+    Optional<MetricsService> metricsService = Optional.empty();
     if (metricsConfiguration.isEnabled()) {
       metricsService = Optional.of(createMetricsService(vertx, metricsConfiguration));
     }
@@ -416,8 +416,8 @@ public class RunnerBuilder {
     return new WebSocketService(vertx, configuration, websocketRequestHandler);
   }
 
-  private MetricsHttpService createMetricsService(
+  private MetricsService createMetricsService(
       final Vertx vertx, final MetricsConfiguration configuration) {
-    return new MetricsHttpService(vertx, configuration, metricsSystem);
+    return MetricsService.create(vertx, configuration, metricsSystem);
   }
 }

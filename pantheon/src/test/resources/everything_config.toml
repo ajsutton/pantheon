@@ -57,8 +57,11 @@ rpc-ws-refresh-delay=500
 
 # Prometheus Metrics Endpoint
 metrics-enabled=false
+metrics-mode="pull"
 metrics-host="8.6.7.5"
 metrics-port=309
+metrics-push-interval=42
+metrics-prometheus-job="pantheon-everything"
 
 # Mining
 miner-enabled=false
@@ -69,3 +72,8 @@ min-gas-price="1"
 # Permissioning
 accounts-whitelist=["0x0000000000000000000000000000000000000009"]
 nodes-whitelist=["all"]
+
+# Privacy
+privacy-url="http://127.0.0.1:8888"
+privacy-public-key-file="./pubKey.pub"
+privacy-enabled=false

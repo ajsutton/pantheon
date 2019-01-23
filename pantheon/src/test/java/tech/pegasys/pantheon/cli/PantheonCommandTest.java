@@ -28,6 +28,7 @@ import tech.pegasys.pantheon.consensus.clique.jsonrpc.CliqueRpcApis;
 import tech.pegasys.pantheon.consensus.ibft.jsonrpc.IbftRpcApis;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MiningParameters;
+import tech.pegasys.pantheon.ethereum.core.PrivacyParameters;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
@@ -63,6 +64,7 @@ import org.mockito.ArgumentMatchers;
 import picocli.CommandLine;
 
 public class PantheonCommandTest extends CommandTestAbstract {
+  private final String ORION_URI = "http://1.2.3.4:5555";
   private final String VALID_NODE_ID =
       "6f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0";
 
@@ -494,8 +496,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
-  public void p2pEnabledOptionFlagDefaultTrue() {
-    parseCommand("--p2p-enabled");
+  public void p2pEnabledOptionValueTrueMustBeUsed() {
+    parseCommand("--p2p-enabled", "true");
 
     verify(mockRunnerBuilder.p2pEnabled(eq(true))).build();
 
@@ -504,7 +506,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
-  public void p2pEnabledOptionValueMustBeUsed() {
+  public void p2pEnabledOptionValueFalseMustBeUsed() {
     parseCommand("--p2p-enabled", "false");
 
     verify(mockRunnerBuilder.p2pEnabled(eq(false))).build();
@@ -523,12 +525,20 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
-  public void discoveryOptionMustBeUsed() {
-    parseCommand("--no-discovery");
+  public void discoveryOptionValueTrueMustBeUsed() {
+    parseCommand("--no-discovery", "true");
     // Discovery stored in runner is the negative of the option passed to CLI
-    // So as passing the option means noDiscovery will be true, then discovery is false in runner
-
     verify(mockRunnerBuilder.discovery(eq(false))).build();
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void discoveryOptionValueFalseMustBeUsed() {
+    parseCommand("--no-discovery", "false");
+    // Discovery stored in runner is the negative of the option passed to CLI
+    verify(mockRunnerBuilder.discovery(eq(true))).build();
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -1333,6 +1343,46 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
+  public void metricsModeOptionMustBeUsed() {
+    parseCommand("--metrics-mode", "pull");
+
+    verify(mockRunnerBuilder).metricsConfiguration(metricsConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).build();
+
+    assertThat(metricsConfigArgumentCaptor.getValue().getMode()).isEqualTo("pull");
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void metricsPushIntervalMustBeUsed() {
+    parseCommand("--metrics-push-interval", "42");
+
+    verify(mockRunnerBuilder).metricsConfiguration(metricsConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).build();
+
+    assertThat(metricsConfigArgumentCaptor.getValue().getPushInterval()).isEqualTo(42);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void metricsPrometheusJobMustBeUsed() {
+    parseCommand("--metrics-prometheus-job", "pantheon-command-test");
+
+    verify(mockRunnerBuilder).metricsConfiguration(metricsConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).build();
+
+    assertThat(metricsConfigArgumentCaptor.getValue().getPrometheusJob())
+        .isEqualTo("pantheon-command-test");
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
   public void pantheonDoesNotStartInMiningModeIfCoinbaseNotSet() {
     parseCommand("--miner-enabled");
 
@@ -1506,6 +1556,45 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(commandOutput.toString()).contains("--data-path");
     assertThat(commandOutput.toString()).contains("--private-genesis-file");
     assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void mustUseOrionUriAndOptions() throws IOException {
+    final File file = new File("./specific/public_key");
+
+    parseCommand(
+        "--privacy-enabled",
+        "--privacy-url",
+        ORION_URI,
+        "--privacy-public-key-file",
+        file.getPath());
+
+    final ArgumentCaptor<PrivacyParameters> orionArg =
+        ArgumentCaptor.forClass(PrivacyParameters.class);
+
+    verify(mockControllerBuilder).privacyParameters(orionArg.capture());
+    verify(mockControllerBuilder).build();
+
+    assertThat(orionArg.getValue().getUrl()).isEqualTo(ORION_URI);
+    assertThat(orionArg.getValue().getPublicKey()).isEqualTo(file);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void mustVerifyPrivacyIsDisabled() throws IOException {
+    parseCommand();
+
+    final ArgumentCaptor<PrivacyParameters> orionArg =
+        ArgumentCaptor.forClass(PrivacyParameters.class);
+
+    verify(mockControllerBuilder).privacyParameters(orionArg.capture());
+    verify(mockControllerBuilder).build();
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+    assertThat(orionArg.getValue().isEnabled()).isEqualTo(false);
   }
 
   private Path createFakeGenesisFile() throws IOException {
