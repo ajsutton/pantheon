@@ -56,7 +56,7 @@ public class FastSyncDownloaderTest {
     when(fastSyncActions.downloadChain(downloadPivotBlockHeaderState)).thenReturn(COMPLETE);
     when(worldStateDownloader.downloadWorldState(pivotBlockHeader)).thenReturn(COMPLETE);
 
-    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
+    final CompletableFuture<FastSyncState> result = downloader.start();
 
     verify(fastSyncActions).waitForSuitablePeers();
     verify(fastSyncActions).selectPivotBlock();
@@ -65,7 +65,7 @@ public class FastSyncDownloaderTest {
     verify(worldStateDownloader).downloadWorldState(pivotBlockHeader);
     verifyNoMoreInteractions(fastSyncActions);
     verifyNoMoreInteractions(worldStateDownloader);
-    assertThat(result).isCompletedWithValue(Optional.empty());
+    assertThat(result).isCompletedWithValue(downloadPivotBlockHeaderState);
   }
 
   @Test
@@ -73,9 +73,9 @@ public class FastSyncDownloaderTest {
     when(fastSyncActions.waitForSuitablePeers())
         .thenReturn(completedExceptionally(new FastSyncException(UNEXPECTED_ERROR)));
 
-    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
+    final CompletableFuture<FastSyncState> result = downloader.start();
 
-    assertThat(result).isCompletedWithValue(Optional.of(UNEXPECTED_ERROR));
+    assertCompletedExceptionally(result, UNEXPECTED_ERROR);
 
     verify(fastSyncActions).waitForSuitablePeers();
     verifyNoMoreInteractions(fastSyncActions);
@@ -86,9 +86,9 @@ public class FastSyncDownloaderTest {
     when(fastSyncActions.waitForSuitablePeers()).thenReturn(COMPLETE);
     when(fastSyncActions.selectPivotBlock()).thenThrow(new FastSyncException(CHAIN_TOO_SHORT));
 
-    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
+    final CompletableFuture<FastSyncState> result = downloader.start();
 
-    assertThat(result).isCompletedWithValue(Optional.of(CHAIN_TOO_SHORT));
+    assertCompletedExceptionally(result, CHAIN_TOO_SHORT);
 
     verify(fastSyncActions).waitForSuitablePeers();
     verify(fastSyncActions).selectPivotBlock();
@@ -109,7 +109,7 @@ public class FastSyncDownloaderTest {
     when(fastSyncActions.downloadChain(downloadPivotBlockHeaderState)).thenReturn(COMPLETE);
     when(worldStateDownloader.downloadWorldState(pivotBlockHeader)).thenReturn(worldStateFuture);
 
-    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
+    final CompletableFuture<FastSyncState> result = downloader.start();
 
     verify(fastSyncActions).waitForSuitablePeers();
     verify(fastSyncActions).selectPivotBlock();
@@ -122,7 +122,7 @@ public class FastSyncDownloaderTest {
     assertThat(result).isNotDone();
 
     worldStateFuture.completeExceptionally(new FastSyncException(NO_PEERS_AVAILABLE));
-    assertThat(result).isCompletedWithValue(Optional.of(NO_PEERS_AVAILABLE));
+    assertCompletedExceptionally(result, NO_PEERS_AVAILABLE);
   }
 
   @Test
@@ -139,7 +139,7 @@ public class FastSyncDownloaderTest {
     when(fastSyncActions.downloadChain(downloadPivotBlockHeaderState)).thenReturn(chainFuture);
     when(worldStateDownloader.downloadWorldState(pivotBlockHeader)).thenReturn(COMPLETE);
 
-    final CompletableFuture<Optional<FastSyncError>> result = downloader.start();
+    final CompletableFuture<FastSyncState> result = downloader.start();
 
     verify(fastSyncActions).waitForSuitablePeers();
     verify(fastSyncActions).selectPivotBlock();
@@ -152,12 +152,25 @@ public class FastSyncDownloaderTest {
     assertThat(result).isNotDone();
 
     chainFuture.completeExceptionally(new FastSyncException(NO_PEERS_AVAILABLE));
-    assertThat(result).isCompletedWithValue(Optional.of(NO_PEERS_AVAILABLE));
+    assertCompletedExceptionally(result, NO_PEERS_AVAILABLE);
   }
 
   private <T> CompletableFuture<T> completedExceptionally(final Throwable error) {
     final CompletableFuture<T> result = new CompletableFuture<>();
     result.completeExceptionally(error);
     return result;
+  }
+
+  private <T> void assertCompletedExceptionally(
+      final CompletableFuture<T> future, final FastSyncError expectedError) {
+    assertThat(future).isCompletedExceptionally();
+    future.exceptionally(
+        actualError -> {
+          assertThat(actualError)
+              .isInstanceOf(FastSyncException.class)
+              .extracting(ex -> ((FastSyncException) ex).getError())
+              .isEqualTo(expectedError);
+          return null;
+        });
   }
 }

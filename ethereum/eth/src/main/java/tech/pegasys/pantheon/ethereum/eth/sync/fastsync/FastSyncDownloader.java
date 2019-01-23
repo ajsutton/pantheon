@@ -12,11 +12,6 @@
  */
 package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 
-import static tech.pegasys.pantheon.ethereum.eth.sync.fastsync.FastSyncError.UNEXPECTED_ERROR;
-
-import tech.pegasys.pantheon.util.ExceptionUtils;
-
-import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -34,24 +29,13 @@ public class FastSyncDownloader<C> {
     this.worldStateDownloader = worldStateDownloader;
   }
 
-  public CompletableFuture<Optional<FastSyncError>> start() {
+  public CompletableFuture<FastSyncState> start() {
     LOG.info("Fast sync enabled");
     return fastSyncActions
         .waitForSuitablePeers()
         .thenApply(state -> fastSyncActions.selectPivotBlock())
         .thenCompose(fastSyncActions::downloadPivotBlockHeader)
-        .thenCompose(this::downloadChainAndWorldState)
-        .thenApply(state -> Optional.<FastSyncError>empty())
-        .exceptionally(
-            error -> {
-              final Throwable rootCause = ExceptionUtils.rootCause(error);
-              if (rootCause instanceof FastSyncException) {
-                return Optional.of(((FastSyncException) rootCause).getError());
-              } else {
-                LOG.error("Fast sync encountered an unexpected error", error);
-                return Optional.of(UNEXPECTED_ERROR);
-              }
-            });
+        .thenCompose(this::downloadChainAndWorldState);
   }
 
   private CompletionStage<FastSyncState> downloadChainAndWorldState(
