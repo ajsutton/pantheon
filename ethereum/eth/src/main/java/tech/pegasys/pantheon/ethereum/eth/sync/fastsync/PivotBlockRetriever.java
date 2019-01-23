@@ -15,7 +15,7 @@ package tech.pegasys.pantheon.ethereum.eth.sync.fastsync;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
-import tech.pegasys.pantheon.ethereum.eth.sync.tasks.GetPivotBlockHeaderFromPeerTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.RetryingGetHeaderFromPeerByNumberTask;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.OperationTimer;
@@ -45,7 +45,7 @@ public class PivotBlockRetriever<C> {
   private final Map<BlockHeader, AtomicInteger> confirmationsByBlockNumber =
       new ConcurrentHashMap<>();
   private final CompletableFuture<FastSyncState> result = new CompletableFuture<>();
-  private final Collection<GetPivotBlockHeaderFromPeerTask> getHeaderTasks =
+  private final Collection<RetryingGetHeaderFromPeerByNumberTask> getHeaderTasks =
       new ConcurrentLinkedQueue<>();
 
   public PivotBlockRetriever(
@@ -87,24 +87,22 @@ public class PivotBlockRetriever<C> {
         .stream()
         .map(
             peer -> {
-              final GetPivotBlockHeaderFromPeerTask getHeaderTask = createGetHeaderTask(peer);
+              final RetryingGetHeaderFromPeerByNumberTask getHeaderTask = createGetHeaderTask(peer);
               getHeaderTasks.add(getHeaderTask);
               return ethContext
                   .getScheduler()
-                  .scheduleSyncWorkerTask(getHeaderTask::getPivotBlockHeader)
+                  .scheduleSyncWorkerTask(getHeaderTask::getHeader)
                   .thenAccept(header -> countHeader(header, confirmationsRequired));
             })
         .toArray(CompletableFuture[]::new);
   }
 
-  private GetPivotBlockHeaderFromPeerTask createGetHeaderTask(final EthPeer peer) {
-    return GetPivotBlockHeaderFromPeerTask.forPivotBlock(
-        protocolSchedule,
-        ethContext,
-        ethTasksTimer,
-        Optional.of(peer),
-        pivotBlockNumber,
-        MAX_PIVOT_BLOCK_RETRIES);
+  private RetryingGetHeaderFromPeerByNumberTask createGetHeaderTask(final EthPeer peer) {
+    final RetryingGetHeaderFromPeerByNumberTask task =
+        RetryingGetHeaderFromPeerByNumberTask.forPivotBlock(
+            protocolSchedule, ethContext, ethTasksTimer, pivotBlockNumber, MAX_PIVOT_BLOCK_RETRIES);
+    task.assignPeer(peer);
+    return task;
   }
 
   private void countHeader(final BlockHeader header, final int confirmationsRequired) {
@@ -121,7 +119,7 @@ public class PivotBlockRetriever<C> {
       LOG.info(
           "Confirmed pivot block hash {} with {} confirmations", header.getHash(), confirmations);
       result.complete(new FastSyncState(OptionalLong.of(header.getNumber()), Optional.of(header)));
-      getHeaderTasks.forEach(GetPivotBlockHeaderFromPeerTask::cancel);
+      getHeaderTasks.forEach(RetryingGetHeaderFromPeerByNumberTask::cancel);
     }
   }
 }
