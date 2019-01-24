@@ -258,7 +258,7 @@ You must specify a valid coinbase when you enable mining using the [`--miner-ena
 option or the [`miner_start`](JSON-RPC-API-Methods.md#miner_start) JSON RPC-API method.
 
 !!!note
-    This option is ignored in networks using the [Clique Proof-of-Authority (PoA) consensus protocol](../Configuring-Pantheon/Proof-of-Authority.md). 
+    This option is ignored in networks using [Clique](../Consensus-Protocols/Clique.md) and [IBFT 2.0](../Consensus-Protocols/IBFT.md) consensus protocols. 
 
 ### miner-enabled
 
@@ -339,7 +339,7 @@ Possible values are :
 :   PoA test network using Clique _(compatible with most clients)_.
 
 `ottoman`
-:   iBFT 1.0 test network. Pantheon can only synchronise on it but can't validate.
+:   Enables accepting of blocks in an IBFT 1.0 network.
     This network configuration doesn't include a genesis file. You have to define
     the genesis with your own using [`--private-genesis-file`](#private-genesis-file) option.
 
@@ -443,7 +443,7 @@ Not intended for use with mainnet or public testnets.
     This option was removed in favor of the new [`--network`](#network) option.
 
 !!!note
-    :construction: IBFT is not currently supported. Support for IBFT is in active development. 
+    A Pantheon node cannot be a validator in an IBFT 1.0 network. Pantheon implements [IBFT 2.0](../Consensus-Protocols/IBFT.md).
 
 ### p2p-host
 
