@@ -41,10 +41,10 @@ class StandaloneCommand implements DefaultCommandValues {
   // default network option
   // Then we have no control over genesis default value here.
   @CommandLine.Option(
-    names = {"--private-genesis-file"},
+    names = {"--genesis-file"},
     paramLabel = MANDATORY_FILE_FORMAT_HELP,
     description =
-        "The path to genesis file. Setting this option makes --chain option ignored and requires --network-id to be set."
+        "The path to genesis file. Setting this option makes --network option ignored and requires --network-id to be set."
   )
   final File genesisFile = null;
 }

@@ -79,12 +79,16 @@ bootnodes=["enode://c35c3...d615f@1.2.3.4:30303","enode://f42c13...fc456@1.2.3.5
   
 List of comma-separated enode URLs for P2P discovery bootstrap. 
   
-When connecting to mainnet or public testnets, the default is a predefined list of enode URLs. 
-Specify bootnodes when connecting to a [private network](../Configuring-Pantheon/Testing-Developing-Nodes.md#bootnodes).
+When connecting to MainNet or public testnets, the default is a predefined list of enode URLs. 
+
+On custom networks defined by [`--genesis-file`](#genesis-file) option,
+an empty list of bootnodes is defined by default unless you define custom bootnodes as described in 
+[private network documentation](../Configuring-Pantheon/Testing-Developing-Nodes.md#bootnodes).
 
 !!! note
-    Specifying a node is a [bootnode](../Configuring-Pantheon/Testing-Developing-Nodes.md#bootnodes) 
-    must be done on the command line not in a [configuration file](../Configuring-Pantheon/Using-Configuration-File.md).  
+    Specifying that a node is a [bootnode](../Configuring-Pantheon/Testing-Developing-Nodes.md#bootnodes) 
+    must be done on the command line using [`--bootnodes`](#bootnodes) option without value,
+    not in a [configuration file](../Configuring-Pantheon/Using-Configuration-File.md).  
 
 ### config-file
 
@@ -93,7 +97,7 @@ Specify bootnodes when connecting to a [private network](../Configuring-Pantheon
 ```
 
 ```bash tab="Example Command Line"
---config=/home/me/me_node/config.toml
+--config-file=/home/me/me_node/config.toml
 ```
 
 The path to the [TOML configuration file](../Configuring-Pantheon/Using-Configuration-File.md).
@@ -329,19 +333,14 @@ Possible values are :
 `mainnet`
 :   Main Ethereum network
 
+`ropsten`
+:   PoW test network similar to current main Ethereum network. 
+
 `rinkeby`
 :   PoA test network using Clique _(only compatible with some clients)_.
 
-`ropsten`
-:   PoA test network using Aura _(only compatible with some clients)_. 
-
 `goerli`
 :   PoA test network using Clique _(compatible with most clients)_.
-
-`ottoman`
-:   Enables accepting of blocks in an IBFT 1.0 network.
-    This network configuration doesn't include a genesis file. You have to define
-    the genesis with your own using [`--private-genesis-file`](#private-genesis-file) option.
 
 `dev`
 :   PoW development network with a very low difficulty to enable local CPU mining.
@@ -365,14 +364,8 @@ network-id="8675309"
 
 P2P network identifier.
 
-This option is used in two cases :
-
-1. **optional**, if you want to override your current [`--network`](#network) option's network id.
-1. **required**, if you used the [`--private-genesis-file`](#private-genesis-file) option.
-
-There's no default value for this option as this value is either required when using 
-[`--private-genesis-file`](#private-genesis-file) or already defined by the 
-[`--network`](#network) option predefined configuration.
+This option can be used to override your current network id.
+The default value is the current network chain id which is defined in the genesis file.
 
 ### no-discovery
 
@@ -440,11 +433,8 @@ Not intended for use with mainnet or public testnets.
 ### ottoman
 
 !!!important
-    This option was removed in favor of the new [`--network`](#network) option.
-
-!!!note
-    A Pantheon node cannot be a validator in an IBFT 1.0 network. Pantheon implements [IBFT 2.0](../Consensus-Protocols/IBFT.md).
-
+    This version is not supporting IBFT Ottoman test network anymore. 
+ 
 ### p2p-host
 
 ```bash tab="Syntax"
@@ -487,39 +477,34 @@ The default is 30303.
 !!!note
     This option is not used when running Pantheon from the [Docker image](../Getting-Started/Run-Docker-Image.md#exposing-ports). 
 
-### private-genesis-file
+### genesis-file
 
 Genesis file is used to create a custom network.
 
 !!!tip
     If you need to use one of the well-known networks like Ethereum MainNet, you should use
-    the [`--network`](#network) option instead.
+    the [`--network`](#network) option instead as all nodes of a same network have to define the 
+    exact same genesis parameters.
 
 ```bash tab="Syntax"
---private-genesis-file=<FILE>
+--genesis-file=<FILE>
 ```
 
 ```bash tab="Example Command Line"
---private-genesis-file=/home/me/me_node/customGenesisFile.json
+--genesis-file=/home/me/me_node/customGenesisFile.json
 ```
 
 ```bash tab="Example Configuration File"
-private-genesis-file="/home/me/me_node/customGenesisFile.json"
+genesis-file="/home/me/me_node/customGenesisFile.json"
 ```
 
 The path to the genesis file. There's no default for this option.
 
 !!!important
-    The [`--private-genesis-file`](#private-genesis-file) option overrides the genesis file
+    The [`--genesis-file`](#genesis-file) option overrides the genesis file
     defined in the preset configuration of [`--network`](#network) option.
-    If both are specified, the [`--private-genesis-file`](#private-genesis-file) option file is 
+    If both are specified, the [`--genesis-file`](#genesis-file) option file is 
     taken in account and the known network one is ignored.
-        
-    When using this option, it is required to also set the [`--network-id`](#network-id) 
-    and [`--bootnodes`](#bootnodes) options because using a custom genesis file implies that we don't use
-    network id and bootnodes of the known network because it would be incompatible with the one we run.
-    
-    Error messages at runtime are displayed to remind these options requirements.
 
 !!!note
     This option is not used when running Pantheon from the [Docker image](../Getting-Started/Run-Docker-Image.md#custom-genesis-file). 
@@ -533,22 +518,7 @@ The path to the genesis file. There's no default for this option.
 ### ropsten
 
 !!!important
-    This option is deprecated in favor of the new `--network` option.
-    It will be completely removed in the 0.9 release.
-    
-```bash tab="Syntax"
---ropsten
-```
-
-```bash tab="Example Configuration File"
-ropsten=true
-```
-
-Uses the Ropsten test network.
-Default is `false`.
-
-!!!note
-    This option is only available only from v0.8.2. For v0.8.1, refer to [Starting Pantheon](../Getting-Started/Starting-Pantheon.md#run-a-node-on-ropsten-testnet). 
+    This option was removed in favor of the new [`--network`](#network) option.
 
 ### rpc-http-enabled
 

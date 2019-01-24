@@ -14,7 +14,6 @@ package tech.pegasys.pantheon.cli;
 
 public enum NetworkName {
   MAINNET,
-  OTTOMAN,
   RINKEBY,
   ROPSTEN,
   GOERLI,

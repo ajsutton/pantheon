@@ -21,9 +21,15 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNotNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
+import static tech.pegasys.pantheon.cli.NetworkName.DEV;
+import static tech.pegasys.pantheon.cli.NetworkName.GOERLI;
+import static tech.pegasys.pantheon.cli.NetworkName.MAINNET;
+import static tech.pegasys.pantheon.cli.NetworkName.RINKEBY;
+import static tech.pegasys.pantheon.cli.NetworkName.ROPSTEN;
 import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.MAINNET_BOOTSTRAP_NODES;
 
 import tech.pegasys.pantheon.PantheonInfo;
+import tech.pegasys.pantheon.config.GenesisConfigFile;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.PrivacyParameters;
@@ -52,6 +58,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.common.io.Resources;
+import io.vertx.core.json.JsonObject;
 import net.consensys.cava.toml.Toml;
 import net.consensys.cava.toml.TomlParseResult;
 import org.apache.commons.text.StringEscapeUtils;
@@ -62,6 +69,7 @@ import org.mockito.ArgumentMatchers;
 import picocli.CommandLine;
 
 public class PantheonCommandTest extends CommandTestAbstract {
+
   private final String ORION_URI = "http://1.2.3.4:5555";
   private final String VALID_NODE_ID =
       "6f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0";
@@ -69,7 +77,12 @@ public class PantheonCommandTest extends CommandTestAbstract {
   private static final JsonRpcConfiguration defaultJsonRpcConfiguration;
   private static final WebSocketConfiguration defaultWebSocketConfiguration;
   private static final MetricsConfiguration defaultMetricsConfiguration;
-  private static final String GENESIS_CONFIG_TESTDATA = "genesis_config";
+  private static final int GENESIS_CONFIG_TEST_CHAINID = 3141592;
+  private static final JsonObject GENESIS_VALID_JSON =
+      (new JsonObject())
+          .put("config", (new JsonObject()).put("chainId", GENESIS_CONFIG_TEST_CHAINID));
+  private static final JsonObject GENESIS_INVALID_DATA =
+      (new JsonObject()).put("config", new JsonObject());
 
   private final String[] validENodeStrings = {
     "enode://" + VALID_NODE_ID + "@192.168.0.1:4567",
@@ -237,7 +250,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assumeTrue(isFullInstantiation());
 
     final URL configFile = Resources.getResource("complete_config.toml");
-    final Path genesisFile = createFakeGenesisFile();
+    final Path genesisFile = createFakeGenesisFile(GENESIS_VALID_JSON);
     final String updatedConfig =
         Resources.toString(configFile, UTF_8)
             .replace("~/genesis.json", escapeTomlString(genesisFile.toString()));
@@ -282,9 +295,9 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(uriListArgumentCaptor.getValue()).isEqualTo(nodes);
 
     final EthNetworkConfig networkConfig =
-        new EthNetworkConfig.Builder(EthNetworkConfig.mainnet())
+        new EthNetworkConfig.Builder(EthNetworkConfig.getNetworkConfig(MAINNET))
             .setNetworkId(42)
-            .setGenesisConfig(GENESIS_CONFIG_TESTDATA)
+            .setGenesisConfig(encodeJsonGenesis(GENESIS_VALID_JSON))
             .setBootNodes(nodes)
             .build();
     verify(mockControllerBuilder).homePath(eq(Paths.get("~/pantheondata")));
@@ -452,66 +465,81 @@ public class PantheonCommandTest extends CommandTestAbstract {
   public void genesisPathOptionMustBeUsed() throws Exception {
     assumeTrue(isFullInstantiation());
 
-    final Path genesisFile = createFakeGenesisFile();
+    final Path genesisFile = createFakeGenesisFile(GENESIS_VALID_JSON);
     final ArgumentCaptor<EthNetworkConfig> networkArg =
         ArgumentCaptor.forClass(EthNetworkConfig.class);
 
-    parseCommand(
-        "--private-genesis-file", genesisFile.toString(), "--bootnodes", "--network-id", "42");
+    parseCommand("--genesis-file", genesisFile.toString());
 
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
-    assertThat(networkArg.getValue().getGenesisConfig()).isEqualTo("genesis_config");
+    assertThat(networkArg.getValue().getGenesisConfig())
+        .isEqualTo(encodeJsonGenesis(GENESIS_VALID_JSON));
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
   @Test
-  public void genesisPathOptionRequiresNetworkIdAndBootnodesOptions() throws Exception {
+  public void defaultNetworkIdAndBootnodesForCustomNetworkOptions() throws Exception {
     assumeTrue(isFullInstantiation());
 
-    final Path genesisFile = createFakeGenesisFile();
+    final Path genesisFile = createFakeGenesisFile(GENESIS_VALID_JSON);
 
-    parseCommand("--private-genesis-file", genesisFile.toString());
+    parseCommand("--genesis-file", genesisFile.toString());
 
-    verifyZeroInteractions(mockControllerBuilder);
+    final ArgumentCaptor<EthNetworkConfig> networkArg =
+        ArgumentCaptor.forClass(EthNetworkConfig.class);
+
+    verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
+    verify(mockControllerBuilder).build();
+
+    assertThat(networkArg.getValue().getGenesisConfig())
+        .isEqualTo(encodeJsonGenesis(GENESIS_VALID_JSON));
+    assertThat(networkArg.getValue().getBootNodes()).isEmpty();
+    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(GENESIS_CONFIG_TEST_CHAINID);
 
     assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString())
-        .contains(
-            "--network-id and --bootnodes option must be defined if --private-genesis-file option is used.");
+    assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
   @Test
-  public void genesisPathOptionRequiresNetworkIdOptions() throws Exception {
+  public void defaultNetworkIdForInvalidGenesisMustBeMainnetNetworkId() throws Exception {
     assumeTrue(isFullInstantiation());
 
-    final Path genesisFile = createFakeGenesisFile();
+    final Path genesisFile = createFakeGenesisFile(GENESIS_INVALID_DATA);
 
-    parseCommand("--private-genesis-file", genesisFile.toString(), "--bootnodes");
+    parseCommand("--genesis-file", genesisFile.toString());
 
-    verifyZeroInteractions(mockControllerBuilder);
+    final ArgumentCaptor<EthNetworkConfig> networkArg =
+        ArgumentCaptor.forClass(EthNetworkConfig.class);
+
+    verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
+    verify(mockControllerBuilder).build();
+
+    assertThat(networkArg.getValue().getGenesisConfig())
+        .isEqualTo(encodeJsonGenesis(GENESIS_INVALID_DATA));
+
+    //    assertThat(networkArg.getValue().getNetworkId())
+    //        .isEqualTo(EthNetworkConfig.getNetworkConfig(MAINNET).getNetworkId());
 
     assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString())
-        .contains("--network-id option must be defined if --private-genesis-file option is used.");
+    assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
   @Test
-  public void genesisPathOptionRequiresBootnodesOptions() throws Exception {
-    assumeTrue(isFullInstantiation());
+  public void predefinedNetworkIdsMustBeEqualToChainIds() {
+    // check the network id against the one in mainnet genesis config
+    // it implies that EthNetworkConfig.mainnet().getNetworkId() returns a value equals to the chain
+    // id
+    // in this network genesis file.
 
-    final Path genesisFile = createFakeGenesisFile();
-
-    parseCommand("--private-genesis-file", genesisFile.toString(), "--network-id", "42");
-
-    verifyZeroInteractions(mockControllerBuilder);
-
-    assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString())
-        .contains("--bootnodes option must be defined if --private-genesis-file option is used.");
+    GenesisConfigFile genesisConfigFile =
+        GenesisConfigFile.fromConfig(EthNetworkConfig.getNetworkConfig(MAINNET).getGenesisConfig());
+    assertThat(genesisConfigFile.getConfigOptions().getChainId().isPresent()).isTrue();
+    assertThat(genesisConfigFile.getConfigOptions().getChainId().getAsInt())
+        .isEqualTo(EthNetworkConfig.getNetworkConfig(MAINNET).getNetworkId());
   }
 
   @Test
@@ -1474,52 +1502,10 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.dev());
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.getNetworkConfig(DEV));
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
-  }
-
-  @Test
-  public void ottomanModeOptionMustBeUsed() throws Exception {
-    final Path genesisFile = createFakeGenesisFile();
-
-    int networkIdOptionValue = 42;
-
-    parseCommand(
-        "--network",
-        "ottoman",
-        "--private-genesis-file",
-        genesisFile.toString(),
-        "--bootnodes",
-        "--network-id",
-        String.valueOf(networkIdOptionValue));
-
-    final ArgumentCaptor<EthNetworkConfig> networkArg =
-        ArgumentCaptor.forClass(EthNetworkConfig.class);
-
-    verify(mockControllerBuilder).syncWithOttoman(eq(true));
-    verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
-    verify(mockControllerBuilder).build();
-
-    assertThat(networkArg.getValue().getGenesisConfig()).isEqualTo("genesis_config");
-    assertThat(networkArg.getValue().getBootNodes()).isEmpty();
-    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(networkIdOptionValue);
-
-    assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString()).isEmpty();
-  }
-
-  @Test
-  public void ottomanModeOptionRequiresGenesisFile() throws Exception {
-    parseCommand("--network", "ottoman");
-
-    verifyZeroInteractions(mockControllerBuilder);
-
-    assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString())
-        .contains(
-            "A genesis file must be defined with --private-genesis-file option to use Ottoman network.");
   }
 
   @Test
@@ -1532,7 +1518,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.rinkeby());
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.getNetworkConfig(RINKEBY));
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -1548,7 +1534,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.ropsten());
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.getNetworkConfig(ROPSTEN));
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -1564,7 +1550,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).ethNetworkConfig(networkArg.capture());
     verify(mockControllerBuilder).build();
 
-    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.goerli());
+    assertThat(networkArg.getValue()).isEqualTo(EthNetworkConfig.getNetworkConfig(GOERLI));
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -1591,7 +1577,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   private void networkValuesCanBeOverridden(final String network) throws Exception {
-    final Path genesisFile = createFakeGenesisFile();
+    final Path genesisFile = createFakeGenesisFile(GENESIS_VALID_JSON);
     parseCommand(
         "--network",
         network,
@@ -1599,7 +1585,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
         "1234567",
         "--bootnodes",
         String.join(",", validENodeStrings),
-        "--private-genesis-file",
+        "--genesis-file",
         genesisFile.toString());
 
     final ArgumentCaptor<EthNetworkConfig> networkArg =
@@ -1610,7 +1596,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
-    assertThat(networkArg.getValue().getGenesisConfig()).isEqualTo("genesis_config");
+    assertThat(networkArg.getValue().getGenesisConfig())
+        .isEqualTo(encodeJsonGenesis(GENESIS_VALID_JSON));
     assertThat(networkArg.getValue().getBootNodes())
         .isEqualTo(Stream.of(validENodeStrings).map(URI::create).collect(Collectors.toList()));
     assertThat(networkArg.getValue().getNetworkId()).isEqualTo(1234567);
@@ -1626,7 +1613,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     assertThat(commandOutput.toString()).doesNotContain("--config-file");
     assertThat(commandOutput.toString()).doesNotContain("--data-path");
-    assertThat(commandOutput.toString()).doesNotContain("--private-genesis-file");
+    assertThat(commandOutput.toString()).doesNotContain("--genesis-file");
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
@@ -1638,7 +1625,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     assertThat(commandOutput.toString()).contains("--config-file");
     assertThat(commandOutput.toString()).contains("--data-path");
-    assertThat(commandOutput.toString()).contains("--private-genesis-file");
+    assertThat(commandOutput.toString()).contains("--genesis-file");
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
@@ -1681,10 +1668,14 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(orionArg.getValue().isEnabled()).isEqualTo(false);
   }
 
-  private Path createFakeGenesisFile() throws IOException {
+  private Path createFakeGenesisFile(final JsonObject jsonGenesis) throws IOException {
     final Path genesisFile = Files.createTempFile("genesisFile", "");
-    Files.write(genesisFile, "genesis_config".getBytes(UTF_8));
+    Files.write(genesisFile, encodeJsonGenesis(jsonGenesis).getBytes(UTF_8));
     return genesisFile;
+  }
+
+  private String encodeJsonGenesis(final JsonObject jsonGenesis) {
+    return jsonGenesis.encodePrettily();
   }
 
   private boolean isFullInstantiation() {
