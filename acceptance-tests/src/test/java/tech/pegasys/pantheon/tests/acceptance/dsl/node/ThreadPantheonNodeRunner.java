@@ -12,7 +12,7 @@
  */
 package tech.pegasys.pantheon.tests.acceptance.dsl.node;
 
-import static tech.pegasys.pantheon.cli.NetworkName.MAINNET;
+import static tech.pegasys.pantheon.cli.NetworkName.DEV;
 
 import tech.pegasys.pantheon.Runner;
 import tech.pegasys.pantheon.RunnerBuilder;
@@ -39,8 +39,6 @@ import org.apache.logging.log4j.Logger;
 
 public class ThreadPantheonNodeRunner implements PantheonNodeRunner {
 
-  private static final int NETWORK_ID = 10;
-
   private final Logger LOG = LogManager.getLogger();
   private final Map<String, Runner> pantheonRunners = new HashMap<>();
   private ExecutorService nodeExecutor = Executors.newCachedThreadPool();
@@ -54,11 +52,7 @@ public class ThreadPantheonNodeRunner implements PantheonNodeRunner {
     final MetricsSystem noOpMetricsSystem = new NoOpMetricsSystem();
     final PantheonControllerBuilder builder = new PantheonControllerBuilder();
     final EthNetworkConfig ethNetworkConfig =
-        node.ethNetworkConfig()
-            .orElse(
-                new EthNetworkConfig.Builder(EthNetworkConfig.getNetworkConfig(MAINNET))
-                    .setNetworkId(NETWORK_ID)
-                    .build());
+        node.ethNetworkConfig().orElse(EthNetworkConfig.getNetworkConfig(DEV));
     final PantheonController<?> pantheonController;
     try {
       pantheonController =

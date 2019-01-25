@@ -32,8 +32,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class Cluster implements AutoCloseable {
-  public static final int NETWORK_ID = 10;
-
   private final Map<String, RunnableNode> nodes = new HashMap<>();
   private final PantheonNodeRunner pantheonNodeRunner = PantheonNodeRunner.instance();
   private final Net net;
@@ -71,11 +69,11 @@ public class Cluster implements AutoCloseable {
 
     for (final RunnableNode node : nodes) {
       node.getConfiguration().bootnodes(bootNodes);
-      Optional<EthNetworkConfig> ethNetworkConfig =
+      final Optional<EthNetworkConfig> ethNetworkConfig =
           node.getConfiguration()
               .genesisConfigProvider()
               .createGenesisConfig(nodes)
-              .map(config -> new EthNetworkConfig(config, NETWORK_ID, bootNodes));
+              .map(config -> new EthNetworkConfig(config, bootNodes));
       node.getConfiguration().ethNetworkConfig(ethNetworkConfig);
       node.start(pantheonNodeRunner);
     }

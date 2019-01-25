@@ -103,12 +103,10 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
     }
 
     if (node.ethNetworkConfig().isPresent()) {
-      EthNetworkConfig ethNetworkConfig = node.ethNetworkConfig().get();
-      Path genesisFile = createGenesisFile(node, ethNetworkConfig);
+      final EthNetworkConfig ethNetworkConfig = node.ethNetworkConfig().get();
+      final Path genesisFile = createGenesisFile(node, ethNetworkConfig);
       params.add("--genesis");
       params.add(genesisFile.toString());
-      params.add("--network-id");
-      params.add(Integer.toString(ethNetworkConfig.getNetworkId()));
     }
 
     if (!node.p2pEnabled()) {
@@ -133,16 +131,16 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
 
   private Path createGenesisFile(final PantheonNode node, final EthNetworkConfig ethNetworkConfig) {
     try {
-      Path genesisFile = Files.createTempFile(node.homeDirectory(), "gensis", "");
+      final Path genesisFile = Files.createTempFile(node.homeDirectory(), "gensis", "");
       Files.write(genesisFile, ethNetworkConfig.getGenesisConfig().getBytes(UTF_8));
       return genesisFile;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new IllegalStateException(e);
     }
   }
 
   private String apiList(final Collection<RpcApi> rpcApis) {
-    return String.join(",", rpcApis.stream().map(RpcApis::getValue).collect(Collectors.toList()));
+    return rpcApis.stream().map(RpcApis::getValue).collect(Collectors.joining(","));
   }
 
   @Override

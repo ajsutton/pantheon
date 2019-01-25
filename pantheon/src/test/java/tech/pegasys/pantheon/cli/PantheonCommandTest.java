@@ -29,7 +29,6 @@ import static tech.pegasys.pantheon.cli.NetworkName.ROPSTEN;
 import static tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration.MAINNET_BOOTSTRAP_NODES;
 
 import tech.pegasys.pantheon.PantheonInfo;
-import tech.pegasys.pantheon.config.GenesisConfigFile;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.MiningParameters;
 import tech.pegasys.pantheon.ethereum.core.PrivacyParameters;
@@ -161,7 +160,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(miningArg.getValue().getCoinbase()).isEqualTo(Optional.empty());
     assertThat(miningArg.getValue().getMinTransactionGasPrice()).isEqualTo(Wei.of(1000));
     assertThat(miningArg.getValue().getExtraData()).isEqualTo(BytesValue.EMPTY);
-    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(1);
     assertThat(networkArg.getValue().getBootNodes()).isEqualTo(MAINNET_BOOTSTRAP_NODES);
   }
 
@@ -296,7 +294,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     final EthNetworkConfig networkConfig =
         new EthNetworkConfig.Builder(EthNetworkConfig.getNetworkConfig(MAINNET))
-            .setNetworkId(42)
             .setGenesisConfig(encodeJsonGenesis(GENESIS_VALID_JSON))
             .setBootNodes(nodes)
             .build();
@@ -498,7 +495,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(networkArg.getValue().getGenesisConfig())
         .isEqualTo(encodeJsonGenesis(GENESIS_VALID_JSON));
     assertThat(networkArg.getValue().getBootNodes()).isEmpty();
-    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(GENESIS_CONFIG_TEST_CHAINID);
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -526,20 +522,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
-  }
-
-  @Test
-  public void predefinedNetworkIdsMustBeEqualToChainIds() {
-    // check the network id against the one in mainnet genesis config
-    // it implies that EthNetworkConfig.mainnet().getNetworkId() returns a value equals to the chain
-    // id
-    // in this network genesis file.
-
-    GenesisConfigFile genesisConfigFile =
-        GenesisConfigFile.fromConfig(EthNetworkConfig.getNetworkConfig(MAINNET).getGenesisConfig());
-    assertThat(genesisConfigFile.getConfigOptions().getChainId().isPresent()).isTrue();
-    assertThat(genesisConfigFile.getConfigOptions().getChainId().getAsInt())
-        .isEqualTo(EthNetworkConfig.getNetworkConfig(MAINNET).getNetworkId());
   }
 
   @Test
@@ -1581,8 +1563,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
     parseCommand(
         "--network",
         network,
-        "--network-id",
-        "1234567",
         "--bootnodes",
         String.join(",", validENodeStrings),
         "--genesis-file",
@@ -1600,7 +1580,6 @@ public class PantheonCommandTest extends CommandTestAbstract {
         .isEqualTo(encodeJsonGenesis(GENESIS_VALID_JSON));
     assertThat(networkArg.getValue().getBootNodes())
         .isEqualTo(Stream.of(validENodeStrings).map(URI::create).collect(Collectors.toList()));
-    assertThat(networkArg.getValue().getNetworkId()).isEqualTo(1234567);
   }
 
   @Test

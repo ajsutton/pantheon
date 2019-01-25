@@ -23,6 +23,7 @@ public class JsonGenesisConfigOptions implements GenesisConfigOptions {
   private static final String IBFT_CONFIG_KEY = "ibft";
   private static final String REVISED_IBFT_CONFIG_KEY = "revisedibft";
   private static final String CLIQUE_CONFIG_KEY = "clique";
+  private static final int DEFAULT_NETWORK_ID = 1;
   private final JsonObject configRoot;
 
   JsonGenesisConfigOptions(final JsonObject configRoot) {
@@ -110,6 +111,13 @@ public class JsonGenesisConfigOptions implements GenesisConfigOptions {
     return configRoot.containsKey("chainid")
         ? OptionalInt.of(configRoot.getInteger("chainid"))
         : OptionalInt.empty();
+  }
+
+  @Override
+  public OptionalInt getNetworkId() {
+    return configRoot.containsKey("networkid")
+        ? OptionalInt.of(configRoot.getInteger("networkid"))
+        : getChainId();
   }
 
   private OptionalLong getOptionalLong(final String key) {
