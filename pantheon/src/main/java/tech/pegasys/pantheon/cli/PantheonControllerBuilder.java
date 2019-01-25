@@ -33,6 +33,7 @@ import java.nio.file.Path;
 
 public class PantheonControllerBuilder {
 
+  private static final int DEFAULT_NETWORK_ID = 1;
   private SynchronizerConfiguration synchronizerConfiguration;
   private Path homePath;
   private EthNetworkConfig ethNetworkConfig;
@@ -114,7 +115,7 @@ public class PantheonControllerBuilder {
           synchronizerConfiguration,
           storageProvider,
           syncWithOttoman,
-          ethNetworkConfig.getNetworkId(),
+          genesisConfigFile.getConfigOptions().getNetworkId().orElse(DEFAULT_NETWORK_ID),
           miningParameters,
           nodeKeys,
           metricsSystem,

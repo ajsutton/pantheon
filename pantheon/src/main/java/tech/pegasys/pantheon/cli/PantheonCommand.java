@@ -29,7 +29,6 @@ import tech.pegasys.pantheon.RunnerBuilder;
 import tech.pegasys.pantheon.cli.custom.CorsAllowedOriginsProperty;
 import tech.pegasys.pantheon.cli.custom.EnodeToURIPropertyConverter;
 import tech.pegasys.pantheon.cli.custom.JsonRPCWhitelistHostsProperty;
-import tech.pegasys.pantheon.config.GenesisConfigFile;
 import tech.pegasys.pantheon.consensus.clique.jsonrpc.CliqueRpcApis;
 import tech.pegasys.pantheon.consensus.ibft.jsonrpc.IbftRpcApis;
 import tech.pegasys.pantheon.controller.KeyPairUtil;
@@ -73,7 +72,6 @@ import com.google.common.io.Resources;
 import com.google.common.net.HostAndPort;
 import com.google.common.net.HostSpecifier;
 import io.vertx.core.Vertx;
-import io.vertx.core.json.DecodeException;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.config.Configurator;
 import picocli.CommandLine;
@@ -252,15 +250,6 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
     arity = "1"
   )
   private final Integer p2pPort = DEFAULT_PORT;
-
-  @Option(
-    names = {"--network-id"},
-    paramLabel = MANDATORY_INTEGER_FORMAT_HELP,
-    description =
-        "P2P network identifier. (default: the selected network chain ID or custom genesis chain ID)",
-    arity = "1"
-  )
-  private final Integer networkId = null;
 
   @Option(
     names = {"--rpc-http-enabled"},
@@ -774,7 +763,7 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
 
     // custom genesis file use comes with specific default values for the genesis file itself
     // but also for the network id and the bootnodes list.
-    File genesisFile = genesisFile();
+    final File genesisFile = genesisFile();
     if (genesisFile != null) {
 
       //noinspection ConstantConditions network is not always null but injected by PicoCLI if used
@@ -791,29 +780,6 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
 
       builder.setGenesisConfig(genesisConfig());
 
-      if (networkId == null) {
-        // if no network id option is defined on the CLI we have to set a default value from the
-        // genesis file.
-        // We do the genesis parsing only in this case as we already have network id constants
-        // for known networks to speed up the process.
-        // Also we have to parse the genesis as we don't already have a parsed version at this
-        // stage.
-        // If no chain id is found in the genesis as it's an optional, we use mainnet network id.
-        try {
-          GenesisConfigFile genesisConfigFile = GenesisConfigFile.fromConfig(genesisConfig());
-          builder.setNetworkId(
-              genesisConfigFile
-                  .getConfigOptions()
-                  .getChainId()
-                  .orElse(EthNetworkConfig.getNetworkConfig(MAINNET).getNetworkId()));
-        } catch (DecodeException e) {
-          throw new ParameterException(
-              new CommandLine(this),
-              String.format("Unable to parse genesis file %s.", genesisFile),
-              e);
-        }
-      }
-
       if (bootNodes == null) {
         // We default to an empty bootnodes list if the option is not provided on CLI because
         // mainnet bootnodes won't work as the default value for a custom genesis,
@@ -821,10 +787,6 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
         // than a useless one that may make user think that it can work when it can't.
         builder.setBootNodes(new ArrayList<>());
       }
-    }
-
-    if (networkId != null) {
-      builder.setNetworkId(networkId);
     }
 
     if (bootNodes != null) {

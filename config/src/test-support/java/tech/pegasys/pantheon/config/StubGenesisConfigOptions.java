@@ -101,6 +101,11 @@ public class StubGenesisConfigOptions implements GenesisConfigOptions {
     return chainId;
   }
 
+  @Override
+  public OptionalInt getNetworkId() {
+    return chainId;
+  }
+
   public StubGenesisConfigOptions homesteadBlock(final long blockNumber) {
     homesteadBlockNumber = OptionalLong.of(blockNumber);
     return this;

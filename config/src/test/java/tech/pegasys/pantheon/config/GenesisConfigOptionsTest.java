@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Collections;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import io.vertx.core.json.JsonObject;
 import org.junit.Test;
 
@@ -127,12 +128,27 @@ public class GenesisConfigOptionsTest {
   }
 
   @Test
+  public void shouldGetNetworkIdWhenSpecified() {
+    final GenesisConfigOptions config =
+        fromConfigOptions(ImmutableMap.of("chainId", 32, "networkId", 56));
+    assertThat(config.getNetworkId()).hasValue(56);
+  }
+
+  @Test
+  public void shouldDefaultNetworkIdToChainIdWhenNotSpecified() {
+    final GenesisConfigOptions config = fromConfigOptions(singletonMap("chainId", 32));
+    assertThat(config.getNetworkId()).hasValue(32);
+  }
+
+  @Test
   public void shouldSupportEmptyGenesisConfig() {
     final GenesisConfigOptions config = GenesisConfigFile.fromConfig("{}").getConfigOptions();
     assertThat(config.isEthHash()).isFalse();
     assertThat(config.isIbft()).isFalse();
     assertThat(config.isClique()).isFalse();
     assertThat(config.getHomesteadBlockNumber()).isEmpty();
+    assertThat(config.getChainId()).isEmpty();
+    assertThat(config.getNetworkId()).isEmpty();
   }
 
   private GenesisConfigOptions fromConfigOptions(final Map<String, Object> options) {
