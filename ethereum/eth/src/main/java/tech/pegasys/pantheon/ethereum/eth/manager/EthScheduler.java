@@ -47,7 +47,7 @@ public class EthScheduler {
   private final ExecutorService servicesExecutor;
   private final ExecutorService computationExecutor;
 
-  EthScheduler(
+  public EthScheduler(
       final int syncWorkerCount, final int txWorkerCount, final int computationWorkerCount) {
     this(
         Executors.newFixedThreadPool(
