@@ -46,7 +46,6 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
   private final long firstHeaderNumber;
   private final long lastHeaderNumber;
 
-  private final LabelledMetric<OperationTimer> ethTasksTimer;
   private final BlockHandler<B> blockHandler;
   private final HeaderValidationMode headerValidationMode;
 
@@ -63,7 +62,6 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
     this.protocolSchedule = protocolSchedule;
     this.protocolContext = protocolContext;
     this.maxActiveChunks = maxActiveChunks;
-    this.ethTasksTimer = ethTasksTimer;
 
     if (checkpointHeaders.size() > 1) {
       this.firstHeaderNumber = checkpointHeaders.get(0).getNumber();
@@ -165,7 +163,10 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
                 } else {
                   try {
                     final List<B> importedBlocks =
-                        validateBodiesFuture.get().getResult().stream()
+                        validateBodiesFuture
+                            .get()
+                            .getResult()
+                            .stream()
                             .flatMap(Collection::stream)
                             .collect(Collectors.toList());
                     result

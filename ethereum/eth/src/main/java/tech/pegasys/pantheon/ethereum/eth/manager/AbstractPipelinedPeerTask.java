@@ -15,7 +15,7 @@ package tech.pegasys.pantheon.ethereum.eth.manager;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.OperationTimer;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.BlockingQueue;
@@ -33,7 +33,7 @@ public abstract class AbstractPipelinedPeerTask<I, O> extends AbstractPeerTask<L
 
   private BlockingQueue<I> inboundQueue;
   private BlockingQueue<O> outboundQueue;
-  private LinkedList<O> results;
+  private List<O> results;
 
   private boolean lameDuckMode = false;
   private AtomicReference<Throwable> processingException = new AtomicReference<>(null);
@@ -46,7 +46,7 @@ public abstract class AbstractPipelinedPeerTask<I, O> extends AbstractPeerTask<L
     super(ethContext, ethTasksTimer);
     this.inboundQueue = inboundQueue;
     outboundQueue = new LinkedBlockingQueue<>(outboundBacklogSize);
-    results = new LinkedList<>();
+    results = new ArrayList<>();
   }
 
   @Override
