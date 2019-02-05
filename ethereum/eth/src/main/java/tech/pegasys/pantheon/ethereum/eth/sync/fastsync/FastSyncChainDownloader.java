@@ -21,7 +21,7 @@ import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.sync.ChainDownloader;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.sync.state.SyncState;
-import tech.pegasys.pantheon.ethereum.eth.sync.tasks.PipelinedImportChainSegmentTask;
+import tech.pegasys.pantheon.ethereum.eth.sync.tasks.ParallelImportChainSegmentTask;
 import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
@@ -86,8 +86,10 @@ public class FastSyncChainDownloader<C> {
     if (checkpointHeaders.size() < 2) {
       return CompletableFuture.completedFuture(emptyList());
     }
-    final PipelinedImportChainSegmentTask<C, BlockWithReceipts> importTask =
-        PipelinedImportChainSegmentTask.forCheckpoints(
+    //    final PipelinedImportChainSegmentTask<C, BlockWithReceipts> importTask =
+    //        PipelinedImportChainSegmentTask.forCheckpoints(
+    final ParallelImportChainSegmentTask<C, BlockWithReceipts> importTask =
+        ParallelImportChainSegmentTask.forCheckpoints(
             protocolSchedule,
             protocolContext,
             ethContext,
@@ -101,6 +103,12 @@ public class FastSyncChainDownloader<C> {
         .run()
         .thenApply(
             results ->
-                results.stream().map(BlockWithReceipts::getBlock).collect(Collectors.toList()));
+                //
+                // results.stream().map(BlockWithReceipts::getBlock).collect(Collectors.toList()));
+                results
+                    .getResult()
+                    .stream()
+                    .map(BlockWithReceipts::getBlock)
+                    .collect(Collectors.toList()));
   }
 }

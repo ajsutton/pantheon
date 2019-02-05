@@ -20,19 +20,22 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public abstract class AbstractEthTask<T> implements EthTask<T> {
 
   protected double taskTimeInSec = -1.0D;
-  protected OperationTimer taskTimer;
+  protected final LabelledMetric<OperationTimer> ethTasksTimer;
+  protected final OperationTimer taskTimer;
   protected final AtomicReference<CompletableFuture<T>> result = new AtomicReference<>();
   protected volatile Collection<CompletableFuture<?>> subTaskFutures =
       new ConcurrentLinkedDeque<>();
 
   /** @param ethTasksTimer The metrics timer to use to time the duration of the task. */
   protected AbstractEthTask(final LabelledMetric<OperationTimer> ethTasksTimer) {
+    this.ethTasksTimer = ethTasksTimer;
     taskTimer = ethTasksTimer.labels(getClass().getSimpleName());
   }
 
@@ -40,6 +43,20 @@ public abstract class AbstractEthTask<T> implements EthTask<T> {
   public final CompletableFuture<T> run() {
     if (result.compareAndSet(null, new CompletableFuture<>())) {
       executeTaskTimed();
+      result
+          .get()
+          .whenComplete(
+              (r, t) -> {
+                cleanup();
+              });
+    }
+    return result.get();
+  }
+
+  @Override
+  public final CompletableFuture<T> runAsync(ExecutorService executor) {
+    if (result.compareAndSet(null, new CompletableFuture<>())) {
+      executor.submit(this::executeTaskTimed);
       result
           .get()
           .whenComplete(

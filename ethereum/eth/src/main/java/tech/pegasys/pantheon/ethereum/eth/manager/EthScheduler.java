@@ -125,11 +125,11 @@ public class EthScheduler {
     txWorkerExecutor.submit(command);
   }
 
-  CompletableFuture<Void> scheduleServiceTask(final Runnable service) {
-    return CompletableFuture.runAsync(service, servicesExecutor);
+  public <T> CompletableFuture<T> scheduleServiceTask(final EthTask<T> task) {
+    return task.runAsync(servicesExecutor);
   }
 
-  <T> CompletableFuture<T> scheduleComputationTask(final Supplier<T> computation) {
+  public <T> CompletableFuture<T> scheduleComputationTask(final Supplier<T> computation) {
     return CompletableFuture.supplyAsync(computation, computationExecutor);
   }
 
