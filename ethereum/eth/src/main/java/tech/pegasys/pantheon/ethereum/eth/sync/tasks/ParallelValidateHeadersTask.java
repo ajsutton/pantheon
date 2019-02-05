@@ -17,9 +17,9 @@ import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.eth.manager.AbstractPipelinedPeerTask;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
+import tech.pegasys.pantheon.ethereum.eth.sync.ValidationPolicy;
 import tech.pegasys.pantheon.ethereum.eth.sync.tasks.exceptions.InvalidBlockException;
 import tech.pegasys.pantheon.ethereum.mainnet.BlockHeaderValidator;
-import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSpec;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
@@ -38,10 +38,10 @@ public class ParallelValidateHeadersTask<C>
 
   private final ProtocolSchedule<C> protocolSchedule;
   private final ProtocolContext<C> protocolContext;
-  private final HeaderValidationMode headerValidationMode;
+  private final ValidationPolicy validationPolicy;
 
   ParallelValidateHeadersTask(
-      final HeaderValidationMode headerValidationMode,
+      final ValidationPolicy validationPolicy,
       final BlockingQueue<List<BlockHeader>> inboundQueue,
       final int outboundBacklogSize,
       final ProtocolSchedule<C> protocolSchedule,
@@ -52,7 +52,7 @@ public class ParallelValidateHeadersTask<C>
 
     this.protocolSchedule = protocolSchedule;
     this.protocolContext = protocolContext;
-    this.headerValidationMode = headerValidationMode;
+    this.validationPolicy = validationPolicy;
   }
 
   @Override
@@ -70,7 +70,10 @@ public class ParallelValidateHeadersTask<C>
     final ProtocolSpec<C> protocolSpec = protocolSchedule.getByBlockNumber(childHeader.getNumber());
     final BlockHeaderValidator<C> blockHeaderValidator = protocolSpec.getBlockHeaderValidator();
     if (blockHeaderValidator.validateHeader(
-        childHeader, parentHeader, protocolContext, headerValidationMode)) {
+        childHeader,
+        parentHeader,
+        protocolContext,
+        validationPolicy.getValidationModeForNextBlock())) {
       // The first header will be imported by the previous request range.
       return Optional.of(headers.subList(1, headers.size()));
     } else {

@@ -19,7 +19,7 @@ import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthScheduler;
 import tech.pegasys.pantheon.ethereum.eth.sync.BlockHandler;
-import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
+import tech.pegasys.pantheon.ethereum.eth.sync.ValidationPolicy;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.LabelledMetric;
 import tech.pegasys.pantheon.metrics.OperationTimer;
@@ -42,12 +42,11 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
 
   private final ArrayBlockingQueue<BlockHeader> checkpointHeaders;
   private final int maxActiveChunks;
-  //  private final int chunksInTotal;
   private final long firstHeaderNumber;
   private final long lastHeaderNumber;
 
   private final BlockHandler<B> blockHandler;
-  private final HeaderValidationMode headerValidationMode;
+  private final ValidationPolicy validationPolicy;
 
   private ParallelImportChainSegmentTask(
       final ProtocolSchedule<C> protocolSchedule,
@@ -57,7 +56,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
       final List<BlockHeader> checkpointHeaders,
       final LabelledMetric<OperationTimer> ethTasksTimer,
       final BlockHandler<B> blockHandler,
-      final HeaderValidationMode headerValidationMode) {
+      final ValidationPolicy validationPolicy) {
     super(ethContext, ethTasksTimer);
     this.protocolSchedule = protocolSchedule;
     this.protocolContext = protocolContext;
@@ -74,7 +73,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
         new ArrayBlockingQueue<>(checkpointHeaders.size(), false, checkpointHeaders);
     //    this.chunksInTotal = checkpointHeaders.size() - 1;
     this.blockHandler = blockHandler;
-    this.headerValidationMode = headerValidationMode;
+    this.validationPolicy = validationPolicy;
   }
 
   public static <C, B> ParallelImportChainSegmentTask<C, B> forCheckpoints(
@@ -84,7 +83,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
       final int maxActiveChunks,
       final LabelledMetric<OperationTimer> ethTasksTimer,
       final BlockHandler<B> blockHandler,
-      final HeaderValidationMode headerValidationMode,
+      final ValidationPolicy validationPolicy,
       final List<BlockHeader> checkpointHeaders) {
     return new ParallelImportChainSegmentTask<>(
         protocolSchedule,
@@ -94,7 +93,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
         checkpointHeaders,
         ethTasksTimer,
         blockHandler,
-        headerValidationMode);
+        validationPolicy);
   }
 
   @Override
@@ -113,7 +112,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
               ethTasksTimer);
       final ParallelValidateHeadersTask<C> validateTask =
           new ParallelValidateHeadersTask<>(
-              headerValidationMode,
+              validationPolicy,
               downloadTask.getOutboundQueue(),
               maxActiveChunks,
               protocolSchedule,
