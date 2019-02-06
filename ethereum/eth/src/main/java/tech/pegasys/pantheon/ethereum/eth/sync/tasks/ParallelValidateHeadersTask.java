@@ -74,9 +74,17 @@ public class ParallelValidateHeadersTask<C>
         parentHeader,
         protocolContext,
         validationPolicy.getValidationModeForNextBlock())) {
+      LOG.debug(
+          "Validated Headers {} to {}",
+          headers.get(0).getNumber(),
+          headers.get(headers.size() - 1).getNumber());
       // The first header will be imported by the previous request range.
       return Optional.of(headers.subList(1, headers.size()));
     } else {
+      LOG.debug(
+          "Could not validate Headers {} to {}",
+          headers.get(0).getNumber(),
+          headers.get(headers.size() - 1).getNumber());
       // ignore the value, we only want the first exception to be there
       failExceptionally(
           new InvalidBlockException(

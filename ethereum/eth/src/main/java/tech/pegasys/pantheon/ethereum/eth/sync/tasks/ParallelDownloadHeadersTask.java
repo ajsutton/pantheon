@@ -86,11 +86,10 @@ public class ParallelDownloadHeadersTask<C>
     }
     headers.add(nextCheckpointHeader);
     if (headers.size() > 2) {
-      LOG.trace("Received {} headers", headers.size() - 2);
-      LOG.info(
+      LOG.debug(
           "Downloaded headers {} to {}",
           headers.get(1).getNumber(),
-          headers.get(headers.size() - 2).getNumber());
+          headers.get(headers.size() - 1).getNumber());
     }
     return Optional.of(headers);
   }

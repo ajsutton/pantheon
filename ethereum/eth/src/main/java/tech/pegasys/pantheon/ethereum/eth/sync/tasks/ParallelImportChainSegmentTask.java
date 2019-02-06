@@ -130,7 +130,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
           new ParallelValidateAndImportBodiesTask<>(
               blockHandler,
               downloadBodiesTask.getOutboundQueue(),
-              maxActiveChunks,
+              Integer.MAX_VALUE,
               ethContext,
               ethTasksTimer);
 

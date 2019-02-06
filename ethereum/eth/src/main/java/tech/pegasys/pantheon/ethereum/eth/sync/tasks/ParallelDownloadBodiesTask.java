@@ -50,13 +50,13 @@ public class ParallelDownloadBodiesTask<B>
       final List<BlockHeader> headers,
       final Optional<List<BlockHeader>> previousHeaders,
       final EthPeer peer) {
-    LOG.debug(
+    LOG.trace(
         "Downloading bodies {} to {}",
         headers.get(0).getNumber(),
         headers.get(headers.size() - 1).getNumber());
     try {
       final List<B> blocks = blockHandler.downloadBlocks(headers).get();
-      LOG.info(
+      LOG.debug(
           "Downloaded bodies {} to {}",
           headers.get(0).getNumber(),
           headers.get(headers.size() - 1).getNumber());

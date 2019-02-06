@@ -70,8 +70,12 @@ public abstract class AbstractPipelinedPeerTask<I, O> extends AbstractPeerTask<L
       final Optional<O> output = processStep(input, previousInput, peer);
       output.ifPresent(
           o -> {
+            try {
+              outboundQueue.put(o);
+            } catch (final InterruptedException e) {
+              processingException.compareAndSet(null, e);
+            }
             results.add(o);
-            outboundQueue.offer(o);
           });
       previousInput = Optional.of(input);
     }

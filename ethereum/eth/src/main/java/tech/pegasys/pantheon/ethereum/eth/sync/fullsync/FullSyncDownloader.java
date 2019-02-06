@@ -93,8 +93,6 @@ public class FullSyncDownloader<C> {
               ethTasksTimer);
       importedBlocks = importTask.run().thenApply(PeerTaskResult::getResult);
     } else {
-      //      final PipelinedImportChainSegmentTask<C, Block> importTask =
-      //          PipelinedImportChainSegmentTask.forCheckpoints(
       final ParallelImportChainSegmentTask<C, Block> importTask =
           ParallelImportChainSegmentTask.forCheckpoints(
               protocolSchedule,
@@ -107,7 +105,6 @@ public class FullSyncDownloader<C> {
               () -> HeaderValidationMode.DETACHED_ONLY,
               checkpointHeaders);
       importedBlocks = importTask.run().thenApply(PeerTaskResult::getResult);
-      //      importedBlocks = importTask.run();
     }
     return importedBlocks;
   }
