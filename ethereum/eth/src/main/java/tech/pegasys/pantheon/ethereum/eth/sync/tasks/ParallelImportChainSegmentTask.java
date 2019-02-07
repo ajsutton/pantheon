@@ -14,9 +14,9 @@ package tech.pegasys.pantheon.ethereum.eth.sync.tasks;
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
+import tech.pegasys.pantheon.ethereum.eth.manager.AbstractEthTask;
 import tech.pegasys.pantheon.ethereum.eth.manager.AbstractPeerTask;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
-import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthScheduler;
 import tech.pegasys.pantheon.ethereum.eth.sync.BlockHandler;
 import tech.pegasys.pantheon.ethereum.eth.sync.ValidationPolicy;
@@ -27,16 +27,19 @@ import tech.pegasys.pantheon.metrics.OperationTimer;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<B>> {
+public class ParallelImportChainSegmentTask<C, B> extends AbstractEthTask<List<B>> {
   private static final Logger LOG = LogManager.getLogger();
 
+  private final EthContext ethContext;
   private final ProtocolSchedule<C> protocolSchedule;
   private final ProtocolContext<C> protocolContext;
 
@@ -57,7 +60,8 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
       final LabelledMetric<OperationTimer> ethTasksTimer,
       final BlockHandler<B> blockHandler,
       final ValidationPolicy validationPolicy) {
-    super(ethContext, ethTasksTimer);
+    super(ethTasksTimer);
+    this.ethContext = ethContext;
     this.protocolSchedule = protocolSchedule;
     this.protocolContext = protocolContext;
     this.maxActiveChunks = maxActiveChunks;
@@ -97,12 +101,12 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
   }
 
   @Override
-  protected void executeTaskWithPeer(final EthPeer peer) {
+  protected void executeTask() {
     if (firstHeaderNumber >= 0) {
       LOG.debug("Importing chain segment from {} to {}.", firstHeaderNumber, lastHeaderNumber);
 
       // build pipeline
-      final ParallelDownloadHeadersTask<C> downloadTask =
+      final ParallelDownloadHeadersTask<C> downloadHeadersTask =
           new ParallelDownloadHeadersTask<>(
               checkpointHeaders,
               maxActiveChunks,
@@ -110,10 +114,10 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
               protocolContext,
               ethContext,
               ethTasksTimer);
-      final ParallelValidateHeadersTask<C> validateTask =
+      final ParallelValidateHeadersTask<C> validateHeadersTask =
           new ParallelValidateHeadersTask<>(
               validationPolicy,
-              downloadTask.getOutboundQueue(),
+              downloadHeadersTask.getOutboundQueue(),
               maxActiveChunks,
               protocolSchedule,
               protocolContext,
@@ -122,7 +126,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
       final ParallelDownloadBodiesTask<B> downloadBodiesTask =
           new ParallelDownloadBodiesTask<>(
               blockHandler,
-              validateTask.getOutboundQueue(),
+              validateHeadersTask.getOutboundQueue(),
               maxActiveChunks,
               ethContext,
               ethTasksTimer);
@@ -136,46 +140,53 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractPeerTask<List<
 
       // Start the pipeline.
       final EthScheduler scheduler = ethContext.getScheduler();
-      final CompletableFuture<?> downloadHeaderFuture = scheduler.scheduleServiceTask(downloadTask);
-      final CompletableFuture<?> validateHeaderFuture = scheduler.scheduleServiceTask(validateTask);
+      final CompletableFuture<?> downloadHeaderFuture =
+          scheduler.scheduleServiceTask(downloadHeadersTask);
+      final CompletableFuture<?> validateHeaderFuture =
+          scheduler.scheduleServiceTask(validateHeadersTask);
       final CompletableFuture<?> downloadBodiesFuture =
           scheduler.scheduleServiceTask(downloadBodiesTask);
-      final CompletableFuture<PeerTaskResult<List<List<B>>>> validateBodiesFuture =
+      final CompletableFuture<AbstractPeerTask.PeerTaskResult<List<List<B>>>> validateBodiesFuture =
           scheduler.scheduleServiceTask(validateAndImportBodiesTask);
 
       // Hook in pipeline completion signaling.
-      downloadTask.setLameDuckMode(true);
-      downloadHeaderFuture.thenRun(() -> validateTask.setLameDuckMode(true));
+      downloadHeadersTask.setLameDuckMode(true);
+      downloadHeaderFuture.thenRun(() -> validateHeadersTask.setLameDuckMode(true));
       validateHeaderFuture.thenRun(() -> downloadBodiesTask.setLameDuckMode(true));
       downloadBodiesFuture.thenRun(() -> validateAndImportBodiesTask.setLameDuckMode(true));
 
-      // Set the results when the pipeline is done.
-      CompletableFuture.allOf(
-              downloadHeaderFuture,
-              validateHeaderFuture,
-              downloadBodiesFuture,
-              validateBodiesFuture)
-          .whenComplete(
-              (r, e) -> {
-                if (e != null) {
-                  result.get().completeExceptionally(e);
-                } else {
-                  try {
-                    final List<B> importedBlocks =
-                        validateBodiesFuture
-                            .get()
-                            .getResult()
-                            .stream()
-                            .flatMap(Collection::stream)
-                            .collect(Collectors.toList());
-                    result
+      final BiConsumer<? super Object, ? super Throwable> cancelOnException =
+          (s, e) -> {
+            if (e != null && !(e instanceof CancellationException)) {
+              downloadHeadersTask.cancel();
+              validateHeadersTask.cancel();
+              downloadBodiesTask.cancel();
+              validateAndImportBodiesTask.cancel();
+              result.get().completeExceptionally(e);
+            }
+          };
+
+      downloadHeaderFuture.whenComplete(cancelOnException);
+      validateHeaderFuture.whenComplete(cancelOnException);
+      downloadBodiesFuture.whenComplete(cancelOnException);
+      validateBodiesFuture.whenComplete(
+          (r, e) -> {
+            cancelOnException.accept(r, e);
+            if (r != null) {
+              try {
+                final List<B> importedBlocks =
+                    validateBodiesFuture
                         .get()
-                        .complete(new AbstractPeerTask.PeerTaskResult<>(peer, importedBlocks));
-                  } catch (final InterruptedException | ExecutionException ex) {
-                    result.get().completeExceptionally(ex);
-                  }
-                }
-              });
+                        .getResult()
+                        .stream()
+                        .flatMap(Collection::stream)
+                        .collect(Collectors.toList());
+                result.get().complete(importedBlocks);
+              } catch (final InterruptedException | ExecutionException ex) {
+                result.get().completeExceptionally(ex);
+              }
+            }
+          });
 
     } else {
       LOG.warn("Import task requested with no checkpoint headers.");

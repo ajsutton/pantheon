@@ -81,7 +81,7 @@ public class ParallelDownloadHeadersTask<C>
     try {
       headers.addAll(headerFuture.get());
     } catch (final InterruptedException | ExecutionException e) {
-      cancel();
+      result.get().completeExceptionally(e);
       return Optional.empty();
     }
     headers.add(nextCheckpointHeader);

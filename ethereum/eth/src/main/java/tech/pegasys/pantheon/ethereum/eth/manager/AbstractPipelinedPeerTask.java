@@ -52,7 +52,7 @@ public abstract class AbstractPipelinedPeerTask<I, O> extends AbstractPeerTask<L
   @Override
   protected void executeTaskWithPeer(final EthPeer peer) {
     Optional<I> previousInput = Optional.empty();
-    while (!isCancelled() && !isDone() && processingException.get() == null) {
+    while (!isDone() && processingException.get() == null) {
       if (lameDuckMode && inboundQueue.isEmpty()) {
         break;
       }
@@ -101,6 +101,7 @@ public abstract class AbstractPipelinedPeerTask<I, O> extends AbstractPeerTask<L
   protected void failExceptionally(final Throwable t) {
     LOG.error("Task Failure", t);
     processingException.compareAndSet(null, t);
+    result.get().completeExceptionally(t);
     cancel();
   }
 

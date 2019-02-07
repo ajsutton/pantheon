@@ -122,10 +122,6 @@ public class FastSyncChainDownloader<C> {
         .run()
         .thenApply(
             results ->
-                results
-                    .getResult()
-                    .stream()
-                    .map(BlockWithReceipts::getBlock)
-                    .collect(Collectors.toList()));
+                results.stream().map(BlockWithReceipts::getBlock).collect(Collectors.toList()));
   }
 }

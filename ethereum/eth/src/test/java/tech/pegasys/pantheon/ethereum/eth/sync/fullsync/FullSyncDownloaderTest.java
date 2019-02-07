@@ -434,7 +434,6 @@ public class FullSyncDownloaderTest {
   }
 
   @Test
-  @Ignore
   public void doesNotSwitchSyncTarget_betterTdUnderThreshold() {
     final long localChainHeadAtStart = localBlockchain.getChainHeadBlockNumber();
     final UInt256 localTd = localBlockchain.getChainHead().getTotalDifficulty();
@@ -562,7 +561,6 @@ public class FullSyncDownloaderTest {
   }
 
   @Test
-  @Ignore
   public void requestsCheckpointsFromSyncTarget() {
     localBlockchainSetup.importFirstBlocks(2);
     otherBlockchainSetup.importAllBlocks();
