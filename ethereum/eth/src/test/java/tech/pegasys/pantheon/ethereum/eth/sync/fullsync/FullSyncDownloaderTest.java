@@ -485,7 +485,6 @@ public class FullSyncDownloaderTest {
   }
 
   @Test
-  @Ignore
   public void recoversFromSyncTargetDisconnect() {
     localBlockchainSetup.importFirstBlocks(2);
     final long localChainHeadAtStart = localBlockchain.getChainHeadBlockNumber();
@@ -549,9 +548,10 @@ public class FullSyncDownloaderTest {
     ethProtocolManager.handleDisconnect(
         bestPeer.getPeerConnection(), DisconnectReason.TOO_MANY_PEERS, true);
 
-    // Downloader should recover and sync to next best peer
+    // Downloader should recover and sync to next best peer, but it may stall
+    // for 10 seconds first (by design).
     await()
-        .atMost(10, TimeUnit.SECONDS)
+        .atMost(20, TimeUnit.SECONDS)
         .untilAsserted(
             () -> {
               secondBestPeer.respond(secondBestResponder);
