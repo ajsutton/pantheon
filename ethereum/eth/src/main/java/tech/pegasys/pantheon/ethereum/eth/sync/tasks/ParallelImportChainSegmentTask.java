@@ -175,10 +175,7 @@ public class ParallelImportChainSegmentTask<C, B> extends AbstractEthTask<List<B
             if (r != null) {
               try {
                 final List<B> importedBlocks =
-                    validateBodiesFuture
-                        .get()
-                        .getResult()
-                        .stream()
+                    validateBodiesFuture.get().getResult().stream()
                         .flatMap(Collection::stream)
                         .collect(Collectors.toList());
                 result.get().complete(importedBlocks);
