@@ -35,9 +35,10 @@ import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
 import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.locks.LockSupport;
 
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 public class FastSyncChainDownloaderTest {
@@ -88,8 +89,7 @@ public class FastSyncChainDownloaderTest {
   }
 
   @Test
-  @Ignore
-  public void shouldSyncToPivotBlockInMultipleSegments() {
+  public void shouldSyncToPivotBlockInMultipleSegments() throws ExecutionException, InterruptedException {
     otherBlockchainSetup.importFirstBlocks(30);
 
     final RespondingEthPeer peer =
@@ -106,7 +106,10 @@ public class FastSyncChainDownloaderTest {
     final FastSyncChainDownloader<?> downloader = downloader(syncConfig, pivotBlockNumber);
     final CompletableFuture<Void> result = downloader.start();
 
-    peer.respondWhile(responder, () -> !result.isDone());
+    peer.respondWhile(responder, () -> {
+      LockSupport.parkNanos(1000000);
+      return !result.isDone();
+    });
 
     assertThat(result).isCompleted();
     assertThat(localBlockchain.getChainHeadBlockNumber()).isEqualTo(pivotBlockNumber);
@@ -115,7 +118,6 @@ public class FastSyncChainDownloaderTest {
   }
 
   @Test
-  @Ignore
   public void shouldSyncToPivotBlockInSingleSegment() {
     otherBlockchainSetup.importFirstBlocks(30);
 
@@ -129,7 +131,11 @@ public class FastSyncChainDownloaderTest {
     final FastSyncChainDownloader<?> downloader = downloader(syncConfig, pivotBlockNumber);
     final CompletableFuture<Void> result = downloader.start();
 
-    peer.respondWhile(responder, () -> !result.isDone());
+    peer.respondWhile(responder, () -> {
+      LockSupport.parkNanos(1000000);
+      return !result.isDone();
+    });
+
 
     assertThat(result).isCompleted();
     assertThat(localBlockchain.getChainHeadBlockNumber()).isEqualTo(pivotBlockNumber);
@@ -138,7 +144,6 @@ public class FastSyncChainDownloaderTest {
   }
 
   @Test
-  @Ignore
   public void recoversFromSyncTargetDisconnect() {
     final BlockchainSetupUtil<Void> shorterChainUtil = BlockchainSetupUtil.forTesting();
     final MutableBlockchain shorterChain = shorterChainUtil.getBlockchain();
@@ -173,7 +178,10 @@ public class FastSyncChainDownloaderTest {
 
     ethProtocolManager.handleDisconnect(bestPeer.getPeerConnection(), TOO_MANY_PEERS, true);
 
-    secondBestPeer.respondWhile(shorterResponder, () -> !result.isDone());
+    secondBestPeer.respondWhile(shorterResponder, () -> {
+      LockSupport.parkNanos(1000000);
+      return !result.isDone();
+    });
 
     assertThat(result).isCompleted();
     assertThat(localBlockchain.getChainHeadBlockNumber()).isEqualTo(pivotBlockNumber);
