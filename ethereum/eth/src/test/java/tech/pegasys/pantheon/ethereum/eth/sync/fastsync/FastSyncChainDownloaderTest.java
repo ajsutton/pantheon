@@ -89,7 +89,8 @@ public class FastSyncChainDownloaderTest {
   }
 
   @Test
-  public void shouldSyncToPivotBlockInMultipleSegments() throws ExecutionException, InterruptedException {
+  public void shouldSyncToPivotBlockInMultipleSegments()
+      throws ExecutionException, InterruptedException {
     otherBlockchainSetup.importFirstBlocks(30);
 
     final RespondingEthPeer peer =
@@ -106,10 +107,12 @@ public class FastSyncChainDownloaderTest {
     final FastSyncChainDownloader<?> downloader = downloader(syncConfig, pivotBlockNumber);
     final CompletableFuture<Void> result = downloader.start();
 
-    peer.respondWhile(responder, () -> {
-      LockSupport.parkNanos(1000000);
-      return !result.isDone();
-    });
+    peer.respondWhile(
+        responder,
+        () -> {
+          LockSupport.parkNanos(1000000);
+          return !result.isDone();
+        });
 
     assertThat(result).isCompleted();
     assertThat(localBlockchain.getChainHeadBlockNumber()).isEqualTo(pivotBlockNumber);
@@ -131,11 +134,12 @@ public class FastSyncChainDownloaderTest {
     final FastSyncChainDownloader<?> downloader = downloader(syncConfig, pivotBlockNumber);
     final CompletableFuture<Void> result = downloader.start();
 
-    peer.respondWhile(responder, () -> {
-      LockSupport.parkNanos(1000000);
-      return !result.isDone();
-    });
-
+    peer.respondWhile(
+        responder,
+        () -> {
+          LockSupport.parkNanos(1000000);
+          return !result.isDone();
+        });
 
     assertThat(result).isCompleted();
     assertThat(localBlockchain.getChainHeadBlockNumber()).isEqualTo(pivotBlockNumber);
@@ -178,10 +182,12 @@ public class FastSyncChainDownloaderTest {
 
     ethProtocolManager.handleDisconnect(bestPeer.getPeerConnection(), TOO_MANY_PEERS, true);
 
-    secondBestPeer.respondWhile(shorterResponder, () -> {
-      LockSupport.parkNanos(1000000);
-      return !result.isDone();
-    });
+    secondBestPeer.respondWhile(
+        shorterResponder,
+        () -> {
+          LockSupport.parkNanos(1000000);
+          return !result.isDone();
+        });
 
     assertThat(result).isCompleted();
     assertThat(localBlockchain.getChainHeadBlockNumber()).isEqualTo(pivotBlockNumber);
