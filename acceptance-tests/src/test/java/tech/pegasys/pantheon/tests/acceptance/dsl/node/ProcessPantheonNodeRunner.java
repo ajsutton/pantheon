@@ -50,11 +50,12 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
 
     final List<String> params = new ArrayList<>();
     params.add("build/install/pantheon/bin/pantheon");
-    params.add("--datadir");
+    params.add("--data-path");
     params.add(dataDir.toAbsolutePath().toString());
 
     if (node.isDevMode()) {
-      params.add("--dev-mode");
+      params.add("--network");
+      params.add("DEV");
     }
 
     if (!node.isDiscoveryEnabled()) {
@@ -62,8 +63,11 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
       params.add("true");
     }
 
-    params.add("--p2p-listen");
-    params.add(node.p2pListenAddress());
+    params.add("--p2p-host");
+    params.add(node.p2pListenHost());
+
+    params.add("--p2p-port");
+    params.add(Integer.toString(node.p2pListenPort()));
 
     if (node.getMiningParameters().isMiningEnabled()) {
       params.add("--miner-enabled");
@@ -82,12 +86,17 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
     }
 
     params.add("--bootnodes");
-    params.add(String.join(",", node.bootnodes().toString()));
+
+    if (!node.bootnodes().isEmpty()) {
+      params.add(String.join(",", node.bootnodes().toString()));
+    }
 
     if (node.jsonRpcEnabled()) {
       params.add("--rpc-http-enabled");
-      params.add("--rpc-listen");
-      params.add(node.jsonRpcListenAddress().get());
+      params.add("--rpc-http-host");
+      params.add(node.jsonRpcListenHost().get());
+      params.add("--rpc-http-port");
+      params.add(node.jsonRpcListenPort().map(Object::toString).get());
       params.add("--rpc-http-api");
       params.add(apiList(node.jsonRpcConfiguration().getRpcApis()));
       if (node.jsonRpcConfiguration().isAuthenticationEnabled()) {
@@ -101,8 +110,10 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
 
     if (node.wsRpcEnabled()) {
       params.add("--rpc-ws-enabled");
-      params.add("--ws-listen");
-      params.add(node.wsRpcListenAddress().get());
+      params.add("--rpc-ws-host");
+      params.add(node.wsRpcListenHost().get());
+      params.add("--rpc-ws-port");
+      params.add(node.wsRpcListenPort().map(Object::toString).get());
       params.add("--rpc-ws-api");
       params.add(apiList(node.webSocketConfiguration().getRpcApis()));
       if (node.webSocketConfiguration().isAuthenticationEnabled()) {
@@ -115,9 +126,9 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
     }
 
     if (node.ethNetworkConfig().isPresent()) {
-      EthNetworkConfig ethNetworkConfig = node.ethNetworkConfig().get();
-      Path genesisFile = createGenesisFile(node, ethNetworkConfig);
-      params.add("--genesis");
+      final EthNetworkConfig ethNetworkConfig = node.ethNetworkConfig().get();
+      final Path genesisFile = createGenesisFile(node, ethNetworkConfig);
+      params.add("--genesis-file");
       params.add(genesisFile.toString());
       params.add("--network-id");
       params.add(Integer.toString(ethNetworkConfig.getNetworkId()));
@@ -128,6 +139,18 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
       params.add("false");
     }
 
+    node.getPermissioningConfiguration()
+        .ifPresent(
+            permissioningConfiguration -> {
+              if (permissioningConfiguration.isNodeWhitelistEnabled()) {
+                params.add("--permissions-nodes-enabled");
+              }
+              if (permissioningConfiguration.isAccountWhitelistEnabled()) {
+                params.add("--permissions-accounts-enabled");
+              }
+            });
+
+    LOG.info("Creating pantheon process with params {}", params);
     final ProcessBuilder processBuilder =
         new ProcessBuilder(params)
             .directory(new File(System.getProperty("user.dir")).getParentFile())
@@ -145,11 +168,11 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
 
   private Path createGenesisFile(final PantheonNode node, final EthNetworkConfig ethNetworkConfig) {
     try {
-      Path genesisFile = Files.createTempFile(node.homeDirectory(), "genesis", "");
+      final Path genesisFile = Files.createTempFile(node.homeDirectory(), "genesis", "");
       genesisFile.toFile().deleteOnExit();
       Files.write(genesisFile, ethNetworkConfig.getGenesisConfig().getBytes(UTF_8));
       return genesisFile;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new IllegalStateException(e);
     }
   }

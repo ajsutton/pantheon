@@ -381,9 +381,17 @@ public class PantheonNode implements Node, NodeConfiguration, RunnableNode, Auto
     return jsonRpcConfiguration;
   }
 
-  Optional<String> jsonRpcListenAddress() {
+  Optional<String> jsonRpcListenHost() {
     if (isJsonRpcEnabled()) {
-      return Optional.of(jsonRpcConfiguration().getHost() + ":" + jsonRpcConfiguration().getPort());
+      return Optional.of(jsonRpcConfiguration().getHost());
+    } else {
+      return Optional.empty();
+    }
+  }
+
+  Optional<Integer> jsonRpcListenPort() {
+    if (isJsonRpcEnabled()) {
+      return Optional.of(jsonRpcConfiguration().getPort());
     } else {
       return Optional.empty();
     }
@@ -397,9 +405,12 @@ public class PantheonNode implements Node, NodeConfiguration, RunnableNode, Auto
     return webSocketConfiguration;
   }
 
-  Optional<String> wsRpcListenAddress() {
-    return Optional.of(
-        webSocketConfiguration().getHost() + ":" + webSocketConfiguration().getPort());
+  Optional<String> wsRpcListenHost() {
+    return Optional.of(webSocketConfiguration().getHost());
+  }
+
+  Optional<Integer> wsRpcListenPort() {
+    return Optional.of(webSocketConfiguration().getPort());
   }
 
   MetricsConfiguration metricsConfiguration() {
@@ -410,8 +421,12 @@ public class PantheonNode implements Node, NodeConfiguration, RunnableNode, Auto
     return p2pPort;
   }
 
-  String p2pListenAddress() {
-    return LOCALHOST + ":" + p2pPort;
+  String p2pListenHost() {
+    return LOCALHOST;
+  }
+
+  int p2pListenPort() {
+    return p2pPort;
   }
 
   List<URI> bootnodes() {
