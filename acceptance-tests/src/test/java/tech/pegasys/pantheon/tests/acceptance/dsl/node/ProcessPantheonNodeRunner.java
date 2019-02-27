@@ -59,10 +59,8 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
       params.add("DEV");
     }
 
-    if (!node.isDiscoveryEnabled()) {
-      params.add("--no-discovery");
-      params.add("true");
-    }
+    params.add("--discovery-enabled");
+    params.add(Boolean.toString(node.isDiscoveryEnabled()));
 
     params.add("--p2p-host");
     params.add(node.p2pListenHost());
