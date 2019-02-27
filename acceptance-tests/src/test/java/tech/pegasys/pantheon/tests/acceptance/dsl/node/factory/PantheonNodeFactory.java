@@ -28,6 +28,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApis;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
 import tech.pegasys.pantheon.ethereum.permissioning.PermissioningConfiguration;
 import tech.pegasys.pantheon.ethereum.permissioning.WhitelistPersistor;
+import tech.pegasys.pantheon.ethereum.permissioning.WhitelistPersistor.WHITELIST_TYPE;
 import tech.pegasys.pantheon.tests.acceptance.dsl.node.GenesisConfigProvider;
 import tech.pegasys.pantheon.tests.acceptance.dsl.node.PantheonNode;
 import tech.pegasys.pantheon.tests.acceptance.dsl.node.RunnableNode;
@@ -236,6 +237,7 @@ public class PantheonNodeFactory {
     PermissioningConfiguration permissioningConfiguration =
         PermissioningConfiguration.createDefault();
     permissioningConfiguration.setNodeWhitelist(nodesWhitelist);
+
     File tempFile = createTempPermissioningConfigurationFile();
     tempFile.deleteOnExit();
     permissioningConfiguration.setConfigurationFilePath(tempFile.getPath());
@@ -267,6 +269,12 @@ public class PantheonNodeFactory {
     permissioningConfiguration.setAccountWhitelist(accountsWhitelist);
     permissioningConfiguration.setConfigurationFilePath(
         createTempPermissioningConfigurationFile().getPath());
+
+    File tempFile = createTempPermissioningConfigurationFile();
+    tempFile.deleteOnExit();
+    permissioningConfiguration.setConfigurationFilePath(tempFile.getPath());
+    initPermissioningConfigurationFile(
+        WHITELIST_TYPE.ACCOUNTS, accountsWhitelist, tempFile.toPath());
 
     return create(
         new PantheonFactoryConfigurationBuilder()
