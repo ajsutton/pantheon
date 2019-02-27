@@ -20,6 +20,7 @@ import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApis;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -88,7 +89,7 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
     params.add("--bootnodes");
 
     if (!node.bootnodes().isEmpty()) {
-      params.add(String.join(",", node.bootnodes().toString()));
+      params.add(node.bootnodes().stream().map(URI::toString).collect(Collectors.joining(",")));
     }
 
     if (node.jsonRpcEnabled()) {
@@ -178,7 +179,7 @@ public class ProcessPantheonNodeRunner implements PantheonNodeRunner {
   }
 
   private String apiList(final Collection<RpcApi> rpcApis) {
-    return String.join(",", rpcApis.stream().map(RpcApis::getValue).collect(Collectors.toList()));
+    return rpcApis.stream().map(RpcApis::getValue).collect(Collectors.joining(","));
   }
 
   @Override
