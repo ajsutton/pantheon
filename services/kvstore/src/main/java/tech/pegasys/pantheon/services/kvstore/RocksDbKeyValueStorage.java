@@ -27,9 +27,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.Options;
+import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
-import org.rocksdb.TransactionDB;
-import org.rocksdb.TransactionDBOptions;
+import org.rocksdb.WriteBatch;
 import org.rocksdb.WriteOptions;
 
 public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
@@ -37,8 +37,7 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
   private static final Logger LOG = LogManager.getLogger();
 
   private final Options options;
-  private final TransactionDBOptions txOptions;
-  private final TransactionDB db;
+  private final RocksDB db;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
   private final OperationTimer readLatency;
@@ -56,8 +55,7 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
     RocksDbUtil.loadNativeLibrary();
     try {
       options = new Options().setCreateIfMissing(true);
-      txOptions = new TransactionDBOptions();
-      db = TransactionDB.open(options, txOptions, storageDirectory.toString());
+      db = RocksDB.open(options, storageDirectory.toString());
 
       readLatency =
           metricsSystem.createTimer(
@@ -111,14 +109,12 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
   @Override
   public Transaction startTransaction() throws StorageException {
     throwIfClosed();
-    final WriteOptions options = new WriteOptions();
-    return new RocksDbTransaction(db.beginTransaction(options), options);
+    return new RocksDbTransaction(new WriteBatch(), new WriteOptions());
   }
 
   @Override
   public void close() {
     if (closed.compareAndSet(false, true)) {
-      txOptions.close();
       options.close();
       db.close();
     }
@@ -132,10 +128,10 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
   }
 
   private class RocksDbTransaction extends AbstractTransaction {
-    private final org.rocksdb.Transaction innerTx;
+    private final WriteBatch innerTx;
     private final WriteOptions options;
 
-    RocksDbTransaction(final org.rocksdb.Transaction innerTx, final WriteOptions options) {
+    RocksDbTransaction(final WriteBatch innerTx, final WriteOptions options) {
       this.innerTx = innerTx;
       this.options = options;
     }
@@ -161,7 +157,7 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
     @Override
     protected void doCommit() throws StorageException {
       try (final OperationTimer.TimingContext ignored = commitLatency.startTimer()) {
-        innerTx.commit();
+        db.write(options, innerTx);
       } catch (final RocksDBException e) {
         throw new StorageException(e);
       } finally {
@@ -172,10 +168,7 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
     @Override
     protected void doRollback() {
       try {
-        innerTx.rollback();
         rollbackCount.inc();
-      } catch (final RocksDBException e) {
-        throw new StorageException(e);
       } finally {
         close();
       }
