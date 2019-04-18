@@ -120,6 +120,7 @@ public class DefaultSynchronizer<C> implements Synchronizer {
   public void stop() {
     LOG.info("Stopping synchronizer");
     if (running.compareAndSet(true, false)) {
+      fastSyncDownloader.ifPresent(FastSyncDownloader::stop);
       fullSyncDownloader.stop();
     }
   }
