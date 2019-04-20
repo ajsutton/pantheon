@@ -397,7 +397,7 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
       names = {"--host-whitelist"},
       paramLabel = "<hostname>[,<hostname>...]... or * or all",
       description =
-          "Comma separated list of hostnames to whitelist for JSON-RPC access, or * or all to accept any host (default: ${DEFAULT-VALUE})",
+          "Comma separated list of hostnames to whitelist for JSON-RPC access, or * to accept any host (default: ${DEFAULT-VALUE})",
       defaultValue = "localhost,127.0.0.1")
   private final JsonRPCWhitelistHostsProperty hostsWhitelist = new JsonRPCWhitelistHostsProperty();
 
@@ -699,7 +699,6 @@ public class PantheonCommand implements DefaultCommandValues, Runnable {
           .ethNetworkConfig(updateNetworkConfig(getNetwork()))
           .miningParameters(
               new MiningParameters(coinbase, minTransactionGasPrice, extraData, isMiningEnabled))
-          .devMode(NetworkName.DEV.equals(getNetwork()))
           .maxPendingTransactions(txPoolMaxSize)
           .nodePrivateKeyFile(nodePrivateKeyFile())
           .metricsSystem(metricsSystem.get())
