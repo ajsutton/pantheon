@@ -48,6 +48,9 @@ public class DefaultMutableBlockchain implements MutableBlockchain {
 
   private final Subscribers<BlockAddedObserver> blockAddedObservers = new Subscribers<>();
 
+  private volatile BlockHeader chainHeader;
+  private volatile UInt256 totalDifficulty;
+
   public DefaultMutableBlockchain(
       final Block genesisBlock,
       final BlockchainStorage blockchainStorage,
@@ -68,29 +71,30 @@ public class DefaultMutableBlockchain implements MutableBlockchain {
         () ->
             BytesValues.asUnsignedBigInteger(this.getChainHead().getTotalDifficulty().getBytes())
                 .doubleValue());
+
+    final Hash chainHead = blockchainStorage.getChainHead().get();
+    chainHeader = blockchainStorage.getBlockHeader(chainHead).get();
+    totalDifficulty = blockchainStorage.getTotalDifficulty(chainHead).get();
   }
 
   @Override
   public ChainHead getChainHead() {
-    return blockchainStorage
-        .getChainHead()
-        .flatMap(h -> blockchainStorage.getTotalDifficulty(h).map(td -> new ChainHead(h, td)))
-        .get();
+    return new ChainHead(chainHeader.getHash(), totalDifficulty);
   }
 
   @Override
   public Hash getChainHeadHash() {
-    return blockchainStorage.getChainHead().get();
+    return chainHeader.getHash();
   }
 
   @Override
   public long getChainHeadBlockNumber() {
-    // Head should always be set, so we can call get()
-    return blockchainStorage
-        .getChainHead()
-        .flatMap(blockchainStorage::getBlockHeader)
-        .map(BlockHeader::getNumber)
-        .get();
+    return chainHeader.getNumber();
+  }
+
+  @Override
+  public BlockHeader getChainHeadHeader() {
+    return chainHeader;
   }
 
   @Override
@@ -171,6 +175,10 @@ public class DefaultMutableBlockchain implements MutableBlockchain {
     final BlockAddedEvent blockAddedEvent = updateCanonicalChainData(updater, block, td);
 
     updater.commit();
+    if (blockAddedEvent.isNewCanonicalHead()) {
+      chainHeader = block.getHeader();
+      totalDifficulty = td;
+    }
 
     return blockAddedEvent;
   }
