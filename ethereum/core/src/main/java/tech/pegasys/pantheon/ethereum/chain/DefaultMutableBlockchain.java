@@ -59,6 +59,10 @@ public class DefaultMutableBlockchain implements MutableBlockchain {
     this.blockchainStorage = blockchainStorage;
     this.setGenesis(genesisBlock);
 
+    final Hash chainHead = blockchainStorage.getChainHead().get();
+    chainHeader = blockchainStorage.getBlockHeader(chainHead).get();
+    totalDifficulty = blockchainStorage.getTotalDifficulty(chainHead).get();
+
     metricsSystem.createGauge(
         MetricCategory.BLOCKCHAIN,
         "height",
@@ -71,10 +75,6 @@ public class DefaultMutableBlockchain implements MutableBlockchain {
         () ->
             BytesValues.asUnsignedBigInteger(this.getChainHead().getTotalDifficulty().getBytes())
                 .doubleValue());
-
-    final Hash chainHead = blockchainStorage.getChainHead().get();
-    chainHeader = blockchainStorage.getBlockHeader(chainHead).get();
-    totalDifficulty = blockchainStorage.getTotalDifficulty(chainHead).get();
   }
 
   @Override
