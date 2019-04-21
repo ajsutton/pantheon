@@ -19,6 +19,7 @@ import static tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode.SKIP_D
 
 import tech.pegasys.pantheon.ethereum.ProtocolContext;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
+import tech.pegasys.pantheon.ethereum.core.Transaction;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthContext;
 import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer;
 import tech.pegasys.pantheon.ethereum.eth.sync.CheckpointHeaderFetcher;
@@ -133,6 +134,16 @@ public class FastSyncDownloadPipelineFactory<C> implements DownloadPipelineFacto
         .inBatches(headerRequestSize)
         .thenProcessAsyncOrdered("downloadBodies", downloadBodiesStep, downloaderParallelism)
         .thenProcessAsyncOrdered("downloadReceipts", downloadReceiptsStep, downloaderParallelism)
+        .thenProcess(
+            "computeTxHash",
+            blocksWithReceipts -> {
+                blocksWithReceipts.stream()
+                    .flatMap(
+                        blockWithReceipts ->
+                            blockWithReceipts.getBlock().getBody().getTransactions().stream())
+                    .forEach(Transaction::hash);
+                return blocksWithReceipts;
+              })
         .andFinishWith("importBlock", importBlockStep);
   }
 
