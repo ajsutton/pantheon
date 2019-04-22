@@ -28,6 +28,7 @@ import tech.pegasys.pantheon.ethereum.p2p.api.MessageData;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection.PeerNotConnected;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
+import tech.pegasys.pantheon.testutil.TestClock;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -283,7 +284,7 @@ public class EthPeerTest {
     final Set<Capability> caps = new HashSet<>(singletonList(EthProtocol.ETH63));
     final PeerConnection peerConnection = new MockPeerConnection(caps);
     final Consumer<EthPeer> onPeerReady = (peer) -> {};
-    return new EthPeer(peerConnection, EthProtocol.NAME, onPeerReady);
+    return new EthPeer(peerConnection, EthProtocol.NAME, onPeerReady, TestClock.fixed());
   }
 
   @FunctionalInterface

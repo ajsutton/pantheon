@@ -126,7 +126,8 @@ public class MainnetPantheonController implements PantheonController<Void> {
             syncConfig.transactionsParallelism(),
             syncConfig.computationParallelism(),
             metricsSystem,
-            ethereumWireProtocolConfiguration);
+            ethereumWireProtocolConfiguration,
+            clock);
     final SyncState syncState =
         new SyncState(blockchain, ethProtocolManager.ethContext().getEthPeers());
     final Synchronizer synchronizer =

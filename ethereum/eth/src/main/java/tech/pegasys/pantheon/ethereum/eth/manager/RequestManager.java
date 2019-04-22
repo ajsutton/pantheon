@@ -14,7 +14,9 @@ package tech.pegasys.pantheon.ethereum.eth.manager;
 
 import tech.pegasys.pantheon.ethereum.p2p.api.MessageData;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection.PeerNotConnected;
+import tech.pegasys.pantheon.util.MovingAverage;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Map;
@@ -28,11 +30,16 @@ public class RequestManager {
   private final AtomicLong responseStreamId = new AtomicLong(0L);
   private final Map<Long, ResponseStream> responseStreams = new ConcurrentHashMap<>();
   private final EthPeer peer;
+  private final Clock clock;
+  private final MovingAverage averageResponseTime;
 
   private final AtomicInteger outstandingRequests = new AtomicInteger(0);
 
-  public RequestManager(final EthPeer peer) {
+  public RequestManager(
+      final EthPeer peer, final Clock clock, final MovingAverage averageResponseTime) {
     this.peer = peer;
+    this.clock = clock;
+    this.averageResponseTime = averageResponseTime;
   }
 
   public int outstandingRequests() {
@@ -63,7 +70,9 @@ public class RequestManager {
 
   private ResponseStream createStream() {
     final long listenerId = nextStreamId();
-    final ResponseStream stream = new ResponseStream(peer, () -> deregisterStream(listenerId));
+    final long creationTime = clock.millis();
+    final ResponseStream stream =
+        new ResponseStream(peer, () -> deregisterStream(listenerId, creationTime));
     responseStreams.put(listenerId, stream);
     return stream;
   }
@@ -73,8 +82,10 @@ public class RequestManager {
     outstandingStreams.forEach(ResponseStream::close);
   }
 
-  private void deregisterStream(final long id) {
+  private void deregisterStream(final long id, final long creationTime) {
+    final long responseTime = creationTime - clock.millis();
     responseStreams.remove(id);
+    averageResponseTime.recordValue(responseTime);
   }
 
   private long nextStreamId() {

@@ -150,7 +150,8 @@ public class IbftLegacyPantheonController implements PantheonController<IbftCont
             syncConfig.transactionsParallelism(),
             syncConfig.computationParallelism(),
             metricsSystem,
-            ethereumWireProtocolConfiguration);
+            ethereumWireProtocolConfiguration,
+            clock);
 
     final SyncState syncState =
         new SyncState(blockchain, istanbul64ProtocolManager.ethContext().getEthPeers());

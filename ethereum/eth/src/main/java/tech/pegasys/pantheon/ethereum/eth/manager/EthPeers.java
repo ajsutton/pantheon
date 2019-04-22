@@ -16,9 +16,8 @@ import tech.pegasys.pantheon.ethereum.eth.manager.EthPeer.DisconnectCallback;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.util.Subscribers;
 
-import java.util.Collections;
+import java.time.Clock;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -35,21 +34,21 @@ public class EthPeers {
 
   public static final Comparator<EthPeer> BEST_CHAIN = TOTAL_DIFFICULTY.thenComparing(CHAIN_HEIGHT);
 
-  public static final Comparator<EthPeer> LEAST_TO_MOST_BUSY =
-      Comparator.comparing(EthPeer::outstandingRequests);
-
   private final int maxOutstandingRequests = 5;
   private final Map<PeerConnection, EthPeer> connections = new ConcurrentHashMap<>();
   private final String protocolName;
+  private final Clock clock;
   private final Subscribers<ConnectCallback> connectCallbacks = new Subscribers<>();
   private final Subscribers<DisconnectCallback> disconnectCallbacks = new Subscribers<>();
 
-  public EthPeers(final String protocolName) {
+  public EthPeers(final String protocolName, final Clock clock) {
     this.protocolName = protocolName;
+    this.clock = clock;
   }
 
   void registerConnection(final PeerConnection peerConnection) {
-    final EthPeer peer = new EthPeer(peerConnection, protocolName, this::invokeConnectionCallbacks);
+    final EthPeer peer =
+        new EthPeer(peerConnection, protocolName, this::invokeConnectionCallbacks, clock);
     connections.putIfAbsent(peerConnection, peer);
   }
 
@@ -81,10 +80,6 @@ public class EthPeers {
     return connections.size();
   }
 
-  public int availablePeerCount() {
-    return (int) availablePeers().count();
-  }
-
   public Stream<EthPeer> availablePeers() {
     return connections.values().stream().filter(EthPeer::readyForRequests);
   }
@@ -93,17 +88,10 @@ public class EthPeers {
     return availablePeers().max(BEST_CHAIN);
   }
 
-  public Optional<EthPeer> idlePeer() {
-    return idlePeers().min(LEAST_TO_MOST_BUSY);
-  }
-
   private Stream<EthPeer> idlePeers() {
-    final List<EthPeer> peers =
-        availablePeers()
-            .filter(p -> p.outstandingRequests() < maxOutstandingRequests)
-            .collect(Collectors.toList());
-    Collections.shuffle(peers);
-    return peers.stream();
+    return availablePeers()
+        .filter(p -> p.outstandingRequests() < maxOutstandingRequests)
+        .sorted(Comparator.comparing(EthPeer::getAverageResponseTime));
   }
 
   public Optional<EthPeer> idlePeer(final long withBlocksUpTo) {

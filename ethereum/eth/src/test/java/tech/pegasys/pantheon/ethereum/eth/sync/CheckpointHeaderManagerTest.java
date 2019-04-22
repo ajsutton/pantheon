@@ -43,6 +43,8 @@ import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection.PeerNotConnected;
 import tech.pegasys.pantheon.ethereum.worldstate.WorldStateArchive;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
+import tech.pegasys.pantheon.testutil.TestClock;
+import tech.pegasys.pantheon.util.MovingAverage;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -67,7 +69,8 @@ public class CheckpointHeaderManagerTest {
   private final SyncState syncState = new SyncState(blockchain, ethContext.getEthPeers());
   private final MetricsSystem metricsSystem = new NoOpMetricsSystem();
   private final EthPeer syncTargetPeer = mock(EthPeer.class);
-  private final RequestManager requestManager = new RequestManager(syncTargetPeer);
+  private final RequestManager requestManager =
+      new RequestManager(syncTargetPeer, TestClock.fixed(), new MovingAverage(10));
   private SyncTarget syncTarget;
 
   private final CheckpointHeaderManager<Void> checkpointHeaderManager =
