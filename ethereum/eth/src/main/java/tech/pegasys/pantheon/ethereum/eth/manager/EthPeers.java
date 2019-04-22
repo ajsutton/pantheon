@@ -91,7 +91,9 @@ public class EthPeers {
   private Stream<EthPeer> idlePeers() {
     return availablePeers()
         .filter(p -> p.outstandingRequests() < maxOutstandingRequests)
-        .sorted(Comparator.comparing(EthPeer::getAverageResponseTime));
+        .sorted(
+            Comparator.comparingInt(EthPeer::outstandingRequests)
+                .thenComparingLong(EthPeer::getAverageResponseTime));
   }
 
   public Optional<EthPeer> idlePeer(final long withBlocksUpTo) {
