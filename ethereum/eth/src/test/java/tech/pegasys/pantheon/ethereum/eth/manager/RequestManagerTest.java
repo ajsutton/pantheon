@@ -22,8 +22,11 @@ import tech.pegasys.pantheon.ethereum.p2p.api.MessageData;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.p2p.wire.RawMessage;
+import tech.pegasys.pantheon.testutil.TestClock;
+import tech.pegasys.pantheon.util.MovingAverage;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,10 +39,13 @@ import org.junit.Test;
 
 public class RequestManagerTest {
 
+  private final Clock clock = TestClock.fixed();
+  private final MovingAverage averageResponseTime = new MovingAverage(10);
+
   @Test
   public void dispatchesMessagesReceivedAfterRegisteringCallback() throws Exception {
     final EthPeer peer = createPeer();
-    final RequestManager requestManager = new RequestManager(peer);
+    final RequestManager requestManager = new RequestManager(peer, clock, averageResponseTime);
 
     final AtomicInteger sendCount = new AtomicInteger(0);
     final RequestSender sender = sendCount::incrementAndGet;
@@ -72,7 +78,7 @@ public class RequestManagerTest {
   @Test
   public void dispatchesMessagesReceivedBeforeRegisteringCallback() throws Exception {
     final EthPeer peer = createPeer();
-    final RequestManager requestManager = new RequestManager(peer);
+    final RequestManager requestManager = new RequestManager(peer, clock, averageResponseTime);
 
     final AtomicInteger sendCount = new AtomicInteger(0);
     final RequestSender sender = sendCount::incrementAndGet;
@@ -105,7 +111,7 @@ public class RequestManagerTest {
   @Test
   public void dispatchesMessagesReceivedBeforeAndAfterRegisteringCallback() throws Exception {
     final EthPeer peer = createPeer();
-    final RequestManager requestManager = new RequestManager(peer);
+    final RequestManager requestManager = new RequestManager(peer, clock, averageResponseTime);
 
     final AtomicInteger sendCount = new AtomicInteger(0);
     final RequestSender sender = sendCount::incrementAndGet;
@@ -149,7 +155,7 @@ public class RequestManagerTest {
   @Test
   public void dispatchesMessagesToMultipleStreams() throws Exception {
     final EthPeer peer = createPeer();
-    final RequestManager requestManager = new RequestManager(peer);
+    final RequestManager requestManager = new RequestManager(peer, clock, averageResponseTime);
 
     final AtomicInteger sendCount = new AtomicInteger(0);
     final RequestSender sender = sendCount::incrementAndGet;
@@ -219,6 +225,6 @@ public class RequestManagerTest {
     final Set<Capability> caps = new HashSet<>(Collections.singletonList(EthProtocol.ETH63));
     final PeerConnection peerConnection = new MockPeerConnection(caps);
     final Consumer<EthPeer> onPeerReady = (peer) -> {};
-    return new EthPeer(peerConnection, EthProtocol.NAME, onPeerReady);
+    return new EthPeer(peerConnection, EthProtocol.NAME, onPeerReady, clock);
   }
 }

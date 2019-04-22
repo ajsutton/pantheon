@@ -35,6 +35,7 @@ import tech.pegasys.pantheon.ethereum.worldstate.WorldStateArchive;
 import tech.pegasys.pantheon.metrics.MetricsSystem;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -71,7 +72,8 @@ public class EthProtocolManager implements ProtocolManager, MinedBlockObserver {
       final int networkId,
       final boolean fastSyncEnabled,
       final EthScheduler scheduler,
-      final EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration) {
+      final EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration,
+      final Clock clock) {
     this.networkId = networkId;
     this.scheduler = scheduler;
     this.blockchain = blockchain;
@@ -80,7 +82,7 @@ public class EthProtocolManager implements ProtocolManager, MinedBlockObserver {
     this.shutdown = new CountDownLatch(1);
     genesisHash = blockchain.getBlockHashByNumber(0L).get();
 
-    ethPeers = new EthPeers(getSupportedProtocol());
+    ethPeers = new EthPeers(getSupportedProtocol(), clock);
     ethMessages = new EthMessages();
     ethContext = new EthContext(getSupportedProtocol(), ethPeers, ethMessages, scheduler);
 
@@ -98,14 +100,16 @@ public class EthProtocolManager implements ProtocolManager, MinedBlockObserver {
       final int syncWorkers,
       final int txWorkers,
       final int computationWorkers,
-      final MetricsSystem metricsSystem) {
+      final MetricsSystem metricsSystem,
+      final Clock clock) {
     this(
         blockchain,
         worldStateArchive,
         networkId,
         fastSyncEnabled,
         new EthScheduler(syncWorkers, txWorkers, computationWorkers, metricsSystem),
-        EthereumWireProtocolConfiguration.defaultConfig());
+        EthereumWireProtocolConfiguration.defaultConfig(),
+        clock);
   }
 
   public EthProtocolManager(
@@ -117,14 +121,16 @@ public class EthProtocolManager implements ProtocolManager, MinedBlockObserver {
       final int txWorkers,
       final int computationWorkers,
       final MetricsSystem metricsSystem,
-      final EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration) {
+      final EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration,
+      final Clock clock) {
     this(
         blockchain,
         worldStateArchive,
         networkId,
         fastSyncEnabled,
         new EthScheduler(syncWorkers, txWorkers, computationWorkers, metricsSystem),
-        ethereumWireProtocolConfiguration);
+        ethereumWireProtocolConfiguration,
+        clock);
   }
 
   public EthContext ethContext() {

@@ -27,10 +27,12 @@ import tech.pegasys.pantheon.ethereum.p2p.api.MessageData;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection;
 import tech.pegasys.pantheon.ethereum.p2p.api.PeerConnection.PeerNotConnected;
 import tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason;
+import tech.pegasys.pantheon.util.MovingAverage;
 import tech.pegasys.pantheon.util.Subscribers;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
+import java.time.Clock;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -56,19 +58,21 @@ public class EthPeer {
   private final AtomicBoolean statusHasBeenSentToPeer = new AtomicBoolean(false);
   private final AtomicBoolean statusHasBeenReceivedFromPeer = new AtomicBoolean(false);
 
-  private final RequestManager headersRequestManager = new RequestManager(this);
-  private final RequestManager bodiesRequestManager = new RequestManager(this);
-  private final RequestManager receiptsRequestManager = new RequestManager(this);
-  private final RequestManager nodeDataRequestManager = new RequestManager(this);
+  private final RequestManager headersRequestManager;
+  private final RequestManager bodiesRequestManager;
+  private final RequestManager receiptsRequestManager;
+  private final RequestManager nodeDataRequestManager;
 
   private final AtomicReference<Consumer<EthPeer>> onStatusesExchanged = new AtomicReference<>();
   private final PeerReputation reputation = new PeerReputation();
+  private final MovingAverage averageResponseTime = new MovingAverage(10);
   private final Subscribers<DisconnectCallback> disconnectCallbacks = new Subscribers<>();
 
   EthPeer(
       final PeerConnection connection,
       final String protocolName,
-      final Consumer<EthPeer> onStatusesExchanged) {
+      final Consumer<EthPeer> onStatusesExchanged,
+      final Clock clock) {
     this.connection = connection;
     this.protocolName = protocolName;
     knownBlocks =
@@ -82,6 +86,10 @@ public class EthPeer {
                 }));
     this.chainHeadState = new ChainState();
     this.onStatusesExchanged.set(onStatusesExchanged);
+    headersRequestManager = new RequestManager(this, clock, averageResponseTime);
+    bodiesRequestManager = new RequestManager(this, clock, averageResponseTime);
+    receiptsRequestManager = new RequestManager(this, clock, averageResponseTime);
+    nodeDataRequestManager = new RequestManager(this, clock, averageResponseTime);
   }
 
   public boolean isDisconnected() {
@@ -335,6 +343,10 @@ public class EthPeer {
   @Override
   public String toString() {
     return nodeId().toString().substring(0, 20) + "...";
+  }
+
+  public long getAverageResponseTime() {
+    return averageResponseTime.getAverage();
   }
 
   @FunctionalInterface

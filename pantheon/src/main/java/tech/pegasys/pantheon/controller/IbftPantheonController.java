@@ -184,7 +184,8 @@ public class IbftPantheonController implements PantheonController<IbftContext> {
             syncConfig.transactionsParallelism(),
             syncConfig.computationParallelism(),
             metricsSystem,
-            ethereumWireProtocolConfiguration);
+            ethereumWireProtocolConfiguration,
+            clock);
     final SubProtocol ethSubProtocol = EthProtocol.get();
 
     final EthContext ethContext = ethProtocolManager.ethContext();
