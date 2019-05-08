@@ -19,7 +19,11 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 import java.io.Closeable;
 import java.util.Optional;
 
-/** Service provided by pantheon to facilitate persistent data storage. */
+/**
+ * Service provided by pantheon to facilitate persistent data storage.
+ *
+ * @param <S> the segment identifier type
+ */
 public interface SegmentedKeyValueStorage<S> extends Closeable {
 
   S getSegmentIdentifierByName(Segment segment);
@@ -47,12 +51,15 @@ public interface SegmentedKeyValueStorage<S> extends Closeable {
   /**
    * Represents a set of changes to be committed atomically. A single transaction is not
    * thread-safe, but multiple transactions can execute concurrently.
+   *
+   * @param <S> the segment identifier type
    */
   interface Transaction<S> {
 
     /**
      * Add the given key-value pair to the set of updates to be committed.
      *
+     * @param segment the database segment
      * @param key The key to set / modify.
      * @param value The value to be set.
      */
@@ -61,6 +68,7 @@ public interface SegmentedKeyValueStorage<S> extends Closeable {
     /**
      * Schedules the given key to be deleted from storage.
      *
+     * @param segment the database segment
      * @param key The key to delete
      */
     void remove(S segment, BytesValue key);
