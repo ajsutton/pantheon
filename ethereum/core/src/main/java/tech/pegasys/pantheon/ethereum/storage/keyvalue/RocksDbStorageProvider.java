@@ -58,12 +58,7 @@ public class RocksDbStorageProvider {
     Files.createDirectories(rocksDbConfiguration.getDatabaseDir());
     final SegmentedKeyValueStorage<?> columnarStorage =
         ColumnarRocksDbKeyValueStorage.create(
-            rocksDbConfiguration,
-            asList(
-                RocksDbSegment.BLOCKCHAIN,
-                RocksDbSegment.WORLD_STATE,
-                RocksDbSegment.PRIVATE_STATE),
-            metricsSystem);
+            rocksDbConfiguration, asList(RocksDbSegment.values()), metricsSystem);
 
     return new KeyValueStorageProvider(
         new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.BLOCKCHAIN, columnarStorage),
