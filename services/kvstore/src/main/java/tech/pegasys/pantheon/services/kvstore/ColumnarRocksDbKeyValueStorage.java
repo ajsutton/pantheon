@@ -48,6 +48,7 @@ public class ColumnarRocksDbKeyValueStorage
     implements SegmentedKeyValueStorage<ColumnFamilyHandle>, Closeable {
 
   private static final Logger LOG = LogManager.getLogger();
+  private static final String DEFAULT_COLUMN = "default";
 
   private final DBOptions options;
   private final TransactionDBOptions txOptions;
@@ -82,7 +83,7 @@ public class ColumnarRocksDbKeyValueStorage
               .collect(Collectors.toList());
       columnDescriptors.add(
           new ColumnFamilyDescriptor(
-              "default".getBytes(StandardCharsets.UTF_8),
+              DEFAULT_COLUMN.getBytes(StandardCharsets.UTF_8),
               new ColumnFamilyOptions()
                   .setTableFormatConfig(rocksDbConfiguration.getBlockBasedTableConfig())));
 
@@ -118,6 +119,8 @@ public class ColumnarRocksDbKeyValueStorage
         final String segmentName = segmentsById.get(BytesValue.wrap(columnHandle.getName()));
         if (segmentName != null) {
           builder.put(segmentName, columnHandle);
+        } else {
+          builder.put(DEFAULT_COLUMN, columnHandle);
         }
       }
       columnHandlesByName = builder.build();
@@ -214,6 +217,7 @@ public class ColumnarRocksDbKeyValueStorage
     if (closed.compareAndSet(false, true)) {
       txOptions.close();
       options.close();
+      columnHandlesByName.values().forEach(ColumnFamilyHandle::close);
       db.close();
     }
   }

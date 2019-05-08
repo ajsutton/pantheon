@@ -122,7 +122,7 @@ public class RocksDbConfiguration {
         paramLabel = "<BOOLEAN>",
         description =
             "Whether to separate chain and world state into separate RocksDB columns (default: ${DEFAULT-VALUE})")
-    boolean useColumns;
+    boolean useColumns = true;
 
     public Builder databaseDir(final Path databaseDir) {
       this.databaseDir = databaseDir;

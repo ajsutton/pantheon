@@ -27,7 +27,11 @@ import tech.pegasys.pantheon.services.kvstore.SegmentedKeyValueStorageAdapter;
 import java.io.IOException;
 import java.nio.file.Files;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class RocksDbStorageProvider {
+  private static final Logger LOG = LogManager.getLogger();
 
   public static StorageProvider create(
       final RocksDbConfiguration rocksDbConfiguration, final MetricsSystem metricsSystem)
@@ -50,6 +54,7 @@ public class RocksDbStorageProvider {
   public static StorageProvider createSegmentedProvider(
       final RocksDbConfiguration rocksDbConfiguration, final MetricsSystem metricsSystem)
       throws IOException {
+    LOG.info("Using RocksDB colunns");
     Files.createDirectories(rocksDbConfiguration.getDatabaseDir());
     final SegmentedKeyValueStorage<?> columnarStorage =
         ColumnarRocksDbKeyValueStorage.create(
