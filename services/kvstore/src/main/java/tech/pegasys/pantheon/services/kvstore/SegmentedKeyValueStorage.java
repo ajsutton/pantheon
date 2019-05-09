@@ -18,6 +18,7 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.io.Closeable;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Service provided by pantheon to facilitate persistent data storage.
@@ -35,12 +36,16 @@ public interface SegmentedKeyValueStorage<S> extends Closeable {
    */
   Optional<BytesValue> get(S segment, BytesValue key) throws StorageException;
 
+  boolean mayContainKey(S segment, BytesValue key) throws StorageException;
+
   /**
    * Begins a transaction. Returns a transaction object that can be updated and committed.
    *
    * @return An object representing the transaction.
    */
   Transaction<S> startTransaction() throws StorageException;
+
+  void removeUnless(S segmentHandle, Predicate<BytesValue> inUseCheck);
 
   class StorageException extends RuntimeException {
     public StorageException(final Throwable t) {

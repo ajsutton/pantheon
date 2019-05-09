@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
@@ -39,6 +40,7 @@ import org.rocksdb.ColumnFamilyOptions;
 import org.rocksdb.DBOptions;
 import org.rocksdb.Env;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 import org.rocksdb.Statistics;
 import org.rocksdb.TransactionDB;
 import org.rocksdb.TransactionDBOptions;
@@ -206,10 +208,39 @@ public class ColumnarRocksDbKeyValueStorage
   }
 
   @Override
+  public boolean mayContainKey(final ColumnFamilyHandle segment, final BytesValue key)
+      throws StorageException {
+    return db.keyMayExist(segment, key.getArrayUnsafe(), new StringBuilder());
+  }
+
+  @Override
   public Transaction<ColumnFamilyHandle> startTransaction() throws StorageException {
     throwIfClosed();
     final WriteOptions options = new WriteOptions();
     return new RocksDbTransaction(db.beginTransaction(options), options);
+  }
+
+  @Override
+  public void removeUnless(
+      final ColumnFamilyHandle segmentHandle, final Predicate<BytesValue> inUseCheck) {
+    BytesValue firstToDelete = null;
+    try (final RocksIterator rocksIterator = db.newIterator(segmentHandle)) {
+      rocksIterator.seekToFirst();
+      while (rocksIterator.isValid()) {
+        final BytesValue key = BytesValue.wrap(rocksIterator.key());
+        if (inUseCheck.test(key)) {
+          if (firstToDelete != null) {
+            db.deleteRange(segmentHandle, firstToDelete.getArrayUnsafe(), key.getArrayUnsafe());
+            firstToDelete = null;
+          }
+        } else if (firstToDelete == null) {
+          firstToDelete = key;
+        }
+        rocksIterator.next();
+      }
+    } catch (final RocksDBException e) {
+      throw new KeyValueStorage.StorageException(e);
+    }
   }
 
   @Override

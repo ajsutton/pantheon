@@ -17,6 +17,7 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public interface WorldStateStorage {
 
@@ -35,6 +36,8 @@ public interface WorldStateStorage {
   }
 
   Updater updater();
+
+  void prune(Predicate<BytesValue> inUseCheck);
 
   interface Updater {
 

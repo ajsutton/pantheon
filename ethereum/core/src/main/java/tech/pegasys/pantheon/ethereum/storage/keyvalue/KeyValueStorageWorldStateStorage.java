@@ -20,6 +20,7 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
 
@@ -75,6 +76,11 @@ public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
   @Override
   public Updater updater() {
     return new Updater(keyValueStorage.startTransaction());
+  }
+
+  @Override
+  public void prune(final Predicate<BytesValue> inUseCheck) {
+    keyValueStorage.removeUnless(inUseCheck);
   }
 
   public static class Updater implements WorldStateStorage.Updater {

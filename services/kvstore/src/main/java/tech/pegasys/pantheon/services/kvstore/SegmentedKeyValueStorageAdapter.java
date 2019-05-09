@@ -17,6 +17,7 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.io.IOException;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 public class SegmentedKeyValueStorageAdapter<S> implements KeyValueStorage {
   private final S segmentHandle;
@@ -31,6 +32,11 @@ public class SegmentedKeyValueStorageAdapter<S> implements KeyValueStorage {
   @Override
   public Optional<BytesValue> get(final BytesValue key) throws StorageException {
     return storage.get(segmentHandle, key);
+  }
+
+  @Override
+  public boolean mayContainKey(final BytesValue key) throws StorageException {
+    return storage.mayContainKey(segmentHandle, key);
   }
 
   @Override
@@ -57,6 +63,11 @@ public class SegmentedKeyValueStorageAdapter<S> implements KeyValueStorage {
         transaction.rollback();
       }
     };
+  }
+
+  @Override
+  public void removeUnless(final Predicate<BytesValue> inUseCheck) {
+    storage.removeUnless(segmentHandle, inUseCheck);
   }
 
   @Override

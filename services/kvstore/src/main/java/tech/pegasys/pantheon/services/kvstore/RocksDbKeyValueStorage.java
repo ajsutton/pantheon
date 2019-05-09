@@ -24,11 +24,13 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 import java.io.Closeable;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.RocksIterator;
 import org.rocksdb.Statistics;
 import org.rocksdb.TransactionDB;
 import org.rocksdb.TransactionDBOptions;
@@ -148,10 +150,37 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
   }
 
   @Override
+  public boolean mayContainKey(final BytesValue key) throws StorageException {
+    return db.keyMayExist(key.getArrayUnsafe(), new StringBuilder());
+  }
+
+  @Override
   public Transaction startTransaction() throws StorageException {
     throwIfClosed();
     final WriteOptions options = new WriteOptions();
     return new RocksDbTransaction(db.beginTransaction(options), options);
+  }
+
+  @Override
+  public void removeUnless(final Predicate<BytesValue> inUseCheck) throws StorageException {
+    BytesValue firstToDelete = null;
+    try (final RocksIterator rocksIterator = db.newIterator()) {
+      rocksIterator.seekToFirst();
+      while (rocksIterator.isValid()) {
+        final BytesValue key = BytesValue.wrap(rocksIterator.key());
+        if (inUseCheck.test(key)) {
+          if (firstToDelete != null) {
+            db.deleteRange(firstToDelete.getArrayUnsafe(), key.getArrayUnsafe());
+            firstToDelete = null;
+          }
+        } else if (firstToDelete == null) {
+          firstToDelete = key;
+        }
+        rocksIterator.next();
+      }
+    } catch (final RocksDBException e) {
+      throw new StorageException(e);
+    }
   }
 
   @Override

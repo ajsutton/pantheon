@@ -23,6 +23,7 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Predicate;
 
 public class InMemoryKeyValueStorage implements KeyValueStorage {
 
@@ -41,8 +42,24 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
   }
 
   @Override
+  public boolean mayContainKey(final BytesValue key) throws StorageException {
+    final Lock lock = rwLock.readLock();
+    lock.lock();
+    try {
+      return hashValueStore.containsKey(key);
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  @Override
   public Transaction startTransaction() {
     return new InMemoryTransaction();
+  }
+
+  @Override
+  public void removeUnless(final Predicate<BytesValue> inUseCheck) {
+    hashValueStore.keySet().removeIf(key -> !inUseCheck.test(key));
   }
 
   public Set<BytesValue> keySet() {
