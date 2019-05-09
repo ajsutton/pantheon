@@ -103,7 +103,9 @@ public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
     private final Subscribers<NodesAddedListener> nodeAddedListeners;
     private final List<Bytes32> addedNodes = new ArrayList<>();
 
-    public Updater(final KeyValueStorage.Transaction transaction, final Subscribers<NodesAddedListener> nodeAddedListeners) {
+    public Updater(
+        final KeyValueStorage.Transaction transaction,
+        final Subscribers<NodesAddedListener> nodeAddedListeners) {
       this.transaction = transaction;
       this.nodeAddedListeners = nodeAddedListeners;
     }
