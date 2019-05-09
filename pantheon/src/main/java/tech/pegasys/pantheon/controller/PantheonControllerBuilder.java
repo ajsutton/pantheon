@@ -204,7 +204,7 @@ public abstract class PantheonControllerBuilder<C> {
                 storageProvider.createPruningStorage(),
                 metricsSystem),
             protocolContext,
-            10);
+            1000);
     // TODO: Probably should be started in Runner or somewhere....
     pruner.start();
     addShutdownAction(pruner::stop);

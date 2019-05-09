@@ -33,7 +33,7 @@ import org.apache.logging.log4j.Logger;
 public class MarkSweepPruner {
   private static final Logger LOG = LogManager.getLogger();
   private static final BytesValue IN_USE = BytesValue.of(1);
-  private static final int MARKS_PER_TRANSACTION = 100_000;
+  private static final int MARKS_PER_TRANSACTION = 1000;
   private final WorldStateStorage worldStateStorage;
   private final KeyValueStorage markStorage;
   private final Counter markedNodesCounter;
