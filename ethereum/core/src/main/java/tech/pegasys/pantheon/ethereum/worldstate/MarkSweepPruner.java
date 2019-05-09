@@ -70,6 +70,11 @@ public class MarkSweepPruner {
             "Total number of sweep operations performed");
   }
 
+  public void prepare() {
+    worldStateStorage.removeNodeAddedListener(nodeAddedListenerId); // Just in case.
+    nodeAddedListenerId = worldStateStorage.addNodeAddedListener(this::markNewNodes);
+  }
+
   // Note chainHeadStateRoot must be the state root of the current chain head.
   // We can delay the actual sweep until a certain number of blocks in the future if we want to
   // have a certain number of block history available.
@@ -79,7 +84,6 @@ public class MarkSweepPruner {
   public void mark(final Hash rootHash) {
     markOperationCounter.inc();
     markStorage.clear();
-    nodeAddedListenerId = worldStateStorage.addNodeAddedListener(this::markNewNodes);
     markTransaction = markStorage.startTransaction();
     createStateTrie(rootHash)
         .visitAll(

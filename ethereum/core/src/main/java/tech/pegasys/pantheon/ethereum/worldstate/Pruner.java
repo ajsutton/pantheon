@@ -66,6 +66,7 @@ public class Pruner {
         "Begin marking used nodes for pruning. Block number: {} State root: {}",
         markedBlockNumber,
         stateRoot);
+    pruningStrategy.prepare();
     execute(
         () -> {
           pruningStrategy.mark(stateRoot);
