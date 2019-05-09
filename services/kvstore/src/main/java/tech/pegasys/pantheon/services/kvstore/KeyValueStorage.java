@@ -41,7 +41,9 @@ public interface KeyValueStorage extends Closeable {
    */
   Transaction startTransaction() throws StorageException;
 
-  void removeUnless(Predicate<BytesValue> inUseCheck);
+  long removeUnless(Predicate<BytesValue> inUseCheck);
+
+  void clear();
 
   class Entry {
     private final BytesValue key;

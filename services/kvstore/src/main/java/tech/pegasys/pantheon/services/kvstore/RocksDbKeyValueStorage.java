@@ -162,21 +162,34 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
   }
 
   @Override
-  public void removeUnless(final Predicate<BytesValue> inUseCheck) throws StorageException {
-    BytesValue firstToDelete = null;
+  public long removeUnless(final Predicate<BytesValue> inUseCheck) throws StorageException {
+    long removedNodeCounter = 0;
     try (final RocksIterator rocksIterator = db.newIterator()) {
       rocksIterator.seekToFirst();
       while (rocksIterator.isValid()) {
-        final BytesValue key = BytesValue.wrap(rocksIterator.key());
-        if (inUseCheck.test(key)) {
-          if (firstToDelete != null) {
-            db.deleteRange(firstToDelete.getArrayUnsafe(), key.getArrayUnsafe());
-            firstToDelete = null;
-          }
-        } else if (firstToDelete == null) {
-          firstToDelete = key;
+        final byte[] key = rocksIterator.key();
+        if (!inUseCheck.test(BytesValue.wrap(key))) {
+          removedNodeCounter++;
+          db.delete(key);
         }
         rocksIterator.next();
+      }
+    } catch (final RocksDBException e) {
+      throw new StorageException(e);
+    }
+    return removedNodeCounter;
+  }
+
+  @Override
+  public void clear() {
+    try (final RocksIterator rocksIterator = db.newIterator()) {
+      rocksIterator.seekToFirst();
+      if (rocksIterator.isValid()) {
+        final byte[] firstKey = rocksIterator.key();
+        rocksIterator.seekToLast();
+        if (rocksIterator.isValid()) {
+          db.deleteRange(firstKey, rocksIterator.key());
+        }
       }
     } catch (final RocksDBException e) {
       throw new StorageException(e);

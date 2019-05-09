@@ -221,22 +221,35 @@ public class ColumnarRocksDbKeyValueStorage
   }
 
   @Override
-  public void removeUnless(
+  public long removeUnless(
       final ColumnFamilyHandle segmentHandle, final Predicate<BytesValue> inUseCheck) {
-    BytesValue firstToDelete = null;
+    long removedNodeCounter = 0;
     try (final RocksIterator rocksIterator = db.newIterator(segmentHandle)) {
       rocksIterator.seekToFirst();
       while (rocksIterator.isValid()) {
-        final BytesValue key = BytesValue.wrap(rocksIterator.key());
-        if (inUseCheck.test(key)) {
-          if (firstToDelete != null) {
-            db.deleteRange(segmentHandle, firstToDelete.getArrayUnsafe(), key.getArrayUnsafe());
-            firstToDelete = null;
-          }
-        } else if (firstToDelete == null) {
-          firstToDelete = key;
+        final byte[] key = rocksIterator.key();
+        if (!inUseCheck.test(BytesValue.wrap(key))) {
+          removedNodeCounter++;
+          db.delete(segmentHandle, key);
         }
         rocksIterator.next();
+      }
+    } catch (final RocksDBException e) {
+      throw new KeyValueStorage.StorageException(e);
+    }
+    return removedNodeCounter;
+  }
+
+  @Override
+  public void clear(final ColumnFamilyHandle segmentHandle) {
+    try (final RocksIterator rocksIterator = db.newIterator(segmentHandle)) {
+      rocksIterator.seekToFirst();
+      if (rocksIterator.isValid()) {
+        final byte[] firstKey = rocksIterator.key();
+        rocksIterator.seekToLast();
+        if (rocksIterator.isValid()) {
+          db.deleteRange(segmentHandle, firstKey, rocksIterator.key());
+        }
       }
     } catch (final RocksDBException e) {
       throw new KeyValueStorage.StorageException(e);

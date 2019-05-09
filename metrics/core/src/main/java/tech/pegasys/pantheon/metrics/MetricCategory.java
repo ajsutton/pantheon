@@ -25,6 +25,7 @@ public enum MetricCategory {
   PROCESS("process", false),
   KVSTORE_ROCKSDB("rocksdb"),
   KVSTORE_ROCKSDB_STATS("rocksdb", false),
+  PRUNER("pruner"),
   RPC("rpc"),
   SYNCHRONIZER("synchronizer"),
   TRANSACTION_POOL("transaction_pool");

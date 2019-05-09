@@ -18,19 +18,19 @@ import tech.pegasys.pantheon.ethereum.core.BlockDataGenerator;
 import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.core.MutableWorldState;
 import tech.pegasys.pantheon.ethereum.storage.keyvalue.KeyValueStorageWorldStateStorage;
-import tech.pegasys.pantheon.ethereum.trie.StoredMerklePatriciaTrie;
+import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 import tech.pegasys.pantheon.services.kvstore.InMemoryKeyValueStorage;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Function;
 
 import org.junit.Test;
 
 public class MarkSweepPrunerTest {
 
   private final BlockDataGenerator gen = new BlockDataGenerator();
+  private final NoOpMetricsSystem metricsSystem = new NoOpMetricsSystem();
 
   @Test
   public void shouldMarkAllNodesInCurrentWorldState() {
@@ -46,19 +46,9 @@ public class MarkSweepPrunerTest {
     gen.createRandomContractAccountsWithNonEmptyStorage(worldState, 20);
     final Hash stateRoot = worldState.rootHash();
 
-    final MarkSweepPruner pruner = new MarkSweepPruner(worldStateStorage, markStorage);
-    pruner.markNode(
-        new StoredMerklePatriciaTrie<>(
-            worldStateStorage::getAccountStateTrieNode,
-            stateRoot,
-            Function.identity(),
-            Function.identity()),
-        rootHash ->
-            new StoredMerklePatriciaTrie<>(
-                worldStateStorage::getAccountStorageTrieNode,
-                rootHash,
-                Function.identity(),
-                Function.identity()));
+    final MarkSweepPruner pruner =
+        new MarkSweepPruner(worldStateStorage, markStorage, metricsSystem);
+    pruner.mark(stateRoot);
 
     final Set<BytesValue> keysToKeep = new HashSet<>(stateStorage.keySet());
     assertThat(markStorage.keySet()).containsExactlyInAnyOrderElementsOf(keysToKeep);

@@ -45,7 +45,9 @@ public interface SegmentedKeyValueStorage<S> extends Closeable {
    */
   Transaction<S> startTransaction() throws StorageException;
 
-  void removeUnless(S segmentHandle, Predicate<BytesValue> inUseCheck);
+  long removeUnless(S segmentHandle, Predicate<BytesValue> inUseCheck);
+
+  void clear(S segmentHandle);
 
   class StorageException extends RuntimeException {
     public StorageException(final Throwable t) {

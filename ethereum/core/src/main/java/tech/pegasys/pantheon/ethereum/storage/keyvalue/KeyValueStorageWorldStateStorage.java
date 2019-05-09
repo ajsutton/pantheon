@@ -16,14 +16,18 @@ import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.trie.MerklePatriciaTrie;
 import tech.pegasys.pantheon.ethereum.worldstate.WorldStateStorage;
 import tech.pegasys.pantheon.services.kvstore.KeyValueStorage;
+import tech.pegasys.pantheon.util.Subscribers;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 
 public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
 
+  private final Subscribers<NodesAddedListener> nodeAddedListeners = new Subscribers<>();
   private final KeyValueStorage keyValueStorage;
 
   public KeyValueStorageWorldStateStorage(final KeyValueStorage keyValueStorage) {
@@ -75,20 +79,33 @@ public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
 
   @Override
   public Updater updater() {
-    return new Updater(keyValueStorage.startTransaction());
+    return new Updater(keyValueStorage.startTransaction(), nodeAddedListeners);
   }
 
   @Override
-  public void prune(final Predicate<BytesValue> inUseCheck) {
-    keyValueStorage.removeUnless(inUseCheck);
+  public long prune(final Predicate<BytesValue> inUseCheck) {
+    return keyValueStorage.removeUnless(inUseCheck);
+  }
+
+  @Override
+  public long addNodeAddedListener(final NodesAddedListener listener) {
+    return nodeAddedListeners.subscribe(listener);
+  }
+
+  @Override
+  public void removeNodeAddedListener(final long id) {
+    nodeAddedListeners.unsubscribe(id);
   }
 
   public static class Updater implements WorldStateStorage.Updater {
 
     private final KeyValueStorage.Transaction transaction;
+    private final Subscribers<NodesAddedListener> nodeAddedListeners;
+    private final List<Bytes32> addedNodes = new ArrayList<>();
 
-    public Updater(final KeyValueStorage.Transaction transaction) {
+    public Updater(final KeyValueStorage.Transaction transaction, final Subscribers<NodesAddedListener> nodeAddedListeners) {
       this.transaction = transaction;
+      this.nodeAddedListeners = nodeAddedListeners;
     }
 
     @Override
@@ -97,6 +114,8 @@ public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
         // Don't save empty values
         return this;
       }
+
+      addedNodes.add(codeHash);
       transaction.put(codeHash, code);
       return this;
     }
@@ -107,6 +126,7 @@ public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
         // Don't save empty nodes
         return this;
       }
+      addedNodes.add(nodeHash);
       transaction.put(nodeHash, node);
       return this;
     }
@@ -117,12 +137,14 @@ public class KeyValueStorageWorldStateStorage implements WorldStateStorage {
         // Don't save empty nodes
         return this;
       }
+      addedNodes.add(nodeHash);
       transaction.put(nodeHash, node);
       return this;
     }
 
     @Override
     public void commit() {
+      nodeAddedListeners.forEach(listener -> listener.onNodesAdded(addedNodes));
       transaction.commit();
     }
 

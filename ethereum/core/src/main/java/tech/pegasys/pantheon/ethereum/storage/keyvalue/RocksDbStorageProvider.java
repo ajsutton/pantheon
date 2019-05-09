@@ -54,7 +54,7 @@ public class RocksDbStorageProvider {
   public static StorageProvider createSegmentedProvider(
       final RocksDbConfiguration rocksDbConfiguration, final MetricsSystem metricsSystem)
       throws IOException {
-    LOG.info("Using RocksDB colunns");
+    LOG.info("Using RocksDB columns");
     Files.createDirectories(rocksDbConfiguration.getDatabaseDir());
     final SegmentedKeyValueStorage<?> columnarStorage =
         ColumnarRocksDbKeyValueStorage.create(
@@ -64,14 +64,16 @@ public class RocksDbStorageProvider {
         new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.BLOCKCHAIN, columnarStorage),
         new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.WORLD_STATE, columnarStorage),
         new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.PRIVATE_TRANSACTIONS, columnarStorage),
-        new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.PRIVATE_STATE, columnarStorage));
+        new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.PRIVATE_STATE, columnarStorage),
+        new SegmentedKeyValueStorageAdapter<>(RocksDbSegment.PRUNING_STATE, columnarStorage));
   }
 
   private enum RocksDbSegment implements Segment {
     BLOCKCHAIN(new byte[] {1}),
     WORLD_STATE(new byte[] {2}),
     PRIVATE_TRANSACTIONS(new byte[] {3}),
-    PRIVATE_STATE(new byte[] {4});
+    PRIVATE_STATE(new byte[] {4}),
+    PRUNING_STATE(new byte[] {5});
 
     private final byte[] id;
 

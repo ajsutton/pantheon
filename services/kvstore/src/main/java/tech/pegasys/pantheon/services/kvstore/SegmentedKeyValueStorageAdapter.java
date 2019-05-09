@@ -66,8 +66,13 @@ public class SegmentedKeyValueStorageAdapter<S> implements KeyValueStorage {
   }
 
   @Override
-  public void removeUnless(final Predicate<BytesValue> inUseCheck) {
-    storage.removeUnless(segmentHandle, inUseCheck);
+  public long removeUnless(final Predicate<BytesValue> inUseCheck) {
+    return storage.removeUnless(segmentHandle, inUseCheck);
+  }
+
+  @Override
+  public void clear() {
+    storage.clear(segmentHandle);
   }
 
   @Override

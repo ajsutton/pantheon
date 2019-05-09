@@ -31,21 +31,23 @@ public class KeyValueStorageProvider implements StorageProvider {
   private final KeyValueStorage worldStateStorage;
   private final KeyValueStorage privateTransactionStorage;
   private final KeyValueStorage privateStateStorage;
+  private final KeyValueStorage pruningStorage;
 
   public KeyValueStorageProvider(final KeyValueStorage keyValueStorage) {
-    this(keyValueStorage, keyValueStorage, keyValueStorage, keyValueStorage);
+    this(keyValueStorage, keyValueStorage, keyValueStorage, keyValueStorage, keyValueStorage);
   }
 
   public KeyValueStorageProvider(
       final KeyValueStorage blockchainStorage,
       final KeyValueStorage worldStateStorage,
       final KeyValueStorage privateTransactionStorage,
-      final KeyValueStorage privateStateStorage) {
-
+      final KeyValueStorage privateStateStorage,
+      final KeyValueStorage pruningStorage) {
     this.blockchainStorage = blockchainStorage;
     this.worldStateStorage = worldStateStorage;
     this.privateTransactionStorage = privateTransactionStorage;
     this.privateStateStorage = privateStateStorage;
+    this.pruningStorage = pruningStorage;
   }
 
   @Override
@@ -70,10 +72,16 @@ public class KeyValueStorageProvider implements StorageProvider {
   }
 
   @Override
+  public KeyValueStorage createPruningStorage() {
+    return pruningStorage;
+  }
+
+  @Override
   public void close() throws IOException {
     blockchainStorage.close();
     worldStateStorage.close();
     privateTransactionStorage.close();
     privateStateStorage.close();
+    pruningStorage.close();
   }
 }
