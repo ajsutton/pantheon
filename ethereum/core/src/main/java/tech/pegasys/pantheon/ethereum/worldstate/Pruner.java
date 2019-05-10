@@ -51,6 +51,7 @@ public class Pruner {
   }
 
   public void start() {
+    // TODO: Don't attempt pruning while a fast sync is in progress.
     protocolContext.getBlockchain().observeBlockAdded((event, blockchain) -> handleNewBlock(event));
   }
 
@@ -64,6 +65,13 @@ public class Pruner {
     }
     final BlockHeader header = event.getBlock().getHeader();
     if (state.compareAndSet(State.IDLE, State.MARKING)) {
+      /* TODO: We don't currently handle re-orgs.
+      Will need to:
+       1. start listening for new nodes at this point
+       2. then after a few blocks mark the world state of the block when we started listening (now a few blocks back)
+       3. check the block we marked is still on the canonical chain when we begin sweeping and abort that round of pruning if not
+       */
+
       mark(header);
     } else if (header.getNumber() > markedBlockNumber + retentionPeriodInBlocks
         && state.compareAndSet(State.MARKING_COMPLETE, State.SWEEPING)) {

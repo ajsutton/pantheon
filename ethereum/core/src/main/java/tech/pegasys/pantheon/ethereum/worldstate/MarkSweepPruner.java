@@ -25,6 +25,10 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
@@ -40,9 +44,9 @@ public class MarkSweepPruner {
   private final Counter markOperationCounter;
   private final Counter sweepOperationCounter;
   private final Counter sweptNodesCounter;
-  private Transaction markTransaction;
-  private int transactionMarkCounter = 0;
   private long nodeAddedListenerId;
+  private final ReentrantLock markLock = new ReentrantLock(true);
+  private final Set<BytesValue> pendingMarks = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
   public MarkSweepPruner(
       final WorldStateStorage worldStateStorage,
@@ -84,7 +88,6 @@ public class MarkSweepPruner {
   public void mark(final Hash rootHash) {
     markOperationCounter.inc();
     markStorage.clear();
-    markTransaction = markStorage.startTransaction();
     createStateTrie(rootHash)
         .visitAll(
             node -> {
@@ -95,14 +98,16 @@ public class MarkSweepPruner {
               markNode(node.getHash());
               node.getValue().ifPresent(this::processAccountState);
             });
-    markTransaction.commit();
     LOG.info("Completed marking used nodes for pruning");
   }
 
   public void sweep() {
+    flushPendingMarks();
     sweepOperationCounter.inc();
     LOG.info("Sweeping unused nodes");
-    final long prunedNodeCount = worldStateStorage.prune(markStorage::mayContainKey);
+    final long prunedNodeCount =
+        worldStateStorage.prune(
+            key -> pendingMarks.contains(key) || markStorage.mayContainKey(key));
     sweptNodesCounter.inc(prunedNodeCount);
     worldStateStorage.removeNodeAddedListener(nodeAddedListenerId);
     markStorage.clear();
@@ -135,19 +140,41 @@ public class MarkSweepPruner {
 
   private void markNode(final Bytes32 hash) {
     markedNodesCounter.inc();
-    transactionMarkCounter++;
-    if (transactionMarkCounter > MARKS_PER_TRANSACTION) {
-      markTransaction.commit();
-      transactionMarkCounter = 0;
-      markTransaction = markStorage.startTransaction();
+    markLock.lock();
+    try {
+      pendingMarks.add(hash);
+      maybeFlushPendingMarks();
+    } finally {
+      markLock.unlock();
     }
-    markTransaction.put(hash, IN_USE);
+  }
+
+  private void maybeFlushPendingMarks() {
+    if (pendingMarks.size() > MARKS_PER_TRANSACTION) {
+      flushPendingMarks();
+    }
+  }
+
+  private void flushPendingMarks() {
+    markLock.lock();
+    try {
+      final Transaction transaction = markStorage.startTransaction();
+      pendingMarks.forEach(node -> transaction.put(node, IN_USE));
+      transaction.commit();
+      pendingMarks.clear();
+    } finally {
+      markLock.unlock();
+    }
   }
 
   private void markNewNodes(final Collection<Bytes32> nodeHashes) {
     markedNodesCounter.inc(nodeHashes.size());
-    final Transaction transaction = markStorage.startTransaction();
-    nodeHashes.forEach(hash -> transaction.put(hash, IN_USE));
-    transaction.commit();
+    markLock.lock();
+    try {
+      pendingMarks.addAll(nodeHashes);
+      maybeFlushPendingMarks();
+    } finally {
+      markLock.unlock();
+    }
   }
 }
