@@ -49,6 +49,7 @@ public class MarkSweepPrunerTest {
     final MarkSweepPruner pruner =
         new MarkSweepPruner(worldStateStorage, markStorage, metricsSystem);
     pruner.mark(stateRoot);
+    pruner.flushPendingMarks();
 
     final Set<BytesValue> keysToKeep = new HashSet<>(stateStorage.keySet());
     assertThat(markStorage.keySet()).containsExactlyInAnyOrderElementsOf(keysToKeep);
