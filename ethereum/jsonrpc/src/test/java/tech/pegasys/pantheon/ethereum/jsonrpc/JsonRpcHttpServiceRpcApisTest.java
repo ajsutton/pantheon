@@ -39,7 +39,7 @@ import tech.pegasys.pantheon.ethereum.p2p.config.RlpxConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.network.DefaultP2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
-import tech.pegasys.pantheon.ethereum.permissioning.AccountWhitelistController;
+import tech.pegasys.pantheon.ethereum.permissioning.AccountLocalConfigPermissioningController;
 import tech.pegasys.pantheon.ethereum.permissioning.NodeLocalConfigPermissioningController;
 import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 import tech.pegasys.pantheon.metrics.prometheus.MetricsConfiguration;
@@ -199,7 +199,7 @@ public class JsonRpcHttpServiceRpcApisTest {
                     mock(EthHashMiningCoordinator.class),
                     new NoOpMetricsSystem(),
                     supportedCapabilities,
-                    Optional.of(mock(AccountWhitelistController.class)),
+                    Optional.of(mock(AccountLocalConfigPermissioningController.class)),
                     Optional.of(mock(NodeLocalConfigPermissioningController.class)),
                     config.getRpcApis(),
                     mock(PrivacyParameters.class),
@@ -266,6 +266,8 @@ public class JsonRpcHttpServiceRpcApisTest {
     final Set<Capability> supportedCapabilities = new HashSet<>();
     supportedCapabilities.add(EthProtocol.ETH62);
     supportedCapabilities.add(EthProtocol.ETH63);
+    jsonRpcConfiguration.setPort(0);
+    webSocketConfiguration.setPort(0);
 
     final Map<String, JsonRpcMethod> rpcMethods =
         spy(
@@ -283,7 +285,7 @@ public class JsonRpcHttpServiceRpcApisTest {
                     mock(EthHashMiningCoordinator.class),
                     new NoOpMetricsSystem(),
                     supportedCapabilities,
-                    Optional.of(mock(AccountWhitelistController.class)),
+                    Optional.of(mock(AccountLocalConfigPermissioningController.class)),
                     Optional.of(mock(NodeLocalConfigPermissioningController.class)),
                     jsonRpcConfiguration.getRpcApis(),
                     mock(PrivacyParameters.class),
