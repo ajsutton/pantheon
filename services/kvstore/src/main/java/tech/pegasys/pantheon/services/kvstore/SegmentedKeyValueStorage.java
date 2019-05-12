@@ -36,7 +36,9 @@ public interface SegmentedKeyValueStorage<S> extends Closeable {
    */
   Optional<BytesValue> get(S segment, BytesValue key) throws StorageException;
 
-  boolean mayContainKey(S segment, BytesValue key) throws StorageException;
+  default boolean containsKey(final S segment, final BytesValue key) throws StorageException {
+    return get(segment, key).isPresent();
+  }
 
   /**
    * Begins a transaction. Returns a transaction object that can be updated and committed.

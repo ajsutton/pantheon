@@ -30,7 +30,7 @@ public interface KeyValueStorage extends Closeable {
    */
   Optional<BytesValue> get(BytesValue key) throws StorageException;
 
-  default boolean mayContainKey(final BytesValue key) throws StorageException {
+  default boolean containsKey(final BytesValue key) throws StorageException {
     return get(key).isPresent();
   }
 

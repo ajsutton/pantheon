@@ -35,8 +35,8 @@ public class SegmentedKeyValueStorageAdapter<S> implements KeyValueStorage {
   }
 
   @Override
-  public boolean mayContainKey(final BytesValue key) throws StorageException {
-    return storage.mayContainKey(segmentHandle, key);
+  public boolean containsKey(final BytesValue key) throws StorageException {
+    return storage.containsKey(segmentHandle, key);
   }
 
   @Override

@@ -42,7 +42,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
   }
 
   @Override
-  public boolean mayContainKey(final BytesValue key) throws StorageException {
+  public boolean containsKey(final BytesValue key) throws StorageException {
     final Lock lock = rwLock.readLock();
     lock.lock();
     try {

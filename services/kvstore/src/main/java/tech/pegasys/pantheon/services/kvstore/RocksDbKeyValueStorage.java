@@ -150,11 +150,6 @@ public class RocksDbKeyValueStorage implements KeyValueStorage, Closeable {
   }
 
   @Override
-  public boolean mayContainKey(final BytesValue key) throws StorageException {
-    return db.keyMayExist(key.getArrayUnsafe(), new StringBuilder());
-  }
-
-  @Override
   public Transaction startTransaction() throws StorageException {
     throwIfClosed();
     final WriteOptions options = new WriteOptions();

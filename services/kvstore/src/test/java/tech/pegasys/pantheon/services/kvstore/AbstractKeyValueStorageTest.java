@@ -68,13 +68,13 @@ public abstract class AbstractKeyValueStorageTest {
     final KeyValueStorage store = createStore();
     final BytesValue key = BytesValue.fromHexString("ABCD");
 
-    assertFalse(store.mayContainKey(key));
+    assertFalse(store.containsKey(key));
 
     final Transaction transaction = store.startTransaction();
     transaction.put(key, BytesValue.fromHexString("DEFF"));
     transaction.commit();
 
-    assertTrue(store.mayContainKey(key));
+    assertTrue(store.containsKey(key));
   }
 
   @Test

@@ -208,12 +208,6 @@ public class ColumnarRocksDbKeyValueStorage
   }
 
   @Override
-  public boolean mayContainKey(final ColumnFamilyHandle segment, final BytesValue key)
-      throws StorageException {
-    return db.keyMayExist(segment, key.getArrayUnsafe(), new StringBuilder());
-  }
-
-  @Override
   public Transaction<ColumnFamilyHandle> startTransaction() throws StorageException {
     throwIfClosed();
     final WriteOptions options = new WriteOptions();
