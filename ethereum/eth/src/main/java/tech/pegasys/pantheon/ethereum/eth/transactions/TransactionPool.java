@@ -106,11 +106,11 @@ public class TransactionPool implements BlockAddedObserver {
   }
 
   public void addRemoteTransactions(final Collection<Transaction> transactions) {
+    if (!syncState.isInSync(SYNC_TOLERANCE)) {
+      return;
+    }
     final Set<Transaction> addedTransactions = new HashSet<>();
     for (final Transaction transaction : sortByNonce(transactions)) {
-      if (!syncState.isInSync(SYNC_TOLERANCE)) {
-        return;
-      }
       final ValidationResult<TransactionInvalidReason> validationResult =
           validateTransaction(transaction);
       if (validationResult.isValid()) {
