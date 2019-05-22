@@ -206,9 +206,7 @@ public abstract class PantheonControllerBuilder<C> {
                 metricsSystem),
             protocolContext,
             1000);
-    // TODO: Probably should be started in Runner or somewhere....
-    pruner.start();
-    addShutdownAction(pruner::stop);
+        addShutdownAction(pruner::stop);
 
     final boolean fastSyncEnabled = syncConfig.syncMode().equals(SyncMode.FAST);
     ethProtocolManager = createEthProtocolManager(protocolContext, fastSyncEnabled);
@@ -221,6 +219,7 @@ public abstract class PantheonControllerBuilder<C> {
             protocolContext,
             protocolContext.getWorldStateArchive().getStorage(),
             ethProtocolManager.getBlockBroadcaster(),
+            pruner,
             ethProtocolManager.ethContext(),
             syncState,
             dataDirectory,
