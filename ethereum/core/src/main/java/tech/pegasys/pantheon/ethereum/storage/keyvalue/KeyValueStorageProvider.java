@@ -14,7 +14,7 @@ package tech.pegasys.pantheon.ethereum.storage.keyvalue;
 
 import tech.pegasys.pantheon.ethereum.chain.BlockchainStorage;
 import tech.pegasys.pantheon.ethereum.mainnet.ProtocolSchedule;
-import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHashFunction;
+import tech.pegasys.pantheon.ethereum.mainnet.ScheduleBasedBlockHeaderFunctions;
 import tech.pegasys.pantheon.ethereum.privacy.PrivateKeyValueStorage;
 import tech.pegasys.pantheon.ethereum.privacy.PrivateStateKeyValueStorage;
 import tech.pegasys.pantheon.ethereum.privacy.PrivateStateStorage;
@@ -53,7 +53,7 @@ public class KeyValueStorageProvider implements StorageProvider {
   @Override
   public BlockchainStorage createBlockchainStorage(final ProtocolSchedule<?> protocolSchedule) {
     return new KeyValueStoragePrefixedKeyBlockchainStorage(
-        blockchainStorage, ScheduleBasedBlockHashFunction.create(protocolSchedule));
+        blockchainStorage, ScheduleBasedBlockHeaderFunctions.create(protocolSchedule));
   }
 
   @Override

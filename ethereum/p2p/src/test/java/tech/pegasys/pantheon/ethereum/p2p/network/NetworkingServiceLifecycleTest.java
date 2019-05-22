@@ -23,7 +23,6 @@ import tech.pegasys.pantheon.ethereum.p2p.api.P2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.config.DiscoveryConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.config.NetworkingConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.discovery.PeerDiscoveryServiceException;
-import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.metrics.noop.NoOpMetricsSystem;
 import tech.pegasys.pantheon.util.enode.EnodeURL;
@@ -53,8 +52,8 @@ public class NetworkingServiceLifecycleTest {
     try (final P2PNetwork service = builder().build()) {
       service.start();
       final EnodeURL enode = service.getLocalEnode().get();
-      final int udpPort = enode.getEffectiveDiscoveryPort();
-      final int tcpPort = enode.getListeningPort();
+      final int udpPort = enode.getDiscoveryPortOrZero();
+      final int tcpPort = enode.getListeningPortOrZero();
 
       assertEquals(config.getDiscovery().getAdvertisedHost(), enode.getIpAsString());
       assertThat(udpPort).isNotZero();
@@ -124,7 +123,9 @@ public class NetworkingServiceLifecycleTest {
     try (final P2PNetwork service1 = builder().config(config).build()) {
       service1.start();
       final NetworkingConfiguration config = configWithRandomPorts();
-      config.getDiscovery().setBindPort(service1.getLocalEnode().get().getEffectiveDiscoveryPort());
+      final int usedPort = service1.getLocalEnode().get().getDiscoveryPortOrZero();
+      assertThat(usedPort).isNotZero();
+      config.getDiscovery().setBindPort(usedPort);
       try (final P2PNetwork service2 = builder().config(config).build()) {
         try {
           service2.start();
@@ -156,7 +157,6 @@ public class NetworkingServiceLifecycleTest {
         .vertx(vertx)
         .keyPair(keyPair)
         .config(config)
-        .peerBlacklist(new PeerBlacklist())
         .metricsSystem(new NoOpMetricsSystem())
         .supportedCapabilities(Arrays.asList(Capability.create("eth", 63)));
   }

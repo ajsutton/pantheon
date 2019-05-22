@@ -19,6 +19,14 @@ copyright: Pantheon and its documentation are licensed under Apache 2.0 license 
 
 #extra project info and template customisation
 extra:
+  versions:
+    pantheon_stable: &pantheon_stable_version 1.1.0
+    quickstart: *pantheon_stable_version
+  latest_version_warning:
+    url_contains: /latest/
+    text: 'You are reading Pantheon development version documentation and
+    some displayed features may not be available in the stable release.
+    You can switch to stable version using the version box at screen bottom.'
   support:
     gitter: https://gitter.im/PegaSysEng/pantheon
     email: support@pegasys.tech
@@ -59,19 +67,16 @@ nav:
         - Create a Private Network using Clique (PoA): Tutorials/Create-Private-Clique-Network.md
         - Create a Private Network using IBFT 2.0 (PoA): Tutorials/Create-IBFT-Network.md
         - Create a Permissioned Network: Tutorials/Create-Permissioned-Network.md
-    - Consensus Protocols:
-        - Pantheon Consensus Protocols: Consensus-Protocols/Overview-Consensus.md
-        - Comparing PoA Consensus Protocols: Consensus-Protocols/Comparing-PoA.md
-        - Clique: Consensus-Protocols/Clique.md
-        - IBFT 2.0: Consensus-Protocols/IBFT.md
-        - Quorum IBFT 1.0: Consensus-Protocols/QuorumIBFT.md
-    - JSON-RPC API:
-        - Overview: JSON-RPC-API/JSON-RPC-API.md
-        - Using the JSON-RPC API: JSON-RPC-API/Using-JSON-RPC-API.md
-        - Authentication: JSON-RPC-API/Authentication.md
+    - Pantheon API:
+        - Overview: Pantheon-API/Pantheon-API.md
+        - JSON-RPC over HTTP or WebSockets: Pantheon-API/Using-JSON-RPC-API.md
+        - RPC Pub/Sub over WebSockets: Pantheon-API/RPC-PubSub.md
+        - GraphQL over HTTP: Pantheon-API/GraphQL.md
+        - Authentication: Pantheon-API/Authentication.md
     - Configuring Pantheon:
         - Network vs Node Configuration: Configuring-Pantheon/Network-vs-Node.md
         - Configuration File: Configuring-Pantheon/Using-Configuration-File.md
+        - Configuration Items in Genesis File: Configuring-Pantheon/Config-Items.md
         - Network ID and Chain ID: Configuring-Pantheon/NetworkID-And-ChainID.md
         - Free Gas Networks: Configuring-Pantheon/FreeGas.md
         - Contracts in Genesis: Configuring-Pantheon/Contracts-in-Genesis.md
@@ -83,6 +88,12 @@ nav:
       - Bootnodes: Configuring-Pantheon/Networking/Bootnodes.md
       - Configuring Ports: Configuring-Pantheon/Networking/Configuring-Ports.md
       - Managing Peers: Configuring-Pantheon/Networking/Managing-Peers.md
+    - Consensus Protocols:
+      - Pantheon Consensus Protocols: Consensus-Protocols/Overview-Consensus.md
+      - Comparing PoA Consensus Protocols: Consensus-Protocols/Comparing-PoA.md
+      - Clique: Consensus-Protocols/Clique.md
+      - IBFT 2.0: Consensus-Protocols/IBFT.md
+      - Quorum IBFT 1.0: Consensus-Protocols/QuorumIBFT.md
     - Privacy:
         - Overview: Privacy/Privacy-Overview.md
         - Processing Private Transactions: Privacy/Private-Transaction-Processing.md
@@ -103,7 +114,6 @@ nav:
           - Accessing Logs Using JSON-RPC API: Using-Pantheon/Accessing-Logs-Using-JSON-RPC.md
         - Using Wallets for Account Management: Using-Pantheon/Account-Management.md
         - Mining: Using-Pantheon/Mining.md
-        - RPC Pub/Sub: Using-Pantheon/RPC-PubSub.md
         - Monitoring Pantheon: Using-Pantheon/Monitoring.md
     - Monitoring Pantheon:
         - EthStats:
@@ -114,8 +124,8 @@ nav:
         - Troubleshooting: Troubleshooting/Troubleshooting.md
     - Reference:
         - Pantheon Command Line: Reference/Pantheon-CLI-Syntax.md
-        - JSON-RPC API Methods: Reference/JSON-RPC-API-Methods.md
-        - JSON-RPC API Objects: Reference/JSON-RPC-API-Objects.md
+        - Pantheon API Methods: Reference/Pantheon-API-Methods.md
+        - Pantheon API Objects: Reference/Pantheon-API-Objects.md
     - Resources:
         - Blog Posts and Webinars: Resources/Resources.md
 
@@ -148,3 +158,4 @@ markdown_extensions:
 
 plugins:
     - search
+    - markdownextradata

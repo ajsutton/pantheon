@@ -66,6 +66,7 @@ public abstract class PantheonControllerBuilder<C> {
 
   protected GenesisConfigFile genesisConfig;
   protected SynchronizerConfiguration syncConfig;
+  protected EthProtocolManager ethProtocolManager;
   protected EthereumWireProtocolConfiguration ethereumWireProtocolConfiguration;
   protected Integer networkId;
   protected MiningParameters miningParameters;
@@ -210,8 +211,7 @@ public abstract class PantheonControllerBuilder<C> {
     addShutdownAction(pruner::stop);
 
     final boolean fastSyncEnabled = syncConfig.syncMode().equals(SyncMode.FAST);
-    final EthProtocolManager ethProtocolManager =
-        createEthProtocolManager(protocolContext, fastSyncEnabled);
+    ethProtocolManager = createEthProtocolManager(protocolContext, fastSyncEnabled);
     final SyncState syncState =
         new SyncState(blockchain, ethProtocolManager.ethContext().getEthPeers());
     final Synchronizer synchronizer =
@@ -220,6 +220,7 @@ public abstract class PantheonControllerBuilder<C> {
             protocolSchedule,
             protocolContext,
             protocolContext.getWorldStateArchive().getStorage(),
+            ethProtocolManager.getBlockBroadcaster(),
             ethProtocolManager.ethContext(),
             syncState,
             dataDirectory,
@@ -264,6 +265,7 @@ public abstract class PantheonControllerBuilder<C> {
     return new PantheonController<>(
         protocolSchedule,
         protocolContext,
+        ethProtocolManager,
         genesisConfig.getConfigOptions(),
         subProtocolConfiguration,
         synchronizer,

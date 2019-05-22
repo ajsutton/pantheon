@@ -32,16 +32,17 @@ dependencies {
   implementation project(':consensus:clique')
   implementation project(':consensus:ibft')
   implementation project(':consensus:ibftlegacy')
+  implementation project(':enclave')
   implementation project(':ethereum:blockcreation')
   implementation project(':ethereum:core')
   implementation project(':ethereum:eth')
   implementation project(':ethereum:jsonrpc')
-  implementation project(':ethereum:graphqlrpc')
+  implementation project(':ethereum:graphql')
   implementation project(':ethereum:permissioning')
   implementation project(':ethereum:p2p')
   implementation project(':ethereum:rlp')
+  implementation project(':plugins')
   implementation project(':metrics:core')
-  implementation project(':enclave')
   implementation project(':services:kvstore')
 
   implementation 'com.graphql-java:graphql-java'
@@ -54,6 +55,7 @@ dependencies {
   implementation 'org.springframework.security:spring-security-crypto'
 
   runtime 'org.apache.logging.log4j:log4j-core'
+  runtime 'org.apache.logging.log4j:log4j-slf4j-impl'
 
   testImplementation project(':testutil')
   testImplementation project(path: ':ethereum:core', configuration: 'testSupportArtifacts')

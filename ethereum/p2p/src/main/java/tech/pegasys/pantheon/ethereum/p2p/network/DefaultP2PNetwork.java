@@ -17,7 +17,6 @@ import static com.google.common.base.Preconditions.checkState;
 
 import tech.pegasys.pantheon.crypto.SECP256K1;
 import tech.pegasys.pantheon.crypto.SECP256K1.KeyPair;
-import tech.pegasys.pantheon.ethereum.chain.BlockAddedEvent;
 import tech.pegasys.pantheon.ethereum.chain.Blockchain;
 import tech.pegasys.pantheon.ethereum.p2p.api.DisconnectCallback;
 import tech.pegasys.pantheon.ethereum.p2p.api.Message;
@@ -27,7 +26,6 @@ import tech.pegasys.pantheon.ethereum.p2p.config.NetworkingConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.discovery.DiscoveryPeer;
 import tech.pegasys.pantheon.ethereum.p2p.discovery.PeerDiscoveryAgent;
 import tech.pegasys.pantheon.ethereum.p2p.discovery.PeerDiscoveryEvent.PeerBondedEvent;
-import tech.pegasys.pantheon.ethereum.p2p.discovery.PeerDiscoveryEvent.PeerDroppedEvent;
 import tech.pegasys.pantheon.ethereum.p2p.discovery.PeerDiscoveryStatus;
 import tech.pegasys.pantheon.ethereum.p2p.discovery.VertxPeerDiscoveryAgent;
 import tech.pegasys.pantheon.ethereum.p2p.network.netty.Callbacks;
@@ -35,8 +33,12 @@ import tech.pegasys.pantheon.ethereum.p2p.network.netty.HandshakeHandlerInbound;
 import tech.pegasys.pantheon.ethereum.p2p.network.netty.HandshakeHandlerOutbound;
 import tech.pegasys.pantheon.ethereum.p2p.network.netty.PeerConnectionRegistry;
 import tech.pegasys.pantheon.ethereum.p2p.network.netty.TimeoutHandler;
+import tech.pegasys.pantheon.ethereum.p2p.peers.DefaultPeer;
+import tech.pegasys.pantheon.ethereum.p2p.peers.MaintainedPeers;
 import tech.pegasys.pantheon.ethereum.p2p.peers.Peer;
-import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
+import tech.pegasys.pantheon.ethereum.p2p.permissions.PeerPermissions;
+import tech.pegasys.pantheon.ethereum.p2p.permissions.PeerPermissionsBlacklist;
+import tech.pegasys.pantheon.ethereum.p2p.rlpx.PeerRlpxPermissions;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.p2p.wire.PeerInfo;
 import tech.pegasys.pantheon.ethereum.p2p.wire.SubProtocol;
@@ -53,8 +55,7 @@ import tech.pegasys.pantheon.util.enode.EnodeURL;
 import java.net.InetSocketAddress;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -150,14 +151,13 @@ public class DefaultP2PNetwork implements P2PNetwork {
   private final SECP256K1.KeyPair keyPair;
   private final BytesValue nodeId;
   private volatile OptionalInt listeningPort = OptionalInt.empty();
-  private volatile Optional<EnodeURL> localEnode = Optional.empty();
+  private volatile Optional<Peer> localNode = Optional.empty();
   private volatile Optional<PeerInfo> ourPeerInfo = Optional.empty();
 
-  private final PeerBlacklist peerBlacklist;
-  private final Optional<NodePermissioningController> nodePermissioningController;
-  private final Optional<Blockchain> blockchain;
+  private final PeerPermissions peerPermissions;
+  private volatile Optional<PeerRlpxPermissions> rlpxPermissions = Optional.empty();
 
-  @VisibleForTesting final Collection<Peer> peerMaintainConnectionList;
+  private final MaintainedPeers maintainedPeers;
   @VisibleForTesting final PeerConnectionRegistry connections;
 
   @VisibleForTesting
@@ -170,9 +170,7 @@ public class DefaultP2PNetwork implements P2PNetwork {
   private final Callbacks callbacks = new Callbacks(protocolCallbacks, disconnectCallbacks);
 
   private final LabelledMetric<Counter> outboundMessagesCounter;
-  private OptionalLong blockAddedObserverId = OptionalLong.empty();
   private OptionalLong peerBondedObserverId = OptionalLong.empty();
-  private OptionalLong peerDroppedObserverId = OptionalLong.empty();
 
   private final AtomicBoolean started = new AtomicBoolean(false);
   private final AtomicBoolean stopped = new AtomicBoolean(false);
@@ -188,41 +186,38 @@ public class DefaultP2PNetwork implements P2PNetwork {
    * @param keyPair This node's keypair.
    * @param config The network configuration to use.
    * @param supportedCapabilities The wire protocol capabilities to advertise to connected peers.
-   * @param peerBlacklist The peers with which this node will not connect
+   * @param peerPermissions An object that determines whether peers are allowed to connect
    * @param metricsSystem The metrics system to capture metrics with.
-   * @param nodePermissioningController Controls node permissioning.
-   * @param blockchain The blockchain to subscribe to BlockAddedEvents.
    */
   DefaultP2PNetwork(
       final PeerDiscoveryAgent peerDiscoveryAgent,
       final SECP256K1.KeyPair keyPair,
       final NetworkingConfiguration config,
       final List<Capability> supportedCapabilities,
-      final PeerBlacklist peerBlacklist,
-      final MetricsSystem metricsSystem,
-      final Optional<NodePermissioningController> nodePermissioningController,
-      final Blockchain blockchain) {
+      final PeerPermissions peerPermissions,
+      final MaintainedPeers maintainedPeers,
+      final MetricsSystem metricsSystem) {
 
     this.peerDiscoveryAgent = peerDiscoveryAgent;
     this.keyPair = keyPair;
     this.config = config;
     this.supportedCapabilities = supportedCapabilities;
-    this.peerBlacklist = peerBlacklist;
-    this.nodePermissioningController = nodePermissioningController;
-    this.blockchain = Optional.ofNullable(blockchain);
-    this.peerMaintainConnectionList = new HashSet<>();
+    this.maintainedPeers = maintainedPeers;
     this.connections = new PeerConnectionRegistry(metricsSystem);
 
     this.nodeId = this.keyPair.getPublicKey().getEncodedBytes();
     this.subProtocols = config.getSupportedProtocols();
     this.maxPeers = config.getRlpx().getMaxPeers();
 
-    peerDiscoveryAgent.addPeerRequirement(() -> connections.size() >= maxPeers);
-    this.nodePermissioningController.ifPresent(
-        c -> c.subscribeToUpdates(this::checkCurrentConnections));
+    // Set up permissions
+    final PeerPermissionsBlacklist misbehavingPeers = PeerPermissionsBlacklist.create(500);
+    PeerReputationManager reputationManager = new PeerReputationManager(misbehavingPeers);
+    this.peerPermissions = PeerPermissions.combine(peerPermissions, misbehavingPeers);
+    this.peerPermissions.subscribeUpdate(this::handlePermissionsUpdate);
 
-    subscribeDisconnect(peerDiscoveryAgent);
-    subscribeDisconnect(peerBlacklist);
+    peerDiscoveryAgent.addPeerRequirement(() -> connections.size() >= maxPeers);
+
+    subscribeDisconnect(reputationManager);
     subscribeDisconnect(connections);
 
     outboundMessagesCounter =
@@ -345,7 +340,9 @@ public class DefaultP2PNetwork implements P2PNetwork {
                 return;
               }
 
-              if (!isPeerAllowed(connection)) {
+              final Peer peer = connection.getPeer();
+              if (!rlpxPermissions.isPresent()
+                  || !rlpxPermissions.get().allowNewInboundConnectionFrom(peer)) {
                 connection.disconnect(DisconnectReason.UNKNOWN);
                 return;
               }
@@ -361,35 +358,19 @@ public class DefaultP2PNetwork implements P2PNetwork {
 
   @Override
   public boolean addMaintainConnectionPeer(final Peer peer) {
-    final boolean added = peerMaintainConnectionList.add(peer);
-    if (isPeerAllowed(peer) && !isConnectingOrConnected(peer)) {
-      // Connect immediately if appropriate
-      connect(peer);
-    }
-
-    return added;
+    return maintainedPeers.add(peer);
   }
 
   @Override
   public boolean removeMaintainedConnectionPeer(final Peer peer) {
-    final boolean removed = peerMaintainConnectionList.remove(peer);
-
-    final CompletableFuture<PeerConnection> connectionFuture = pendingConnections.get(peer);
-    if (connectionFuture != null) {
-      connectionFuture.thenAccept(connection -> connection.disconnect(DisconnectReason.REQUESTED));
-    }
-
-    final Optional<PeerConnection> peerConnection = connections.getConnectionForPeer(peer.getId());
-    peerConnection.ifPresent(pc -> pc.disconnect(DisconnectReason.REQUESTED));
-
-    return removed;
+    return maintainedPeers.remove(peer);
   }
 
   void checkMaintainedConnectionPeers() {
-    peerMaintainConnectionList.stream()
-        .filter(p -> !isConnectingOrConnected(p))
-        .filter(this::isPeerAllowed)
-        .forEach(this::connect);
+    if (!rlpxPermissions.isPresent()) {
+      return;
+    }
+    maintainedPeers.streamPeers().forEach(this::connect);
   }
 
   @VisibleForTesting
@@ -398,13 +379,19 @@ public class DefaultP2PNetwork implements P2PNetwork {
     if (availablePeerSlots <= 0) {
       return;
     }
+    if (!rlpxPermissions.isPresent()) {
+      return;
+    }
+    final PeerRlpxPermissions permissions = rlpxPermissions.get();
 
     final List<DiscoveryPeer> peers =
         streamDiscoveredPeers()
             .filter(peer -> peer.getStatus() == PeerDiscoveryStatus.BONDED)
+            .filter(permissions::allowNewOutboundConnectionTo)
             .filter(peer -> !isConnected(peer) && !isConnecting(peer))
+            .sorted(Comparator.comparing(DiscoveryPeer::getLastAttemptedConnection))
             .collect(Collectors.toList());
-    Collections.shuffle(peers);
+
     if (peers.size() == 0) {
       return;
     }
@@ -433,25 +420,56 @@ public class DefaultP2PNetwork implements P2PNetwork {
   @Override
   public CompletableFuture<PeerConnection> connect(final Peer peer) {
     final CompletableFuture<PeerConnection> connectionFuture = new CompletableFuture<>();
-    if (!localEnode.isPresent()) {
+    if (!localNode.isPresent() || !rlpxPermissions.isPresent()) {
       connectionFuture.completeExceptionally(
           new IllegalStateException("Attempt to connect to peer before network is ready"));
       return connectionFuture;
     }
+    if (!rlpxPermissions.get().allowNewOutboundConnectionTo(peer)) {
+      // Peer not allowed
+      connectionFuture.completeExceptionally(
+          new IllegalStateException("Unable to connect to disallowed peer: " + peer));
+      return connectionFuture;
+    }
 
-    LOG.trace("Initiating connection to peer: {}", peer.getId());
-    final EnodeURL enode = peer.getEnodeURL();
+    // Check for existing connection
+    final Optional<PeerConnection> existingConnection =
+        connections.getConnectionForPeer(peer.getId());
+    if (existingConnection.isPresent()) {
+      connectionFuture.complete(existingConnection.get());
+      return connectionFuture;
+    }
+    // Check for existing pending connection
     final CompletableFuture<PeerConnection> existingPendingConnection =
         pendingConnections.putIfAbsent(peer, connectionFuture);
     if (existingPendingConnection != null) {
-      LOG.debug("Attempted to connect to peer with pending connection: {}", peer.getId());
       return existingPendingConnection;
     }
 
+    initiateOutboundConnection(peer, connectionFuture);
+    return connectionFuture;
+  }
+
+  @VisibleForTesting
+  void initiateOutboundConnection(
+      final Peer peer, final CompletableFuture<PeerConnection> connectionFuture) {
+    LOG.trace("Initiating connection to peer: {}", peer.getId());
+    final EnodeURL enode = peer.getEnodeURL();
+    if (!enode.isListening()) {
+      final String errorMsg =
+          "Attempt to connect to peer with no listening port: " + enode.toString();
+      LOG.warn(errorMsg);
+      connectionFuture.completeExceptionally(new IllegalArgumentException(errorMsg));
+      return;
+    }
+
+    if (peer instanceof DiscoveryPeer) {
+      ((DiscoveryPeer) peer).setLastAttemptedConnection(System.currentTimeMillis());
+    }
     new Bootstrap()
         .group(workers)
         .channel(NioSocketChannel.class)
-        .remoteAddress(new InetSocketAddress(enode.getIp(), enode.getListeningPort()))
+        .remoteAddress(new InetSocketAddress(enode.getIp(), enode.getListeningPort().getAsInt()))
         .option(ChannelOption.TCP_NODELAY, true)
         .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, TIMEOUT_SECONDS * 1000)
         .handler(
@@ -498,7 +516,6 @@ public class DefaultP2PNetwork implements P2PNetwork {
           }
           logConnections();
         });
-    return connectionFuture;
   }
 
   private void logConnections() {
@@ -533,29 +550,34 @@ public class DefaultP2PNetwork implements P2PNetwork {
     peerDiscoveryAgent.start(listeningPort).join();
     peerBondedObserverId =
         OptionalLong.of(peerDiscoveryAgent.observePeerBondedEvents(handlePeerBondedEvent()));
-    peerDroppedObserverId =
-        OptionalLong.of(peerDiscoveryAgent.observePeerDroppedEvents(handlePeerDroppedEvents()));
 
-    if (nodePermissioningController.isPresent()) {
-      if (blockchain.isPresent()) {
-        synchronized (this) {
-          if (!blockAddedObserverId.isPresent()) {
-            blockAddedObserverId =
-                OptionalLong.of(blockchain.get().observeBlockAdded(this::handleBlockAddedEvent));
-          }
-        }
-      } else {
-        throw new IllegalStateException(
-            "Network permissioning needs to listen to BlockAddedEvents. Blockchain can't be null.");
-      }
-    }
+    final Peer ourNode = createLocalNode();
+    this.rlpxPermissions = Optional.of(new PeerRlpxPermissions(ourNode, peerPermissions));
 
-    createLocalEnode();
+    this.maintainedPeers.subscribeAdd(this::handleMaintainedPeerAdded);
+    this.maintainedPeers.subscribeRemove(this::handleMaintainedPeerRemoved);
 
     peerConnectionScheduler.scheduleWithFixedDelay(
         this::checkMaintainedConnectionPeers, 2, 60, TimeUnit.SECONDS);
     peerConnectionScheduler.scheduleWithFixedDelay(
         this::attemptPeerConnections, 30, 30, TimeUnit.SECONDS);
+  }
+
+  private void handleMaintainedPeerRemoved(final Peer peer, final boolean wasRemoved) {
+    // Drop peer from peer table
+    peerDiscoveryAgent.dropPeer(peer);
+
+    // Disconnect if connected or connecting
+    final CompletableFuture<PeerConnection> connectionFuture = pendingConnections.get(peer);
+    if (connectionFuture != null) {
+      connectionFuture.thenAccept(connection -> connection.disconnect(DisconnectReason.REQUESTED));
+    }
+    final Optional<PeerConnection> peerConnection = connections.getConnectionForPeer(peer.getId());
+    peerConnection.ifPresent(pc -> pc.disconnect(DisconnectReason.REQUESTED));
+  }
+
+  private void handleMaintainedPeerAdded(final Peer peer, final boolean wasAdded) {
+    this.connect(peer);
   }
 
   @VisibleForTesting
@@ -568,64 +590,37 @@ public class DefaultP2PNetwork implements P2PNetwork {
     };
   }
 
-  private Consumer<PeerDroppedEvent> handlePeerDroppedEvents() {
-    return event -> {
-      final Peer peer = event.getPeer();
-      getPeers().stream()
-          .filter(p -> p.getPeerInfo().getNodeId().equals(peer.getId()))
-          .findFirst()
-          .ifPresent(p -> p.disconnect(DisconnectReason.REQUESTED));
-    };
+  private void handlePermissionsUpdate(
+      final boolean permissionsRestricted, final Optional<List<Peer>> peers) {
+    if (!permissionsRestricted || !rlpxPermissions.isPresent()) {
+      // Nothing to do
+      return;
+    }
+
+    final PeerRlpxPermissions permissions = rlpxPermissions.get();
+    if (peers.isPresent()) {
+      peers.get().stream()
+          .filter(p -> !permissions.allowOngoingConnection(p))
+          .map(Peer::getId)
+          .map(connections::getConnectionForPeer)
+          .filter(Optional::isPresent)
+          .map(Optional::get)
+          .forEach(conn -> conn.disconnect(DisconnectReason.REQUESTED));
+    } else {
+      checkAllConnections(permissions);
+    }
   }
 
-  private synchronized void handleBlockAddedEvent(
-      final BlockAddedEvent event, final Blockchain blockchain) {
+  private void checkAllConnections(final PeerRlpxPermissions permissions) {
     connections
         .getPeerConnections()
         .forEach(
             peerConnection -> {
-              if (!isPeerAllowed(peerConnection)) {
+              final Peer peer = peerConnection.getPeer();
+              if (!permissions.allowOngoingConnection(peer)) {
                 peerConnection.disconnect(DisconnectReason.REQUESTED);
               }
             });
-  }
-
-  private synchronized void checkCurrentConnections() {
-    connections
-        .getPeerConnections()
-        .forEach(
-            peerConnection -> {
-              if (!isPeerAllowed(peerConnection)) {
-                peerConnection.disconnect(DisconnectReason.REQUESTED);
-              }
-            });
-  }
-
-  private boolean isPeerAllowed(final PeerConnection conn) {
-    return isPeerAllowed(conn.getRemoteEnode());
-  }
-
-  private boolean isPeerAllowed(final Peer peer) {
-    return isPeerAllowed(peer.getEnodeURL());
-  }
-
-  private boolean isPeerAllowed(final EnodeURL enode) {
-    final Optional<EnodeURL> maybeEnode = getLocalEnode();
-    if (!maybeEnode.isPresent()) {
-      // If the network isn't ready yet, deny connections
-      return false;
-    }
-    final EnodeURL localEnode = maybeEnode.get();
-
-    if (peerBlacklist.contains(enode.getNodeId())) {
-      return false;
-    }
-    if (enode.getNodeId().equals(nodeId)) {
-      // Peer matches our node id
-      return false;
-    }
-
-    return nodePermissioningController.map(c -> c.isPermitted(localEnode, enode)).orElse(true);
   }
 
   @VisibleForTesting
@@ -636,10 +631,6 @@ public class DefaultP2PNetwork implements P2PNetwork {
   @VisibleForTesting
   boolean isConnected(final Peer peer) {
     return connections.isAlreadyConnected(peer.getId());
-  }
-
-  private boolean isConnectingOrConnected(final Peer peer) {
-    return isConnected(peer) || isConnecting(peer);
   }
 
   @Override
@@ -654,11 +645,8 @@ public class DefaultP2PNetwork implements P2PNetwork {
     peerDiscoveryAgent.stop().join();
     peerBondedObserverId.ifPresent(peerDiscoveryAgent::removePeerBondedObserver);
     peerBondedObserverId = OptionalLong.empty();
-    peerDroppedObserverId.ifPresent(peerDiscoveryAgent::removePeerDroppedObserver);
-    peerDroppedObserverId = OptionalLong.empty();
-    blockchain.ifPresent(b -> blockAddedObserverId.ifPresent(b::removeObserver));
-    blockAddedObserverId = OptionalLong.empty();
     peerDiscoveryAgent.stop().join();
+    peerPermissions.close();
     workers.shutdownGracefully();
     boss.shutdownGracefully();
   }
@@ -698,20 +686,19 @@ public class DefaultP2PNetwork implements P2PNetwork {
 
   @Override
   public Optional<EnodeURL> getLocalEnode() {
-    return localEnode;
+    return localNode.map(Peer::getEnodeURL);
   }
 
-  private void createLocalEnode() {
-    if (localEnode.isPresent() || !listeningPort.isPresent()) {
-      return;
+  private Peer createLocalNode() {
+    if (localNode.isPresent() || !listeningPort.isPresent()) {
+      return localNode.orElse(null);
     }
 
     final OptionalInt discoveryPort =
         peerDiscoveryAgent
             .getAdvertisedPeer()
             .map(Peer::getEnodeURL)
-            .map(EnodeURL::getEffectiveDiscoveryPort)
-            .map(OptionalInt::of)
+            .map(EnodeURL::getDiscoveryPort)
             .orElse(OptionalInt.empty());
 
     final EnodeURL localEnode =
@@ -723,7 +710,9 @@ public class DefaultP2PNetwork implements P2PNetwork {
             .build();
 
     LOG.info("Enode URL {}", localEnode.toString());
-    this.localEnode = Optional.of(localEnode);
+    final Peer ourNode = DefaultPeer.fromEnodeURL(localEnode);
+    this.localNode = Optional.of(ourNode);
+    return ourNode;
   }
 
   private void onConnectionEstablished(final PeerConnection connection) {
@@ -737,11 +726,12 @@ public class DefaultP2PNetwork implements P2PNetwork {
     private KeyPair keyPair;
     private NetworkingConfiguration config = NetworkingConfiguration.create();
     private List<Capability> supportedCapabilities;
-    private PeerBlacklist peerBlacklist;
+    private PeerPermissions peerPermissions = PeerPermissions.noop();
     private MetricsSystem metricsSystem;
     private Optional<NodePermissioningController> nodePermissioningController = Optional.empty();
     private Blockchain blockchain = null;
     private Vertx vertx;
+    private MaintainedPeers maintainedPeers = new MaintainedPeers();
 
     public P2PNetwork build() {
       validate();
@@ -749,6 +739,13 @@ public class DefaultP2PNetwork implements P2PNetwork {
     }
 
     private P2PNetwork doBuild() {
+      // Fold NodePermissioningController into peerPermissions
+      if (nodePermissioningController.isPresent()) {
+        final List<EnodeURL> bootnodes = config.getDiscovery().getBootnodes();
+        final PeerPermissions nodePermissions =
+            new NodePermissioningAdapter(nodePermissioningController.get(), bootnodes, blockchain);
+        peerPermissions = PeerPermissions.combine(peerPermissions, nodePermissions);
+      }
       peerDiscoveryAgent = peerDiscoveryAgent == null ? createDiscoveryAgent() : peerDiscoveryAgent;
 
       return new DefaultP2PNetwork(
@@ -756,10 +753,9 @@ public class DefaultP2PNetwork implements P2PNetwork {
           keyPair,
           config,
           supportedCapabilities,
-          peerBlacklist,
-          metricsSystem,
-          nodePermissioningController,
-          blockchain);
+          peerPermissions,
+          maintainedPeers,
+          metricsSystem);
     }
 
     private void validate() {
@@ -768,7 +764,6 @@ public class DefaultP2PNetwork implements P2PNetwork {
       checkState(
           supportedCapabilities != null && supportedCapabilities.size() > 0,
           "Supported capabilities must be set and non-empty.");
-      checkState(peerBlacklist != null, "PeerBlacklist must be set.");
       checkState(metricsSystem != null, "MetricsSystem must be set.");
       checkState(
           !nodePermissioningController.isPresent() || blockchain != null,
@@ -779,12 +774,7 @@ public class DefaultP2PNetwork implements P2PNetwork {
     private PeerDiscoveryAgent createDiscoveryAgent() {
 
       return new VertxPeerDiscoveryAgent(
-          vertx,
-          keyPair,
-          config.getDiscovery(),
-          peerBlacklist,
-          nodePermissioningController,
-          metricsSystem);
+          vertx, keyPair, config.getDiscovery(), peerPermissions, metricsSystem);
     }
 
     public Builder vertx(final Vertx vertx) {
@@ -816,9 +806,9 @@ public class DefaultP2PNetwork implements P2PNetwork {
       return this;
     }
 
-    public Builder peerBlacklist(final PeerBlacklist peerBlacklist) {
-      checkNotNull(peerBlacklist);
-      this.peerBlacklist = peerBlacklist;
+    public Builder peerPermissions(final PeerPermissions peerPermissions) {
+      checkNotNull(peerPermissions);
+      this.peerPermissions = peerPermissions;
       return this;
     }
 
@@ -842,6 +832,12 @@ public class DefaultP2PNetwork implements P2PNetwork {
 
     public Builder blockchain(final Blockchain blockchain) {
       this.blockchain = blockchain;
+      return this;
+    }
+
+    public Builder maintainedPeers(final MaintainedPeers maintainedPeers) {
+      checkNotNull(maintainedPeers);
+      this.maintainedPeers = maintainedPeers;
       return this;
     }
   }

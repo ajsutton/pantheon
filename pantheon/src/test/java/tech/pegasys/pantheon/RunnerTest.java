@@ -34,7 +34,7 @@ import tech.pegasys.pantheon.ethereum.eth.EthereumWireProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.transactions.PendingTransactions;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLRpcConfiguration;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLConfiguration;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
 import tech.pegasys.pantheon.ethereum.mainnet.HeaderValidationMode;
@@ -158,7 +158,7 @@ public final class RunnerTest {
             .build();
     final String listenHost = InetAddress.getLoopbackAddress().getHostAddress();
     final JsonRpcConfiguration aheadJsonRpcConfiguration = jsonRpcConfiguration();
-    final GraphQLRpcConfiguration aheadGraphQLRpcConfiguration = graphQLRpcConfiguration();
+    final GraphQLConfiguration aheadGraphQLConfiguration = graphQLConfiguration();
     final WebSocketConfiguration aheadWebSocketConfiguration = wsRpcConfiguration();
     final MetricsConfiguration aheadMetricsConfiguration = metricsConfiguration();
     final RunnerBuilder runnerBuilder =
@@ -169,7 +169,6 @@ public final class RunnerTest {
             .p2pListenPort(0)
             .maxPeers(3)
             .metricsSystem(noOpMetricsSystem)
-            .bannedNodeIds(emptySet())
             .staticNodes(emptySet());
 
     Runner runnerBehind = null;
@@ -178,7 +177,7 @@ public final class RunnerTest {
             .pantheonController(controllerAhead)
             .ethNetworkConfig(EthNetworkConfig.getNetworkConfig(DEV))
             .jsonRpcConfiguration(aheadJsonRpcConfiguration)
-            .graphQLRpcConfiguration(aheadGraphQLRpcConfiguration)
+            .graphQLConfiguration(aheadGraphQLConfiguration)
             .webSocketConfiguration(aheadWebSocketConfiguration)
             .metricsConfiguration(aheadMetricsConfiguration)
             .dataDir(dbAhead)
@@ -195,7 +194,7 @@ public final class RunnerTest {
               .build();
       final Path dataDirBehind = temp.newFolder().toPath();
       final JsonRpcConfiguration behindJsonRpcConfiguration = jsonRpcConfiguration();
-      final GraphQLRpcConfiguration behindGraphQLRpcConfiguration = graphQLRpcConfiguration();
+      final GraphQLConfiguration behindGraphQLConfiguration = graphQLConfiguration();
       final WebSocketConfiguration behindWebSocketConfiguration = wsRpcConfiguration();
       final MetricsConfiguration behindMetricsConfiguration = metricsConfiguration();
 
@@ -219,15 +218,13 @@ public final class RunnerTest {
       final EnodeURL enode = runnerAhead.getLocalEnode().get();
       final EthNetworkConfig behindEthNetworkConfiguration =
           new EthNetworkConfig(
-              EthNetworkConfig.jsonConfig(DEV),
-              DEV_NETWORK_ID,
-              Collections.singletonList(enode.toURI()));
+              EthNetworkConfig.jsonConfig(DEV), DEV_NETWORK_ID, Collections.singletonList(enode));
       runnerBehind =
           runnerBuilder
               .pantheonController(controllerBehind)
               .ethNetworkConfig(behindEthNetworkConfiguration)
               .jsonRpcConfiguration(behindJsonRpcConfiguration)
-              .graphQLRpcConfiguration(behindGraphQLRpcConfiguration)
+              .graphQLConfiguration(behindGraphQLConfiguration)
               .webSocketConfiguration(behindWebSocketConfiguration)
               .metricsConfiguration(behindMetricsConfiguration)
               .dataDir(temp.newFolder().toPath())
@@ -347,8 +344,8 @@ public final class RunnerTest {
     return configuration;
   }
 
-  private GraphQLRpcConfiguration graphQLRpcConfiguration() {
-    final GraphQLRpcConfiguration configuration = GraphQLRpcConfiguration.createDefault();
+  private GraphQLConfiguration graphQLConfiguration() {
+    final GraphQLConfiguration configuration = GraphQLConfiguration.createDefault();
     configuration.setPort(0);
     configuration.setEnabled(false);
     return configuration;

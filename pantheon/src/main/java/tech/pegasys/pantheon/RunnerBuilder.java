@@ -21,11 +21,11 @@ import tech.pegasys.pantheon.ethereum.chain.Blockchain;
 import tech.pegasys.pantheon.ethereum.core.PrivacyParameters;
 import tech.pegasys.pantheon.ethereum.core.Synchronizer;
 import tech.pegasys.pantheon.ethereum.eth.transactions.TransactionPool;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLDataFetcherContext;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLDataFetchers;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLProvider;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLRpcConfiguration;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLRpcHttpService;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLConfiguration;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLDataFetcherContext;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLDataFetchers;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLHttpService;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLProvider;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcHttpService;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcMethodsFactory;
@@ -58,7 +58,7 @@ import tech.pegasys.pantheon.ethereum.p2p.config.RlpxConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.config.SubProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.p2p.network.DefaultP2PNetwork;
 import tech.pegasys.pantheon.ethereum.p2p.peers.DefaultPeer;
-import tech.pegasys.pantheon.ethereum.p2p.peers.PeerBlacklist;
+import tech.pegasys.pantheon.ethereum.p2p.permissions.PeerPermissionsBlacklist;
 import tech.pegasys.pantheon.ethereum.p2p.wire.Capability;
 import tech.pegasys.pantheon.ethereum.p2p.wire.SubProtocol;
 import tech.pegasys.pantheon.ethereum.permissioning.AccountLocalConfigPermissioningController;
@@ -76,7 +76,6 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.enode.EnodeURL;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -103,10 +102,10 @@ public class RunnerBuilder {
   private int p2pListenPort;
   private int maxPeers;
   private JsonRpcConfiguration jsonRpcConfiguration;
-  private GraphQLRpcConfiguration graphQLRpcConfiguration;
+  private GraphQLConfiguration graphQLConfiguration;
   private WebSocketConfiguration webSocketConfiguration;
   private Path dataDir;
-  private Collection<String> bannedNodeIds;
+  private Collection<BytesValue> bannedNodeIds = new ArrayList<>();
   private MetricsConfiguration metricsConfiguration;
   private MetricsSystem metricsSystem;
   private Optional<PermissioningConfiguration> permissioningConfiguration = Optional.empty();
@@ -157,9 +156,8 @@ public class RunnerBuilder {
     return this;
   }
 
-  public RunnerBuilder graphQLRpcConfiguration(
-      final GraphQLRpcConfiguration graphQLRpcConfiguration) {
-    this.graphQLRpcConfiguration = graphQLRpcConfiguration;
+  public RunnerBuilder graphQLConfiguration(final GraphQLConfiguration graphQLConfiguration) {
+    this.graphQLConfiguration = graphQLConfiguration;
     return this;
   }
 
@@ -179,8 +177,8 @@ public class RunnerBuilder {
     return this;
   }
 
-  public RunnerBuilder bannedNodeIds(final Collection<String> bannedNodeIds) {
-    this.bannedNodeIds = bannedNodeIds;
+  public RunnerBuilder bannedNodeIds(final Collection<BytesValue> bannedNodeIds) {
+    this.bannedNodeIds.addAll(bannedNodeIds);
     return this;
   }
 
@@ -205,7 +203,7 @@ public class RunnerBuilder {
 
     final DiscoveryConfiguration discoveryConfiguration;
     if (discovery) {
-      final Collection<URI> bootstrap;
+      final List<EnodeURL> bootstrap;
       if (ethNetworkConfig.getBootNodes() == null) {
         bootstrap = DiscoveryConfiguration.MAINNET_BOOTSTRAP_NODES;
       } else {
@@ -215,7 +213,7 @@ public class RunnerBuilder {
           DiscoveryConfiguration.create()
               .setBindPort(p2pListenPort)
               .setAdvertisedHost(p2pAdvertisedHost)
-              .setBootstrapPeers(bootstrap);
+              .setBootnodes(bootstrap);
     } else {
       discoveryConfiguration = DiscoveryConfiguration.create().setActive(false);
     }
@@ -242,14 +240,10 @@ public class RunnerBuilder {
             .setClientId(PantheonInfo.version())
             .setSupportedProtocols(subProtocols);
 
-    final PeerBlacklist peerBlacklist =
-        new PeerBlacklist(
-            bannedNodeIds.stream().map(BytesValue::fromHexString).collect(Collectors.toSet()));
+    final PeerPermissionsBlacklist bannedNodes = PeerPermissionsBlacklist.create();
+    bannedNodeIds.forEach(bannedNodes::add);
 
-    final List<EnodeURL> bootnodesAsEnodeURLs =
-        discoveryConfiguration.getBootstrapPeers().stream()
-            .map(p -> EnodeURL.fromString(p.getEnodeURLString()))
-            .collect(Collectors.toList());
+    final List<EnodeURL> bootnodes = discoveryConfiguration.getBootnodes();
 
     final Optional<LocalPermissioningConfiguration> localPermissioningConfiguration =
         permissioningConfiguration.flatMap(PermissioningConfiguration::getLocalConfig);
@@ -263,7 +257,7 @@ public class RunnerBuilder {
     final BytesValue localNodeId = keyPair.getPublicKey().getEncodedBytes();
     final Optional<NodePermissioningController> nodePermissioningController =
         buildNodePermissioningController(
-            bootnodesAsEnodeURLs, synchronizer, transactionSimulator, localNodeId);
+            bootnodes, synchronizer, transactionSimulator, localNodeId);
 
     NetworkBuilder inactiveNetwork = (caps) -> new NoopP2PNetwork();
     NetworkBuilder activeNetwork =
@@ -272,7 +266,7 @@ public class RunnerBuilder {
                 .vertx(vertx)
                 .keyPair(keyPair)
                 .config(networkConfig)
-                .peerBlacklist(peerBlacklist)
+                .peerPermissions(bannedNodes)
                 .metricsSystem(metricsSystem)
                 .supportedCapabilities(caps)
                 .nodePermissioningController(nodePermissioningController)
@@ -291,7 +285,7 @@ public class RunnerBuilder {
     nodePermissioningController.ifPresent(
         n ->
             n.setInsufficientPeersPermissioningProvider(
-                new InsufficientPeersPermissioningProvider(network, bootnodesAsEnodeURLs)));
+                new InsufficientPeersPermissioningProvider(network, bootnodes)));
 
     final TransactionPool transactionPool = pantheonController.getTransactionPool();
     final MiningCoordinator miningCoordinator = pantheonController.getMiningCoordinator();
@@ -345,8 +339,8 @@ public class RunnerBuilder {
                   vertx, dataDir, jsonRpcConfiguration, metricsSystem, jsonRpcMethods));
     }
 
-    Optional<GraphQLRpcHttpService> graphQLRpcHttpService = Optional.empty();
-    if (graphQLRpcConfiguration.isEnabled()) {
+    Optional<GraphQLHttpService> graphQLHttpService = Optional.empty();
+    if (graphQLConfiguration.isEnabled()) {
       final GraphQLDataFetchers fetchers = new GraphQLDataFetchers(supportedCapabilities);
       final GraphQLDataFetcherContext dataFetcherContext =
           new GraphQLDataFetcherContext(
@@ -363,10 +357,10 @@ public class RunnerBuilder {
         throw new RuntimeException(ioe);
       }
 
-      graphQLRpcHttpService =
+      graphQLHttpService =
           Optional.of(
-              new GraphQLRpcHttpService(
-                  vertx, dataDir, graphQLRpcConfiguration, graphQL, dataFetcherContext));
+              new GraphQLHttpService(
+                  vertx, dataDir, graphQLConfiguration, graphQL, dataFetcherContext));
     }
 
     Optional<WebSocketService> webSocketService = Optional.empty();
@@ -417,7 +411,7 @@ public class RunnerBuilder {
         vertx,
         networkRunner,
         jsonRpcHttpService,
-        graphQLRpcHttpService,
+        graphQLHttpService,
         webSocketService,
         metricsService,
         pantheonController,

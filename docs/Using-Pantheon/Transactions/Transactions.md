@@ -3,9 +3,9 @@ description: Some use cases of creating transactions on a Pantheon network
 
 # Creating and Sending Transactions
 
-You can send signed transactions using the [`eth_sendRawTransaction`](../../Reference/JSON-RPC-API-Methods.md#eth_sendrawtransaction) JSON-RPC API method.
+You can send signed transactions using the [`eth_sendRawTransaction`](../../Reference/Pantheon-API-Methods.md#eth_sendrawtransaction) JSON-RPC API method.
 
-These examples describe how to create a signed raw transaction that can be passed to [`eth_sendRawTransaction`](../../Reference/JSON-RPC-API-Methods.md#eth_sendrawtransaction).
+These examples describe how to create a signed raw transaction that can be passed to [`eth_sendRawTransaction`](../../Reference/Pantheon-API-Methods.md#eth_sendrawtransaction).
 
 !!!tip
     To avoid exposing your private keys, create signed transactions offline.
@@ -20,6 +20,8 @@ The examples use the following libraries to create signed transactions:
     and tools (such as [MyEtherWallet](https://kb.myetherwallet.com/offline/making-offline-transaction-on-myetherwallet.html) 
     or [MyCrypto](https://mycrypto.com/)) can also be used to create signed transactions. 
 
+    [EthSigner](https://docs.ethsigner.pegasys.tech/en/latest/) provides transaction signing and implements [`eth_sendTransaction`](https://docs.ethsigner.pegasys.tech/en/latest/Using-EthSigner#eth_sendTransaction). 
+    
 Example Javascript scripts are provided to create signed raw transaction strings to:
  
 * [Send ether](#sending-ether)
@@ -37,12 +39,12 @@ the `run.sh` script.
 To create and display the transaction string, run the Javascript script.
 
 ```bash
-$ node create_signed_raw_transaction.js
+node create_signed_raw_transaction.js
 ```
 
 To send a signed transaction, run:
 ```bash
-$ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["raw_transaction_string"],"id":1}' <JSON-RPC-endpoint:port>
+curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["raw_transaction_string"],"id":1}' <JSON-RPC-endpoint:port>
 ```
 
 Where:
@@ -52,7 +54,7 @@ Where:
 
 !!!example
     ```bash
-    $ curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf86a808203e882520894f17f52151ebef6c7334fad080c5704d77216b732896c6b935b8bbd400000801ca08ce4a6c12f7f273321c5dc03910744f8fb11573fcce8140aa44486d385d22fb3a051f6bcc918bf3f12e06bfccfd1451bea5c517dffee0777ebd50caf177b17f383"],"id":1}' http://localhost:8545
+    curl -X POST --data '{"jsonrpc":"2.0","method":"eth_sendRawTransaction","params":["0xf86a808203e882520894f17f52151ebef6c7334fad080c5704d77216b732896c6b935b8bbd400000801ca08ce4a6c12f7f273321c5dc03910744f8fb11573fcce8140aa44486d385d22fb3a051f6bcc918bf3f12e06bfccfd1451bea5c517dffee0777ebd50caf177b17f383"],"id":1}' http://localhost:8545
     ```
 
 All accounts and private keys in the examples are from the `dev.json` genesis file in the `/pantheon/ethereum/core/src/main/resources` directory.
@@ -60,57 +62,58 @@ All accounts and private keys in the examples are from the `dev.json` genesis fi
 ## Sending Ether
  
 !!!example
-
-    The following is an example of JavaScript that displays a signed transaction string to send ether.
+    The following is an example of JavaScript that displays a signed raw transaction string to deploy a contract.
     
     ```javascript linenums="1"
-    const web3 = require('web3')
+    const Web3 = require('web3')
     const ethTx = require('ethereumjs-tx')
-    
+
     // web3 initialization - must point to the HTTP JSON-RPC endpoint
     const web3 = new Web3(new Web3.providers.HttpProvider('http://127.0.0.1:8545'))
-    
+
     // Sender address and private key
     // Second acccount in dev.json genesis file
     // Exclude 0x at the beginning of the private key
     const addressFrom = '0x627306090abaB3A6e1400e9345bC60c78a8BEf57'
     const privKey = Buffer.from('c87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3', 'hex')
-    
+
     // Receiver address and value to transfer
     // Third account in dev.json genesis file
     const addressTo = '0xf17f52151EbEF6C7334FAD080c5704D77216b732'
-    const valueInEther = 2000
-    
+    const valueInEther = '2000'
+
     // Get the address transaction count in order to specify the correct nonce
     txnCount = web3.eth.getTransactionCount(addressFrom, "pending");
-    
+
     // Create the transaction object
     var txObject = {
-        nonce: web3.toHex(txnCount),
-        gasPrice: web3.toHex(1000),
-        gasLimit: web3.toHex(21000),
+        nonce: web3.utils.toHex(txnCount),
+        gasPrice: web3.utils.toHex(1000),
+        gasLimit: web3.utils.toHex(21000),
         to: addressTo,
-        value: web3.toHex(web3.toWei(valueInEther, 'ether'))
+        value: web3.utils.toHex(web3.utils.toWei(valueInEther, 'ether'))
     };
-    
+
     // Sign the transaction with the private key
     const tx = new ethTx(txObject);
     tx.sign(privKey)
-    
+
     //Convert to raw transaction string
     const serializedTx = tx.serialize();
     const rawTxHex = '0x' + serializedTx.toString('hex');
-    
+
     console.log("Raw transaction string=" + rawTxHex)
     ```
+
 
 ## Deploying a Contract
 
 !!!example
+
     The following is an example of JavaScript that displays a signed raw transaction string to deploy a contract.
     
     ```javascript linenums="1"
-    const web3 = require('web3')
+    const Web3 = require('web3')
     const ethTx = require('ethereumjs-tx')
     
     // web3 initialization - must point to the HTTP JSON-RPC endpoint
@@ -129,9 +132,9 @@ All accounts and private keys in the examples are from the `dev.json` genesis fi
     txnCount = web3.eth.getTransactionCount(addressFrom, "pending");
     
     var txObject = {
-       nonce: web3.toHex(txnCount),
-       gasPrice: web3.toHex(1000),
-       gasLimit: web3.toHex(126165),
+       nonce: web3.utils.toHex(txnCount),
+       gasPrice: web3.utils.toHex(1000),
+       gasLimit: web3.utils.toHex(126165),
        data: contractData
     };
     
@@ -146,7 +149,7 @@ All accounts and private keys in the examples are from the `dev.json` genesis fi
 
 ## eth_call or eth_sendRawTransaction
 
-You can interact with contracts using [eth_call](../../Reference/JSON-RPC-API-Methods.md#eth_call) or [eth_sendRawTransaction](../../Reference/JSON-RPC-API-Methods.md#eth_sendrawtransaction). The table below compares the characteristics of both calls.
+You can interact with contracts using [eth_call](../../Reference/Pantheon-API-Methods.md#eth_call) or [eth_sendRawTransaction](../../Reference/Pantheon-API-Methods.md#eth_sendrawtransaction). The table below compares the characteristics of both calls.
 
 | eth_call                                                | eth_sendRawTransaction                                                                                                         |
 |---------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|

@@ -41,7 +41,7 @@ import tech.pegasys.pantheon.ethereum.core.PrivacyParameters;
 import tech.pegasys.pantheon.ethereum.core.Wei;
 import tech.pegasys.pantheon.ethereum.eth.sync.SyncMode;
 import tech.pegasys.pantheon.ethereum.eth.transactions.PendingTransactions;
-import tech.pegasys.pantheon.ethereum.graphqlrpc.GraphQLRpcConfiguration;
+import tech.pegasys.pantheon.ethereum.graphql.GraphQLConfiguration;
 import tech.pegasys.pantheon.ethereum.jsonrpc.JsonRpcConfiguration;
 import tech.pegasys.pantheon.ethereum.jsonrpc.RpcApi;
 import tech.pegasys.pantheon.ethereum.jsonrpc.websocket.WebSocketConfiguration;
@@ -60,7 +60,7 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -89,7 +89,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
   static final String PERMISSIONING_CONFIG_TOML = "/permissioning_config.toml";
 
   private static final JsonRpcConfiguration defaultJsonRpcConfiguration;
-  private static final GraphQLRpcConfiguration defaultGraphQLRpcConfiguration;
+  private static final GraphQLConfiguration DEFAULT_GRAPH_QL_CONFIGURATION;
   private static final WebSocketConfiguration defaultWebSocketConfiguration;
   private static final MetricsConfiguration defaultMetricsConfiguration;
   private static final int GENESIS_CONFIG_TEST_CHAINID = 3141592;
@@ -108,7 +108,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
   static {
     defaultJsonRpcConfiguration = JsonRpcConfiguration.createDefault();
 
-    defaultGraphQLRpcConfiguration = GraphQLRpcConfiguration.createDefault();
+    DEFAULT_GRAPH_QL_CONFIGURATION = GraphQLConfiguration.createDefault();
 
     defaultWebSocketConfiguration = WebSocketConfiguration.createDefault();
 
@@ -155,7 +155,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockRunnerBuilder).p2pListenPort(eq(30303));
     verify(mockRunnerBuilder).maxPeers(eq(25));
     verify(mockRunnerBuilder).jsonRpcConfiguration(eq(defaultJsonRpcConfiguration));
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(eq(defaultGraphQLRpcConfiguration));
+    verify(mockRunnerBuilder).graphQLConfiguration(eq(DEFAULT_GRAPH_QL_CONFIGURATION));
     verify(mockRunnerBuilder).webSocketConfiguration(eq(defaultWebSocketConfiguration));
     verify(mockRunnerBuilder).metricsConfiguration(eq(defaultMetricsConfiguration));
     verify(mockRunnerBuilder).ethNetworkConfig(ethNetworkArg.capture());
@@ -235,6 +235,22 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
+  public void callingWithNoBootnodesConfig() throws Exception {
+    assumeTrue(isFullInstantiation());
+
+    final URL configFile = this.getClass().getResource("/no_bootnodes.toml");
+    final Path toml = createTempFile("toml", Resources.toString(configFile, UTF_8));
+
+    parseCommand("--config-file", toml.toAbsolutePath().toString());
+
+    verify(mockRunnerBuilder).ethNetworkConfig(ethNetworkConfigArgumentCaptor.capture());
+    assertThat(ethNetworkConfigArgumentCaptor.getValue().getBootNodes()).isEmpty();
+
+    assertThat(commandErrorOutput.toString()).isEmpty();
+    assertThat(commandOutput.toString()).isEmpty();
+  }
+
+  @Test
   public void callingWithConfigOptionButInvalidValueTomlFileShouldDisplayHelp() throws Exception {
     assumeTrue(isFullInstantiation());
 
@@ -261,7 +277,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
             .replace("~/genesis.json", escapeTomlString(genesisFile.toString()));
     final Path toml = createTempFile("toml", updatedConfig.getBytes(UTF_8));
 
-    final Collection<RpcApi> expectedApis = asList(ETH, WEB3);
+    final List<RpcApi> expectedApis = asList(ETH, WEB3);
 
     final JsonRpcConfiguration jsonRpcConfiguration = JsonRpcConfiguration.createDefault();
     jsonRpcConfiguration.setEnabled(false);
@@ -270,10 +286,10 @@ public class PantheonCommandTest extends CommandTestAbstract {
     jsonRpcConfiguration.setCorsAllowedDomains(Collections.emptyList());
     jsonRpcConfiguration.setRpcApis(expectedApis);
 
-    final GraphQLRpcConfiguration graphQLRpcConfiguration = GraphQLRpcConfiguration.createDefault();
-    graphQLRpcConfiguration.setEnabled(false);
-    graphQLRpcConfiguration.setHost("6.7.8.9");
-    graphQLRpcConfiguration.setPort(6789);
+    final GraphQLConfiguration graphQLConfiguration = GraphQLConfiguration.createDefault();
+    graphQLConfiguration.setEnabled(false);
+    graphQLConfiguration.setHost("6.7.8.9");
+    graphQLConfiguration.setPort(6789);
 
     final WebSocketConfiguration webSocketConfiguration = WebSocketConfiguration.createDefault();
     webSocketConfiguration.setEnabled(false);
@@ -294,16 +310,16 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockRunnerBuilder).p2pListenPort(eq(1234));
     verify(mockRunnerBuilder).maxPeers(eq(42));
     verify(mockRunnerBuilder).jsonRpcConfiguration(eq(jsonRpcConfiguration));
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(eq(graphQLRpcConfiguration));
+    verify(mockRunnerBuilder).graphQLConfiguration(eq(graphQLConfiguration));
     verify(mockRunnerBuilder).webSocketConfiguration(eq(webSocketConfiguration));
     verify(mockRunnerBuilder).metricsConfiguration(eq(metricsConfiguration));
     verify(mockRunnerBuilder).build();
 
-    final Collection<URI> nodes =
+    final List<EnodeURL> nodes =
         asList(
-            URI.create("enode://" + VALID_NODE_ID + "@192.168.0.1:4567"),
-            URI.create("enode://" + VALID_NODE_ID + "@192.168.0.1:4567"),
-            URI.create("enode://" + VALID_NODE_ID + "@192.168.0.1:4567"));
+            EnodeURL.fromString("enode://" + VALID_NODE_ID + "@192.168.0.1:4567"),
+            EnodeURL.fromString("enode://" + VALID_NODE_ID + "@192.168.0.1:4567"),
+            EnodeURL.fromString("enode://" + VALID_NODE_ID + "@192.168.0.1:4567"));
     assertThat(ethNetworkConfigArgumentCaptor.getValue().getBootNodes()).isEqualTo(nodes);
 
     final EthNetworkConfig networkConfig =
@@ -597,7 +613,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     parseCommand("--config-file", configFile);
     final JsonRpcConfiguration jsonRpcConfiguration = JsonRpcConfiguration.createDefault();
 
-    final GraphQLRpcConfiguration graphQLRpcConfiguration = GraphQLRpcConfiguration.createDefault();
+    final GraphQLConfiguration graphQLConfiguration = GraphQLConfiguration.createDefault();
 
     final WebSocketConfiguration webSocketConfiguration = WebSocketConfiguration.createDefault();
 
@@ -614,7 +630,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockRunnerBuilder).p2pListenPort(eq(30303));
     verify(mockRunnerBuilder).maxPeers(eq(25));
     verify(mockRunnerBuilder).jsonRpcConfiguration(eq(jsonRpcConfiguration));
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(eq(graphQLRpcConfiguration));
+    verify(mockRunnerBuilder).graphQLConfiguration(eq(graphQLConfiguration));
     verify(mockRunnerBuilder).webSocketConfiguration(eq(webSocketConfiguration));
     verify(mockRunnerBuilder).metricsConfiguration(eq(metricsConfiguration));
     verify(mockRunnerBuilder).build();
@@ -866,7 +882,9 @@ public class PantheonCommandTest extends CommandTestAbstract {
 
   @Test
   public void p2pOptionsRequiresServiceToBeEnabled() {
-    final String[] nodes = {"0001", "0002", "0003"};
+    final String[] nodes = {
+      "6f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0"
+    };
 
     parseCommand(
         "--p2p-enabled",
@@ -941,6 +959,20 @@ public class PantheonCommandTest extends CommandTestAbstract {
     assertThat(commandErrorOutput.toString()).startsWith(expectedErrorOutputStart);
   }
 
+  @Test
+  public void callingWithBootnodeThatHasDiscoveryDisabledMustDisplayErrorAndUsage() {
+    final String validBootnode =
+        "enode://d2567893371ea5a6fa6371d483891ed0d129e79a8fc74d6df95a00a6545444cd4a6960bbffe0b4e2edcf35135271de57ee559c0909236bbc2074346ef2b5b47c@127.0.0.1:30304";
+    final String invalidBootnode =
+        "enode://02567893371ea5a6fa6371d483891ed0d129e79a8fc74d6df95a00a6545444cd4a6960bbffe0b4e2edcf35135271de57ee559c0909236bbc2074346ef2b5b47c@127.0.0.1:30303?discport=0";
+    final String bootnodesValue = validBootnode + "," + invalidBootnode;
+    parseCommand("--bootnodes", bootnodesValue);
+    assertThat(commandOutput.toString()).isEmpty();
+    final String expectedErrorOutputStart =
+        "Bootnodes must have discovery enabled. Invalid bootnodes: " + invalidBootnode + ".";
+    assertThat(commandErrorOutput.toString()).startsWith(expectedErrorOutputStart);
+  }
+
   // This test ensures non regression on https://pegasys1.atlassian.net/browse/PAN-2387
   @Test
   public void callingWithInvalidBootnodeAndEqualSignMustDisplayErrorAndUsage() {
@@ -953,6 +985,47 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
+  public void bootnodesOptionMustBeUsed() {
+    parseCommand("--bootnodes", String.join(",", validENodeStrings));
+
+    verify(mockRunnerBuilder).ethNetworkConfig(ethNetworkConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).build();
+
+    assertThat(ethNetworkConfigArgumentCaptor.getValue().getBootNodes())
+        .isEqualTo(
+            Stream.of(validENodeStrings).map(EnodeURL::fromString).collect(Collectors.toList()));
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
+  public void bannedNodeIdsOptionMustBeUsed() {
+    final BytesValue[] nodes = {
+      BytesValue.fromHexString(
+          "6f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0"),
+      BytesValue.fromHexString(
+          "7f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0"),
+      BytesValue.fromHexString(
+          "0x8f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0")
+    };
+
+    final String nodeIdsArg =
+        Arrays.asList(nodes).stream()
+            .map(BytesValue::toUnprefixedString)
+            .collect(Collectors.joining(","));
+    parseCommand("--banned-node-ids", nodeIdsArg);
+
+    verify(mockRunnerBuilder).bannedNodeIds(bytesValueCollectionCollector.capture());
+    verify(mockRunnerBuilder).build();
+
+    assertThat(bytesValueCollectionCollector.getValue().toArray()).isEqualTo(nodes);
+
+    assertThat(commandOutput.toString()).isEmpty();
+    assertThat(commandErrorOutput.toString()).isEmpty();
+  }
+
+  @Test
   public void callingWithBannedNodeidsOptionButNoValueMustDisplayErrorAndUsage() {
     parseCommand("--banned-node-ids");
     assertThat(commandOutput.toString()).isEmpty();
@@ -962,31 +1035,12 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
-  public void bootnodesOptionMustBeUsed() {
-    parseCommand("--bootnodes", String.join(",", validENodeStrings));
-
-    verify(mockRunnerBuilder).ethNetworkConfig(ethNetworkConfigArgumentCaptor.capture());
-    verify(mockRunnerBuilder).build();
-
-    assertThat(ethNetworkConfigArgumentCaptor.getValue().getBootNodes())
-        .isEqualTo(Stream.of(validENodeStrings).map(URI::create).collect(Collectors.toList()));
-
+  public void callingWithBannedNodeidsOptionWithInvalidValuesMustDisplayErrorAndUsage() {
+    parseCommand("--banned-node-ids", "0x10,20,30");
     assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString()).isEmpty();
-  }
-
-  @Test
-  public void bannedNodeIdsOptionMustBeUsed() {
-    final String[] nodes = {"0001", "0002", "0003"};
-    parseCommand("--banned-node-ids", String.join(",", nodes));
-
-    verify(mockRunnerBuilder).bannedNodeIds(stringListArgumentCaptor.capture());
-    verify(mockRunnerBuilder).build();
-
-    assertThat(stringListArgumentCaptor.getValue().toArray()).isEqualTo(nodes);
-
-    assertThat(commandOutput.toString()).isEmpty();
-    assertThat(commandErrorOutput.toString()).isEmpty();
+    final String expectedErrorOutputStart =
+        "Invalid ids supplied to '--banned-node-ids'. Expected 64 bytes in 0x10";
+    assertThat(commandErrorOutput.toString()).startsWith(expectedErrorOutputStart);
   }
 
   @Test
@@ -1205,26 +1259,26 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
-  public void graphQLRpcHttpEnabledPropertyDefaultIsFalse() {
+  public void graphQLHttpEnabledPropertyDefaultIsFalse() {
     parseCommand();
 
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(graphQLRpcConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).graphQLConfiguration(graphQLConfigArgumentCaptor.capture());
     verify(mockRunnerBuilder).build();
 
-    assertThat(graphQLRpcConfigArgumentCaptor.getValue().isEnabled()).isFalse();
+    assertThat(graphQLConfigArgumentCaptor.getValue().isEnabled()).isFalse();
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
   @Test
-  public void graphQLRpcHttpEnabledPropertyMustBeUsed() {
+  public void graphQLHttpEnabledPropertyMustBeUsed() {
     parseCommand("--graphql-http-enabled");
 
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(graphQLRpcConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).graphQLConfiguration(graphQLConfigArgumentCaptor.capture());
     verify(mockRunnerBuilder).build();
 
-    assertThat(graphQLRpcConfigArgumentCaptor.getValue().isEnabled()).isTrue();
+    assertThat(graphQLConfigArgumentCaptor.getValue().isEnabled()).isTrue();
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -1354,7 +1408,7 @@ public class PantheonCommandTest extends CommandTestAbstract {
   }
 
   @Test
-  public void graphQLRpcHttpHostAndPortOptionsMustBeUsed() {
+  public void graphQLHttpHostAndPortOptionsMustBeUsed() {
 
     final String host = "1.2.3.4";
     final int port = 1234;
@@ -1365,41 +1419,41 @@ public class PantheonCommandTest extends CommandTestAbstract {
         "--graphql-http-port",
         String.valueOf(port));
 
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(graphQLRpcConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).graphQLConfiguration(graphQLConfigArgumentCaptor.capture());
     verify(mockRunnerBuilder).build();
 
-    assertThat(graphQLRpcConfigArgumentCaptor.getValue().getHost()).isEqualTo(host);
-    assertThat(graphQLRpcConfigArgumentCaptor.getValue().getPort()).isEqualTo(port);
+    assertThat(graphQLConfigArgumentCaptor.getValue().getHost()).isEqualTo(host);
+    assertThat(graphQLConfigArgumentCaptor.getValue().getPort()).isEqualTo(port);
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
   @Test
-  public void graphQLRpcHttpHostMayBeLocalhost() {
+  public void graphQLHttpHostMayBeLocalhost() {
 
     final String host = "localhost";
     parseCommand("--graphql-http-enabled", "--graphql-http-host", host);
 
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(graphQLRpcConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).graphQLConfiguration(graphQLConfigArgumentCaptor.capture());
     verify(mockRunnerBuilder).build();
 
-    assertThat(graphQLRpcConfigArgumentCaptor.getValue().getHost()).isEqualTo(host);
+    assertThat(graphQLConfigArgumentCaptor.getValue().getHost()).isEqualTo(host);
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
   }
 
   @Test
-  public void graphQLRpcHttpHostMayBeIPv6() {
+  public void graphQLHttpHostMayBeIPv6() {
 
     final String host = "2600:DB8::8545";
     parseCommand("--graphql-http-enabled", "--graphql-http-host", host);
 
-    verify(mockRunnerBuilder).graphQLRpcConfiguration(graphQLRpcConfigArgumentCaptor.capture());
+    verify(mockRunnerBuilder).graphQLConfiguration(graphQLConfigArgumentCaptor.capture());
     verify(mockRunnerBuilder).build();
 
-    assertThat(graphQLRpcConfigArgumentCaptor.getValue().getHost()).isEqualTo(host);
+    assertThat(graphQLConfigArgumentCaptor.getValue().getHost()).isEqualTo(host);
 
     assertThat(commandOutput.toString()).isEmpty();
     assertThat(commandErrorOutput.toString()).isEmpty();
@@ -2188,7 +2242,8 @@ public class PantheonCommandTest extends CommandTestAbstract {
     verify(mockControllerBuilder).build();
 
     assertThat(networkArg.getValue().getBootNodes())
-        .isEqualTo(Stream.of(validENodeStrings).map(URI::create).collect(Collectors.toList()));
+        .isEqualTo(
+            Stream.of(validENodeStrings).map(EnodeURL::fromString).collect(Collectors.toList()));
     assertThat(networkArg.getValue().getNetworkId()).isEqualTo(1234567);
 
     assertThat(commandOutput.toString()).isEmpty();
@@ -2410,12 +2465,14 @@ public class PantheonCommandTest extends CommandTestAbstract {
             .nodeId(
                 "50203c6bfca6874370e71aecc8958529fd723feb05013dc1abca8fc1fff845c5259faba05852e9dfe5ce172a7d6e7c2a3a5eaa8b541c8af15ea5518bbff5f2fa")
             .ipAddress("127.0.0.1")
+            .useDefaultPorts()
             .build();
 
     final EnodeURL whiteListedNode =
         EnodeURL.builder()
             .nodeId(
                 "50203c6bfca6874370e71aecc8958529fd723feb05013dc1abca8fc1fff845c5259faba05852e9dfe5ce172a7d6e7c2a3a5eaa8b541c8af15ea5518bbff5f2fa")
+            .useDefaultPorts()
             .ipAddress("127.0.0.1")
             .listeningPort(30304)
             .build();

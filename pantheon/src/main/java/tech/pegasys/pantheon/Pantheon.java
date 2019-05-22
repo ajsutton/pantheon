@@ -18,9 +18,11 @@ import tech.pegasys.pantheon.cli.PantheonCommand;
 import tech.pegasys.pantheon.controller.PantheonController;
 import tech.pegasys.pantheon.ethereum.eth.EthereumWireProtocolConfiguration;
 import tech.pegasys.pantheon.ethereum.eth.sync.SynchronizerConfiguration;
+import tech.pegasys.pantheon.plugins.internal.PantheonPluginContextImpl;
 import tech.pegasys.pantheon.services.kvstore.RocksDbConfiguration;
 import tech.pegasys.pantheon.util.BlockImporter;
 
+import org.apache.logging.log4j.Logger;
 import picocli.CommandLine.RunLast;
 
 public final class Pantheon {
@@ -28,16 +30,20 @@ public final class Pantheon {
   private static final int ERROR_EXIT_CODE = 1;
 
   public static void main(final String... args) {
-
+    final Logger logger = getLogger();
+    Thread.setDefaultUncaughtExceptionHandler(
+        (thread, error) ->
+            logger.error("Uncaught exception in thread \"" + thread.getName() + "\"", error));
     final PantheonCommand pantheonCommand =
         new PantheonCommand(
-            getLogger(),
+            logger,
             new BlockImporter(),
             new RunnerBuilder(),
             new PantheonController.Builder(),
             new SynchronizerConfiguration.Builder(),
             EthereumWireProtocolConfiguration.builder(),
-            new RocksDbConfiguration.Builder());
+            new RocksDbConfiguration.Builder(),
+            new PantheonPluginContextImpl());
 
     pantheonCommand.parse(
         new RunLast().andExit(SUCCESS_EXIT_CODE),

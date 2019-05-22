@@ -157,7 +157,7 @@ The path to the genesis file.
 host-whitelist=["medomain.com", "meotherdomain.com"]
 ```
 
-Comma-separated list of hostnames to allow [access to the JSON-RPC API](../JSON-RPC-API/Using-JSON-RPC-API.md#host-whitelist). 
+Comma-separated list of hostnames to allow [access to the JSON-RPC API](../Pantheon-API/Using-JSON-RPC-API.md#host-whitelist). 
 By default, access from `localhost` and `127.0.0.1` is accepted. 
 
 !!!tip
@@ -355,7 +355,7 @@ Job name when in `push` mode. The default is `pantheon-client`.
 
 Account to which mining rewards are paid.
 You must specify a valid coinbase when you enable mining using the [`--miner-enabled`](#miner-enabled) 
-option or the [`miner_start`](JSON-RPC-API-Methods.md#miner_start) JSON RPC-API method.
+option or the [`miner_start`](Pantheon-API-Methods.md#miner_start) JSON RPC-API method.
 
 !!!note
     This option is ignored in networks using [Clique](../Consensus-Protocols/Clique.md) and [IBFT 2.0](../Consensus-Protocols/IBFT.md) consensus protocols. 
@@ -760,7 +760,7 @@ The default is: `ETH`, `NET`, `WEB3`.
 rpc-http-authentication-credentials-file="/home/me/me_node/auth.toml"
 ```
 
-[Credentials file](../JSON-RPC-API/Authentication.md#credentials-file) for JSON-RPC API [authentication](../JSON-RPC-API/Authentication.md). 
+[Credentials file](../Pantheon-API/Authentication.md#credentials-file) for JSON-RPC API [authentication](../Pantheon-API/Authentication.md). 
 
 !!!note
     This option is not used when running Pantheon from the [Docker image](../Getting-Started/Run-Docker-Image.md#credentials-files).
@@ -779,7 +779,7 @@ rpc-http-authentication-credentials-file="/home/me/me_node/auth.toml"
 rpc-http-authentication-enabled=true
 ```
 
-Set to `true` to require [authentication](../JSON-RPC-API/Authentication.md) for the HTTP JSON-RPC service.  
+Set to `true` to require [authentication](../Pantheon-API/Authentication.md) for the HTTP JSON-RPC service.  
 
 ### rpc-http-cors-origins
 
@@ -919,7 +919,7 @@ The default is: `ETH`, `NET`, `WEB3`.
 rpc-ws-authentication-credentials-file="/home/me/me_node/auth.toml"
 ```
 
-[Credentials file](../JSON-RPC-API/Authentication.md#credentials-file) for JSON-RPC API [authentication](../JSON-RPC-API/Authentication.md).
+[Credentials file](../Pantheon-API/Authentication.md#credentials-file) for JSON-RPC API [authentication](../Pantheon-API/Authentication.md).
 
 !!!note
     This option is not used when running Pantheon from the [Docker image](../Getting-Started/Run-Docker-Image.md#credentials-files). 
@@ -938,10 +938,10 @@ rpc-ws-authentication-credentials-file="/home/me/me_node/auth.toml"
 rpc-ws-authentication-enabled=true
 ```
 
-Set to `true` to require [authentication](../JSON-RPC-API/Authentication.md) for the WebSockets JSON-RPC service.
+Set to `true` to require [authentication](../Pantheon-API/Authentication.md) for the WebSockets JSON-RPC service.
 
 !!! note 
-    `wscat` does not support headers. [Authentication](../JSON-RPC-API/Authentication.md) requires an authentication token to be passed in the 
+    `wscat` does not support headers. [Authentication](../Pantheon-API/Authentication.md) requires an authentication token to be passed in the 
     request header. To use authentication with WebSockets, an app that supports headers is required. 
 
 ### rpc-ws-enabled
@@ -1016,6 +1016,22 @@ tx-pool-max-size="2000"
 ```
 
 Maximum number of transactions kept in the transaction pool. Default is 4096. 
+
+### tx-pool-retention-hours
+
+```bash tab="Syntax"
+--tx-pool-retention-hours=<INTEGER>
+```
+
+```bash tab="Example Command Line"
+--tx-pool-retention-hours=5
+```
+
+```bash tab="Example Configuration File"
+tx-pool-retention-hours="5"
+```
+
+Maximum period in hours to retain pending transactions in the transaction pool. Default is 13. 
 
 ### help
 
@@ -1096,11 +1112,11 @@ This command provides blocks related actions.
 ### import
 
 ```bash tab="Syntax"
-$ pantheon blocks import --from=<block-file>
+pantheon blocks import --from=<block-file>
 ```
 
 ```bash tab="Example"
-$ pantheon blocks import --from=/home/me/me_project/mainnet.blocks
+pantheon blocks import --from=/home/me/me_project/mainnet.blocks
 ```
 
 Imports blocks from the specified file into the blockchain database
@@ -1112,15 +1128,15 @@ This command provides node public key related actions.
 ### export
 
 ```bash tab="Syntax"
-$ pantheon public-key export [--to=<key-file>]
+pantheon public-key export [--to=<key-file>]
 ```
 
 ```bash tab="Example (to standard output)"
-$ pantheon --data-path=<node data path> public-key export
+pantheon --data-path=<node data path> public-key export
 ```
 
 ```bash tab="Example (to file)"
-$ pantheon --data-path=<node data path> public-key export --to=/home/me/me_project/not_precious_pub_key
+pantheon --data-path=<node data path> public-key export --to=/home/me/me_project/not_precious_pub_key
 ```
 
 Outputs the node public key to standard output or writes it to the specified file if 
@@ -1129,15 +1145,15 @@ Outputs the node public key to standard output or writes it to the specified fil
 ### export-address
 
 ```bash tab="Syntax"
-$ pantheon public-key export-address [--to=<address-file>]
+pantheon public-key export-address [--to=<address-file>]
 ```
 
 ```bash tab="Example (to standard output)"
-$ pantheon --data-path=<node data path> public-key export-address
+pantheon --data-path=<node data path> public-key export-address
 ```
 
 ```bash tab="Example (to file)"
-$ pantheon --data-path=<node data path> public-key export-address --to=/home/me/me_project/me_node_address
+pantheon --data-path=<node data path> public-key export-address --to=/home/me/me_project/me_node_address
 ```
 
 Outputs the node public key address to standard output or writes it to the specified file if  
@@ -1149,15 +1165,15 @@ This command provides password related actions.
 
 ### hash
 
-This command generates the hash of a given password. Include the hash in the [credentials file](../JSON-RPC-API/Authentication.md#credentials-file)
- for JSON-RPC API [authentication](../JSON-RPC-API/Authentication.md). 
+This command generates the hash of a given password. Include the hash in the [credentials file](../Pantheon-API/Authentication.md#credentials-file)
+ for JSON-RPC API [authentication](../Pantheon-API/Authentication.md). 
 
 ```bash tab="Syntax"
-$ pantheon password hash --password=<my-password>
+pantheon password hash --password=<my-password>
 ```
 
 ```bash tab="Example"
-$ pantheon password hash --password=myPassword123
+pantheon password hash --password=myPassword123
 ```
 
 ### rlp
@@ -1169,15 +1185,15 @@ This command provides RLP related actions.
 This command encodes a typed JSON value from a file or from the standard input into an RLP hexadecimal string.
 
 ```bash tab="Syntax"
-$ pantheon rlp encode [--from=<FILE>] [--to=<FILE>] [--type=<type>]
+pantheon rlp encode [--from=<FILE>] [--to=<FILE>] [--type=<type>]
 ```
 
 ```bash tab="File Example"
-$ pantheon rlp encode --from=ibft_extra_data.json --to=extra_data_for_ibft_genesis.txt --type=IBFT_EXTRA_DATA
+pantheon rlp encode --from=ibft_extra_data.json --to=extra_data_for_ibft_genesis.txt --type=IBFT_EXTRA_DATA
 ```
 
 ```bash tab="Standart Input/Output Example"
-$ cat extra_data.json | pantheon rlp encode > rlp.txt
+cat extra_data.json | pantheon rlp encode > rlp.txt
 ```
 
 The `IBFT_EXTRA_DATA` type is the only type supported for RLP encoding.
