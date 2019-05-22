@@ -65,8 +65,7 @@ public class Pruner {
     }
     final BlockHeader header = event.getBlock().getHeader();
     // Only kick off pruning every million blocks.
-    if (header.getNumber() - markedBlockNumber > 1_000_000
-        && state.compareAndSet(State.IDLE, State.MARKING)) {
+    if (state.compareAndSet(State.IDLE, State.MARKING)) {
       /* TODO: We don't currently handle re-orgs.
       Will need to:
        1. start listening for new nodes at this point
