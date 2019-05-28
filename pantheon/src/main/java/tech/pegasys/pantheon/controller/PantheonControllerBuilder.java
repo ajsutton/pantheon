@@ -206,7 +206,7 @@ public abstract class PantheonControllerBuilder<C> {
                 metricsSystem),
             protocolContext,
             1000);
-        addShutdownAction(pruner::stop);
+    addShutdownAction(pruner::stop);
 
     final boolean fastSyncEnabled = syncConfig.syncMode().equals(SyncMode.FAST);
     ethProtocolManager = createEthProtocolManager(protocolContext, fastSyncEnabled);
