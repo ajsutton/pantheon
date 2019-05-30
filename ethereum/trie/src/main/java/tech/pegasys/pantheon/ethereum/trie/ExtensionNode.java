@@ -20,27 +20,34 @@ import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.bytes.BytesValues;
 
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
+
+import com.google.common.base.Suppliers;
 
 class ExtensionNode<V> implements Node<V> {
   private final BytesValue path;
   private final Node<V> child;
   private final NodeFactory<V> nodeFactory;
-  private WeakReference<BytesValue> rlp;
-  private SoftReference<Bytes32> hash;
+  private final Supplier<BytesValue> rlp;
+  private final Supplier<Bytes32> hash;
   private boolean dirty = false;
 
-  ExtensionNode(final BytesValue path, final Node<V> child, final NodeFactory<V> nodeFactory) {
+  ExtensionNode(
+      final BytesValue path,
+      final Node<V> child,
+      final NodeFactory<V> nodeFactory,
+      final Optional<BytesValue> rlp) {
     assert (path.size() > 0);
     assert (path.get(path.size() - 1) != CompactEncoding.LEAF_TERMINATOR)
         : "Extension path ends in a leaf terminator";
     this.path = path;
     this.child = child;
     this.nodeFactory = nodeFactory;
+    this.rlp = Suppliers.memoize(() -> rlp.orElseGet(this::writeRlp));
+    this.hash = Suppliers.memoize(() -> keccak256(getRlp()));
   }
 
   @Override
@@ -74,20 +81,16 @@ class ExtensionNode<V> implements Node<V> {
 
   @Override
   public BytesValue getRlp() {
-    if (rlp != null) {
-      final BytesValue encoded = rlp.get();
-      if (encoded != null) {
-        return encoded;
-      }
-    }
+    return rlp.get();
+  }
+
+  private BytesValue writeRlp() {
     final BytesValueRLPOutput out = new BytesValueRLPOutput();
     out.startList();
     out.writeBytesValue(CompactEncoding.encode(path));
     out.writeRLPUnsafe(child.getRlpRef());
     out.endList();
-    final BytesValue encoded = out.encoded();
-    rlp = new WeakReference<>(encoded);
-    return encoded;
+    return out.encoded();
   }
 
   @Override
@@ -101,16 +104,7 @@ class ExtensionNode<V> implements Node<V> {
 
   @Override
   public Bytes32 getHash() {
-    if (hash != null) {
-      final Bytes32 hashed = hash.get();
-      if (hashed != null) {
-        return hashed;
-      }
-    }
-    final BytesValue rlp = getRlp();
-    final Bytes32 hashed = keccak256(rlp);
-    hash = new SoftReference<>(hashed);
-    return hashed;
+    return hash.get();
   }
 
   public Node<V> replaceChild(final Node<V> updatedChild) {

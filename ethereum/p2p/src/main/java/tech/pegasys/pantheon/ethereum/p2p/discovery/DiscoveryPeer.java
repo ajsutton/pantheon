@@ -47,7 +47,8 @@ public class DiscoveryPeer extends DefaultPeer {
   }
 
   public static DiscoveryPeer readFrom(final RLPInput in) {
-    final int size = in.enterList();
+    in.enterList();
+    final int size = in.countRemainingListItems();
 
     // The last list item will be the id, pass size - 1 to Endpoint
     final Endpoint endpoint = Endpoint.decodeInline(in, size - 1);

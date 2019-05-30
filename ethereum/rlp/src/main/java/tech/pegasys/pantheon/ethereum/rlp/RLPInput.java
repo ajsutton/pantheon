@@ -101,11 +101,12 @@ public interface RLPInput {
    * If the next item to read is a list, enter that list, placing the input on the first item of
    * that list.
    *
-   * @return The number of item of the entered list.
    * @throws RLPException if the next item to read from this input is not a list, or the input is
    *     corrupted.
    */
-  int enterList();
+  void enterList();
+
+  int countRemainingListItems();
 
   /**
    * Exits the current list after all its items have been consumed.
@@ -328,6 +329,8 @@ public interface RLPInput {
    */
   BytesValue raw();
 
+  BytesValue enterListAndReturnRlp();
+
   /** Resets this RLP input to the start. */
   void reset();
 
@@ -341,7 +344,8 @@ public interface RLPInput {
    *     applying {@code valueReader} to read elements of the list.
    */
   default <T> List<T> readList(final Function<RLPInput, T> valueReader) {
-    final int size = enterList();
+    enterList();
+    final int size = countRemainingListItems();
     final List<T> res = new ArrayList<>(size);
     for (int i = 0; i < size; i++) {
       try {

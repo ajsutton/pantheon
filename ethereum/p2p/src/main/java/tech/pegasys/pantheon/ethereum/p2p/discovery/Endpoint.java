@@ -188,7 +188,8 @@ public class Endpoint {
    * @return The decoded endpoint.
    */
   public static Endpoint decodeStandalone(final RLPInput in) {
-    final int size = in.enterList();
+    in.enterList();
+    final int size = in.countRemainingListItems();
     final Endpoint endpoint = decodeInline(in, size);
     in.leaveList();
     return endpoint;

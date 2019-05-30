@@ -31,7 +31,7 @@ class DefaultNodeFactory<V> implements NodeFactory<V> {
 
   @Override
   public Node<V> createExtension(final BytesValue path, final Node<V> child) {
-    return new ExtensionNode<>(path, child, this);
+    return new ExtensionNode<>(path, child, this, Optional.empty());
   }
 
   @SuppressWarnings("unchecked")
@@ -59,11 +59,11 @@ class DefaultNodeFactory<V> implements NodeFactory<V> {
 
   @Override
   public Node<V> createBranch(final ArrayList<Node<V>> children, final Optional<V> value) {
-    return new BranchNode<>(children, value, this, valueSerializer);
+    return new BranchNode<>(children, value, this, valueSerializer, Optional.empty());
   }
 
   @Override
   public Node<V> createLeaf(final BytesValue path, final V value) {
-    return new LeafNode<>(path, value, this, valueSerializer);
+    return new LeafNode<>(path, value, this, valueSerializer, Optional.empty());
   }
 }

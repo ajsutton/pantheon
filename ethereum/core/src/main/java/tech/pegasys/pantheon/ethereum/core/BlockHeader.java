@@ -18,6 +18,7 @@ import tech.pegasys.pantheon.util.bytes.BytesValue;
 import tech.pegasys.pantheon.util.uint.UInt256;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import com.google.common.base.Suppliers;
@@ -36,6 +37,7 @@ public class BlockHeader extends SealableBlockHeader {
   private final Supplier<Hash> hash;
 
   private final Supplier<ParsedExtraData> parsedExtraData;
+  private final Optional<BytesValue> rlp;
 
   public BlockHeader(
       final Hash parentHash,
@@ -54,6 +56,44 @@ public class BlockHeader extends SealableBlockHeader {
       final Hash mixHash,
       final long nonce,
       final BlockHeaderFunctions blockHeaderFunctions) {
+    this(
+        parentHash,
+        ommersHash,
+        coinbase,
+        stateRoot,
+        transactionsRoot,
+        receiptsRoot,
+        logsBloom,
+        difficulty,
+        number,
+        gasLimit,
+        gasUsed,
+        timestamp,
+        extraData,
+        mixHash,
+        nonce,
+        blockHeaderFunctions,
+        Optional.empty());
+  }
+
+  private BlockHeader(
+      final Hash parentHash,
+      final Hash ommersHash,
+      final Address coinbase,
+      final Hash stateRoot,
+      final Hash transactionsRoot,
+      final Hash receiptsRoot,
+      final LogsBloomFilter logsBloom,
+      final UInt256 difficulty,
+      final long number,
+      final long gasLimit,
+      final long gasUsed,
+      final long timestamp,
+      final BytesValue extraData,
+      final Hash mixHash,
+      final long nonce,
+      final BlockHeaderFunctions blockHeaderFunctions,
+      final Optional<BytesValue> rlp) {
     super(
         parentHash,
         ommersHash,
@@ -72,6 +112,7 @@ public class BlockHeader extends SealableBlockHeader {
     this.nonce = nonce;
     this.hash = Suppliers.memoize(() -> blockHeaderFunctions.hash(this));
     this.parsedExtraData = Suppliers.memoize(() -> blockHeaderFunctions.parseExtraData(this));
+    this.rlp = rlp;
   }
 
   /**
@@ -115,6 +156,10 @@ public class BlockHeader extends SealableBlockHeader {
    * @param out The RLP output to write to
    */
   public void writeTo(final RLPOutput out) {
+    if (rlp.isPresent()) {
+      out.writeRLPUnsafe(rlp.get());
+      return;
+    }
     out.startList();
 
     out.writeBytesValue(parentHash);
@@ -138,7 +183,7 @@ public class BlockHeader extends SealableBlockHeader {
 
   public static BlockHeader readFrom(
       final RLPInput input, final BlockHeaderFunctions blockHeaderFunctions) {
-    input.enterList();
+    final BytesValue headerRlp = input.enterListAndReturnRlp();
     final BlockHeader blockHeader =
         new BlockHeader(
             Hash.wrap(input.readBytes32()),
@@ -156,7 +201,8 @@ public class BlockHeader extends SealableBlockHeader {
             input.readBytesValue(),
             Hash.wrap(input.readBytes32()),
             input.readLong(),
-            blockHeaderFunctions);
+            blockHeaderFunctions,
+            Optional.of(headerRlp));
     input.leaveList();
     return blockHeader;
   }

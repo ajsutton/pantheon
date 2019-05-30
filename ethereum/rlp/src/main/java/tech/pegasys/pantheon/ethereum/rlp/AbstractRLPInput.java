@@ -436,19 +436,19 @@ abstract class AbstractRLPInput implements RLPInput {
   }
 
   @Override
-  public int enterList() {
-    return enterList(false);
+  public BytesValue enterListAndReturnRlp() {
+    final long listStart = currentItem;
+    enterList();
+
+    return inputSlice(listStart, (int) (endOfListOffset[depth - 1] - listStart));
   }
 
   /**
    * Enters the list, but does not return the number of item of the entered list. This prevents
    * bouncing all around the file to read values that are probably not even used.
-   *
-   * @see #enterList()
-   * @param skipCount true if the element count is not required.
-   * @return -1 if skipCount==true, otherwise, the number of item of the entered list.
    */
-  public int enterList(final boolean skipCount) {
+  @Override
+  public void enterList() {
     if (currentItem >= size) {
       throw error("Cannot enter a lists, input is fully consumed");
     }
@@ -471,20 +471,25 @@ abstract class AbstractRLPInput implements RLPInput {
     }
 
     endOfListOffset[depth - 1] = listEnd;
-    int count = -1;
-
-    if (!skipCount) {
-      // Count list elements from first one.
-      count = 0;
-      setTo(listStart);
-      while (currentItem < listEnd) {
-        ++count;
-        setTo(nextItem());
-      }
-    }
 
     // And lastly reset on the list first element before returning
     setTo(listStart);
+  }
+
+  @Override
+  public int countRemainingListItems() {
+    if (depth == 0) {
+      throw error("Can't count list items when not in a list");
+    }
+    final long startingPoint = currentItem;
+    final long listEnd = endOfListOffset[depth - 1];
+    int count = 0;
+    while (currentItem < listEnd) {
+      count++;
+      setTo(nextItem());
+    }
+
+    setTo(startingPoint);
     return count;
   }
 

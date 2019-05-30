@@ -19,30 +19,34 @@ import tech.pegasys.pantheon.ethereum.rlp.RLP;
 import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
-import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
+
+import com.google.common.base.Suppliers;
 
 class LeafNode<V> implements Node<V> {
   private final BytesValue path;
   private final V value;
   private final NodeFactory<V> nodeFactory;
   private final Function<V, BytesValue> valueSerializer;
-  private WeakReference<BytesValue> rlp;
-  private SoftReference<Bytes32> hash;
+  private Supplier<BytesValue> rlp;
+  private Supplier<Bytes32> hash;
   private boolean dirty = false;
 
   LeafNode(
       final BytesValue path,
       final V value,
       final NodeFactory<V> nodeFactory,
-      final Function<V, BytesValue> valueSerializer) {
+      final Function<V, BytesValue> valueSerializer,
+      final Optional<BytesValue> rlp) {
     this.path = path;
     this.value = value;
     this.nodeFactory = nodeFactory;
     this.valueSerializer = valueSerializer;
+    this.rlp = Suppliers.memoize(() -> rlp.orElseGet(this::writeRlp));
+    this.hash = Suppliers.memoize(() -> keccak256(getRlp()));
   }
 
   @Override
@@ -72,21 +76,16 @@ class LeafNode<V> implements Node<V> {
 
   @Override
   public BytesValue getRlp() {
-    if (rlp != null) {
-      final BytesValue encoded = rlp.get();
-      if (encoded != null) {
-        return encoded;
-      }
-    }
+    return rlp.get();
+  }
 
+  private BytesValue writeRlp() {
     final BytesValueRLPOutput out = new BytesValueRLPOutput();
     out.startList();
     out.writeBytesValue(CompactEncoding.encode(path));
     out.writeBytesValue(valueSerializer.apply(value));
     out.endList();
-    final BytesValue encoded = out.encoded();
-    rlp = new WeakReference<>(encoded);
-    return encoded;
+    return out.encoded();
   }
 
   @Override
@@ -100,15 +99,7 @@ class LeafNode<V> implements Node<V> {
 
   @Override
   public Bytes32 getHash() {
-    if (hash != null) {
-      final Bytes32 hashed = hash.get();
-      if (hashed != null) {
-        return hashed;
-      }
-    }
-    final Bytes32 hashed = keccak256(getRlp());
-    hash = new SoftReference<>(hashed);
-    return hashed;
+    return hash.get();
   }
 
   @Override

@@ -199,7 +199,8 @@ public class BytesValueRLPInputTest {
   public void emptyList() {
     final RLPInput in = RLP.input(h("0xc0"));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(0);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(0);
     assertThat(in.isDone()).isFalse();
     in.leaveList();
     assertThat(in.isDone()).isTrue();
@@ -218,7 +219,8 @@ public class BytesValueRLPInputTest {
     final RLPInput in = RLP.input(h("0xc22c3b"));
 
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(2);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(2);
     assertThat(in.readByte()).isEqualTo((byte) 0x2c);
     assertThat(in.readByte()).isEqualTo((byte) 0x3b);
     in.leaveList();
@@ -231,7 +233,8 @@ public class BytesValueRLPInputTest {
 
     assertThat(in.isDone()).isFalse();
     assertThat(in.readIntScalar()).isEqualTo(2);
-    assertThat(in.enterList()).isEqualTo(2);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(2);
     assertThat(in.readByte()).isEqualTo((byte) 0x2c);
     assertThat(in.readByte()).isEqualTo((byte) 0x3b);
     in.leaveList();
@@ -242,7 +245,8 @@ public class BytesValueRLPInputTest {
   public void simpleShortListUpperBoundary() {
     final RLPInput in = RLP.input(h("0xf7" + times("3c", 55)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(55);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(55);
     for (int i = 0; i < 55; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -254,7 +258,8 @@ public class BytesValueRLPInputTest {
   public void simpleLongListLowerBoundary() {
     final RLPInput in = RLP.input(h("0xf838" + times("3c", 56)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(56);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(56);
     for (int i = 0; i < 56; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -266,7 +271,8 @@ public class BytesValueRLPInputTest {
   public void simpleLongListBoundaryCase_1() {
     final RLPInput in = RLP.input(h("0xf8ff" + times("3c", 255)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(255);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(255);
     for (int i = 0; i < 255; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -278,7 +284,8 @@ public class BytesValueRLPInputTest {
   public void simpleLongListBoundaryCase_2() {
     final RLPInput in = RLP.input(h("0xf90100" + times("3c", 256)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(256);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(256);
     for (int i = 0; i < 256; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -290,7 +297,8 @@ public class BytesValueRLPInputTest {
   public void simpleLongListBoundaryCase_3() {
     final RLPInput in = RLP.input(h("0xf9ffff" + times("3c", 65535)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(65535);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(65535);
     for (int i = 0; i < 65535; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -302,7 +310,8 @@ public class BytesValueRLPInputTest {
   public void simpleLongListBoundaryCase_4() {
     final RLPInput in = RLP.input(h("0xfa010000" + times("3c", 65536)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(65536);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(65536);
     for (int i = 0; i < 65536; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -314,7 +323,8 @@ public class BytesValueRLPInputTest {
   public void simpleLongListBoundaryCase_5() {
     final RLPInput in = RLP.input(h("0xfaffffff" + times("3c", 16777215)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(16777215);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(16777215);
     for (int i = 0; i < 16777215; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -328,7 +338,8 @@ public class BytesValueRLPInputTest {
     // will be not be real world scenarios.
     final RLPInput in = RLP.input(h("0xfb01000000" + times("3c", 16777216)));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(16777216);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(16777216);
     for (int i = 0; i < 16777216; i++) {
       assertThat(in.readByte()).isEqualTo((byte) 0x3c);
     }
@@ -340,7 +351,8 @@ public class BytesValueRLPInputTest {
   public void simpleListwithBytesValue() {
     final RLPInput in = RLP.input(h("0xc28180"));
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(1);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(1);
     assertThat(in.readBytesValue()).isEqualTo(h("0x80"));
     in.leaveList();
     assertThat(in.isDone()).isTrue();
@@ -351,9 +363,11 @@ public class BytesValueRLPInputTest {
     final RLPInput in = RLP.input(h("0xc52cc203123b"));
 
     assertThat(in.isDone()).isFalse();
-    assertThat(in.enterList()).isEqualTo(3);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(3);
     assertThat(in.readByte()).isEqualTo((byte) 0x2c);
-    assertThat(in.enterList()).isEqualTo(2);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(2);
     assertThat(in.readByte()).isEqualTo((byte) 0x03);
     assertThat(in.readByte()).isEqualTo((byte) 0x12);
     in.leaveList();
@@ -377,9 +391,12 @@ public class BytesValueRLPInputTest {
     final RLPInput el = RLP.input(emptyList);
     assertThat(el.readAsRlp().raw()).isEqualTo(emptyList);
     el.reset();
-    assertThat(el.readAsRlp().enterList()).isEqualTo(0);
+    final RLPInput rlpInput = el.readAsRlp();
+    rlpInput.enterList();
+    assertThat(rlpInput.countRemainingListItems()).isEqualTo(0);
     el.reset();
-    assertThat(el.enterList()).isEqualTo(0);
+    el.enterList();
+    assertThat(el.countRemainingListItems()).isEqualTo(0);
 
     final BytesValue nestedList =
         RLP.encode(
@@ -434,13 +451,16 @@ public class BytesValueRLPInputTest {
   public void reset() {
     final RLPInput in = RLP.input(h("0xc80102c51112c22122"));
     for (int i = 0; i < 100; i++) {
-      assertThat(in.enterList()).isEqualTo(3);
+      in.enterList();
+      assertThat(in.countRemainingListItems()).isEqualTo(3);
       assertThat(in.readByte()).isEqualTo((byte) 0x01);
       assertThat(in.readByte()).isEqualTo((byte) 0x02);
-      assertThat(in.enterList()).isEqualTo(3);
+      in.enterList();
+      assertThat(in.countRemainingListItems()).isEqualTo(3);
       assertThat(in.readByte()).isEqualTo((byte) 0x11);
       assertThat(in.readByte()).isEqualTo((byte) 0x12);
-      assertThat(in.enterList()).isEqualTo(2);
+      in.enterList();
+      assertThat(in.countRemainingListItems()).isEqualTo(2);
       assertThat(in.readByte()).isEqualTo((byte) 0x21);
       assertThat(in.readByte()).isEqualTo((byte) 0x22);
       in.reset();
@@ -450,7 +470,8 @@ public class BytesValueRLPInputTest {
   @Test
   public void ignoreListTail() {
     final RLPInput in = RLP.input(h("0xc80102c51112c22122"));
-    assertThat(in.enterList()).isEqualTo(3);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(3);
     assertThat(in.readByte()).isEqualTo((byte) 0x01);
     in.leaveList(true);
   }
@@ -458,7 +479,8 @@ public class BytesValueRLPInputTest {
   @Test
   public void leaveListEarly() {
     final RLPInput in = RLP.input(h("0xc80102c51112c22122"));
-    assertThat(in.enterList()).isEqualTo(3);
+    in.enterList();
+    assertThat(in.countRemainingListItems()).isEqualTo(3);
     assertThat(in.readByte()).isEqualTo((byte) 0x01);
     assertThatThrownBy(() -> in.leaveList(false))
         .isInstanceOf(RLPException.class)
@@ -630,5 +652,35 @@ public class BytesValueRLPInputTest {
   public void decodeValueWithLeadingZerosAsBytesValue() {
     RLPInput in = RLP.input(h("0x8800000000000000D0"));
     assertThat(BytesValues.extractLong(in.readBytesValue())).isEqualTo(208);
+  }
+
+  @Test
+  public void shouldEnterListAndGetRlp() {
+    final BytesValueRLPOutput out = new BytesValueRLPOutput();
+    out.startList();
+    out.writeLong(10);
+    out.writeIntScalar(12);
+    out.startList();
+    out.writeBytesValue(h("0xABCD"));
+    out.endList();
+    out.writeBytesValue(h("0x1234"));
+    out.endList();
+
+    final BytesValue fullRlp = out.encoded();
+
+    final RLPInput in = RLP.input(fullRlp);
+    assertThat(in.enterListAndReturnRlp()).isEqualTo(fullRlp);
+    assertThat(in.readLong()).isEqualTo(10);
+    assertThat(in.readIntScalar()).isEqualTo(12);
+
+    final RLPInput nestedList = RLP.input(in.enterListAndReturnRlp());
+    nestedList.enterList();
+    assertThat(nestedList.readBytesValue()).isEqualTo(h("0xABCD"));
+    nestedList.leaveList();
+
+    assertThat(in.readBytesValue()).isEqualTo(h("0xABCD"));
+    in.leaveList();
+    assertThat(in.readBytesValue()).isEqualTo(h("0x1234"));
+    in.leaveList();
   }
 }

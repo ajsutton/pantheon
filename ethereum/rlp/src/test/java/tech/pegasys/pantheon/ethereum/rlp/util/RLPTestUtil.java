@@ -46,9 +46,12 @@ public class RLPTestUtil {
       return in.readBytesValue();
     }
 
-    final int size = in.enterList();
+    in.enterList();
+    final int size = in.countRemainingListItems();
     final List<Object> l = new ArrayList<>(size);
-    for (int i = 0; i < size; i++) l.add(decode(in));
+    for (int i = 0; i < size; i++) {
+      l.add(decode(in));
+    }
     in.leaveList();
     return l;
   }
