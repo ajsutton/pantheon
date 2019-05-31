@@ -106,6 +106,25 @@ public interface RLPInput {
    */
   void enterList();
 
+  /**
+   * If the next item to read is a list, enter that list, placing the input on the first item of
+   * that list. The RLP for the entire list is returned. This is primarily used to store the
+   * serialized form of items which have been extracted from a larger message. For example the RLP
+   * for a single BlockHeader (which is itself a list) could be stored from within a GetBlockHeaders
+   * response containing multiple headers.
+   *
+   * @return the RLP for the entire list.
+   * @throws RLPException if the next item to read from this input is not a list, or the input is
+   *     corrupted.
+   */
+  BytesValue enterListAndReturnRlp();
+
+  /**
+   * Count the number of items remaining to be read in the current list. When called immedatiately
+   * after {@link #enterList()} this returns the total number of items in the list.
+   *
+   * @return the number of items remaining to be read from the current list.
+   */
   int countRemainingListItems();
 
   /**
@@ -328,8 +347,6 @@ public interface RLPInput {
    * @return The raw RLP.
    */
   BytesValue raw();
-
-  BytesValue enterListAndReturnRlp();
 
   /** Resets this RLP input to the start. */
   void reset();
