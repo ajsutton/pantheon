@@ -15,9 +15,11 @@ package tech.pegasys.pantheon.ethereum.core;
 import tech.pegasys.pantheon.ethereum.mainnet.TransactionReceiptType;
 import tech.pegasys.pantheon.ethereum.rlp.RLPInput;
 import tech.pegasys.pantheon.ethereum.rlp.RLPOutput;
+import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
 
@@ -42,6 +44,7 @@ public class TransactionReceipt {
   private final LogsBloomFilter bloomFilter;
   private final int status;
   private final TransactionReceiptType transactionReceiptType;
+  private final Optional<BytesValue> rlp;
 
   /**
    * Creates an instance of a state root-encoded transaction receipt.
@@ -52,15 +55,22 @@ public class TransactionReceipt {
    */
   public TransactionReceipt(
       final Hash stateRoot, final long cumulativeGasUsed, final List<Log> logs) {
-    this(stateRoot, NONEXISTENT, cumulativeGasUsed, logs, LogsBloomFilter.compute(logs));
+    this(
+        stateRoot,
+        NONEXISTENT,
+        cumulativeGasUsed,
+        logs,
+        LogsBloomFilter.compute(logs),
+        Optional.empty());
   }
 
   private TransactionReceipt(
       final Hash stateRoot,
       final long cumulativeGasUsed,
       final List<Log> logs,
-      final LogsBloomFilter bloomFilter) {
-    this(stateRoot, NONEXISTENT, cumulativeGasUsed, logs, bloomFilter);
+      final LogsBloomFilter bloomFilter,
+      final Optional<BytesValue> rlp) {
+    this(stateRoot, NONEXISTENT, cumulativeGasUsed, logs, bloomFilter, rlp);
   }
 
   /**
@@ -71,15 +81,16 @@ public class TransactionReceipt {
    * @param logs the logs generated within the transaction
    */
   public TransactionReceipt(final int status, final long cumulativeGasUsed, final List<Log> logs) {
-    this(null, status, cumulativeGasUsed, logs, LogsBloomFilter.compute(logs));
+    this(null, status, cumulativeGasUsed, logs, LogsBloomFilter.compute(logs), Optional.empty());
   }
 
   private TransactionReceipt(
       final int status,
       final long cumulativeGasUsed,
       final List<Log> logs,
-      final LogsBloomFilter bloomFilter) {
-    this(null, status, cumulativeGasUsed, logs, bloomFilter);
+      final LogsBloomFilter bloomFilter,
+      final Optional<BytesValue> rlp) {
+    this(null, status, cumulativeGasUsed, logs, bloomFilter, rlp);
   }
 
   private TransactionReceipt(
@@ -87,7 +98,8 @@ public class TransactionReceipt {
       final int status,
       final long cumulativeGasUsed,
       final List<Log> logs,
-      final LogsBloomFilter bloomFilter) {
+      final LogsBloomFilter bloomFilter,
+      final Optional<BytesValue> rlp) {
     this.stateRoot = stateRoot;
     this.cumulativeGasUsed = cumulativeGasUsed;
     this.status = status;
@@ -95,6 +107,7 @@ public class TransactionReceipt {
     this.bloomFilter = bloomFilter;
     transactionReceiptType =
         stateRoot == null ? TransactionReceiptType.STATUS : TransactionReceiptType.ROOT;
+    this.rlp = rlp;
   }
 
   /**
@@ -103,6 +116,10 @@ public class TransactionReceipt {
    * @param out The RLP output to write to
    */
   public void writeTo(final RLPOutput out) {
+    if (rlp.isPresent()) {
+      out.writeRLPUnsafe(rlp.get());
+      return;
+    }
     out.startList();
 
     // Determine whether it's a state root-encoded transaction receipt
@@ -126,15 +143,13 @@ public class TransactionReceipt {
    * @return the transaction receipt
    */
   public static TransactionReceipt readFrom(final RLPInput input) {
-    input.enterList();
+    final BytesValue rlp = input.enterListAndReturnRlp();
 
     try {
       // Get the first element to check later to determine the
       // correct transaction receipt encoding to use.
       final RLPInput firstElement = input.readAsRlp();
       final long cumulativeGas = input.readLongScalar();
-      // The logs below will populate the bloom filter upon construction.
-      // TODO consider validating that the logs and bloom filter match.
       final LogsBloomFilter bloomFilter = LogsBloomFilter.readFrom(input);
       final List<Log> logs = input.readList(Log::readFrom);
 
@@ -142,10 +157,11 @@ public class TransactionReceipt {
       // byte for success (0x01) or failure (0x80).
       if (firstElement.raw().size() == 1) {
         final int status = firstElement.readIntScalar();
-        return new TransactionReceipt(status, cumulativeGas, logs, bloomFilter);
+        return new TransactionReceipt(status, cumulativeGas, logs, bloomFilter, Optional.of(rlp));
       } else {
         final Hash stateRoot = Hash.wrap(firstElement.readBytes32());
-        return new TransactionReceipt(stateRoot, cumulativeGas, logs, bloomFilter);
+        return new TransactionReceipt(
+            stateRoot, cumulativeGas, logs, bloomFilter, Optional.of(rlp));
       }
     } finally {
       input.leaveList();
