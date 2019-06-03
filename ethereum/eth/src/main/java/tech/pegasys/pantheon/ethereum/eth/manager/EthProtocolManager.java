@@ -200,11 +200,6 @@ public class EthProtocolManager implements ProtocolManager, MinedBlockObserver {
 
     // Dispatch eth message
     final EthMessage ethMessage = new EthMessage(peer, message.getData());
-    if (!peer.validateReceivedMessage(ethMessage)) {
-      LOG.warn("Unsolicited message received from {}, disconnecting", peer);
-      peer.disconnect(DisconnectReason.BREACH_OF_PROTOCOL);
-      return;
-    }
     ethPeers.dispatchMessage(peer, ethMessage);
     ethMessages.dispatch(ethMessage);
   }

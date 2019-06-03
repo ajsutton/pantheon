@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -128,7 +129,7 @@ public class RequestManager {
     private final EthPeer peer;
     private final DeregistrationProcessor deregisterCallback;
     private final Queue<Response> bufferedResponses = new ConcurrentLinkedQueue<>();
-    private volatile boolean closed = false;
+    private AtomicBoolean closed = new AtomicBoolean(false);
     private volatile ResponseCallback responseCallback = null;
 
     public ResponseStream(final EthPeer peer, final DeregistrationProcessor deregisterCallback) {
@@ -148,10 +149,9 @@ public class RequestManager {
     }
 
     public void close() {
-      if (closed) {
+      if (!closed.compareAndSet(false, true)) {
         return;
       }
-      closed = true;
       deregisterCallback.exec();
       bufferedResponses.add(new Response(true, null));
       dispatchBufferedResponses();
@@ -162,7 +162,7 @@ public class RequestManager {
     }
 
     private void processMessage(final MessageData message) {
-      if (closed) {
+      if (closed.get()) {
         return;
       }
       bufferedResponses.add(new Response(false, message));

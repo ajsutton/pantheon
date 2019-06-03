@@ -13,9 +13,10 @@
 package tech.pegasys.pantheon.ethereum.eth.manager;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static tech.pegasys.pantheon.ethereum.eth.manager.PeerReputation.USELESS_RESPONSE_WINDOW_IN_MILLIS;
+import static tech.pegasys.pantheon.ethereum.eth.manager.PeerReputation.BAD_RESPONSE_WINDOW_IN_MILLIS;
 import static tech.pegasys.pantheon.ethereum.eth.messages.EthPV62.GET_BLOCK_BODIES;
 import static tech.pegasys.pantheon.ethereum.eth.messages.EthPV62.GET_BLOCK_HEADERS;
+import static tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason.BREACH_OF_PROTOCOL;
 import static tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason.TIMEOUT;
 import static tech.pegasys.pantheon.ethereum.p2p.wire.messages.DisconnectMessage.DisconnectReason.USELESS_PEER;
 
@@ -74,7 +75,29 @@ public class PeerReputationTest {
     assertThat(reputation.recordUselessResponse(1004)).isEmpty();
 
     // But then the next empty response doesn't come in until after the window expires on the first
-    assertThat(reputation.recordUselessResponse(1001 + USELESS_RESPONSE_WINDOW_IN_MILLIS + 1))
+    assertThat(reputation.recordUselessResponse(1001 + BAD_RESPONSE_WINDOW_IN_MILLIS + 1))
+        .isEmpty();
+  }
+
+  @Test
+  public void shouldOnlyDisconnectWhenUnsolicitedResponseThresholdReached() {
+    assertThat(reputation.recordUnsolicitedResponse(1001)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1002)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1003)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1004)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1005)).contains(BREACH_OF_PROTOCOL);
+  }
+
+  @Test
+  public void shouldDiscardUnsolicitedResponseRecordsAfterTimeWindowElapses() {
+    // Bring it to the brink of disconnection.
+    assertThat(reputation.recordUnsolicitedResponse(1001)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1002)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1003)).isEmpty();
+    assertThat(reputation.recordUnsolicitedResponse(1004)).isEmpty();
+
+    // But the next unsolicited response doesn't come in until after the window expires on the first
+    assertThat(reputation.recordUnsolicitedResponse(1001 + BAD_RESPONSE_WINDOW_IN_MILLIS + 1))
         .isEmpty();
   }
 }

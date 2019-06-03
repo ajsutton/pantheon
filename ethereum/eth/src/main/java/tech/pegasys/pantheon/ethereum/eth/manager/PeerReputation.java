@@ -31,12 +31,14 @@ public class PeerReputation {
   private static final Logger LOG = getLogger();
   private static final int TIMEOUT_THRESHOLD = 3;
   private static final int USELESS_RESPONSE_THRESHOLD = 5;
-  static final long USELESS_RESPONSE_WINDOW_IN_MILLIS =
+  private static final int UNSOLICITED_RESPONSE_THRESHOLD = 5;
+  static final long BAD_RESPONSE_WINDOW_IN_MILLIS =
       TimeUnit.MILLISECONDS.convert(1, TimeUnit.MINUTES);
 
   private final ConcurrentMap<Integer, AtomicInteger> timeoutCountByRequestType =
       new ConcurrentHashMap<>();
   private final Queue<Long> uselessResponseTimes = new ConcurrentLinkedQueue<>();
+  private final Queue<Long> unsolicitedResponseTimes = new ConcurrentLinkedQueue<>();
 
   public Optional<DisconnectReason> recordRequestTimeout(final int requestCode) {
     final int newTimeoutCount = getOrCreateTimeoutCount(requestCode).incrementAndGet();
@@ -73,7 +75,20 @@ public class PeerReputation {
     }
   }
 
+  public Optional<DisconnectReason> recordUnsolicitedResponse(final long timestamp) {
+    unsolicitedResponseTimes.add(timestamp);
+    while (shouldRemove(unsolicitedResponseTimes.peek(), timestamp)) {
+      unsolicitedResponseTimes.poll();
+    }
+    if (unsolicitedResponseTimes.size() >= UNSOLICITED_RESPONSE_THRESHOLD) {
+      LOG.debug("Disconnection triggered by exceeding unsolicited response threshold");
+      return Optional.of(DisconnectReason.BREACH_OF_PROTOCOL);
+    } else {
+      return Optional.empty();
+    }
+  }
+
   private boolean shouldRemove(final Long timestamp, final long currentTimestamp) {
-    return timestamp != null && timestamp + USELESS_RESPONSE_WINDOW_IN_MILLIS < currentTimestamp;
+    return timestamp != null && timestamp + BAD_RESPONSE_WINDOW_IN_MILLIS < currentTimestamp;
   }
 }

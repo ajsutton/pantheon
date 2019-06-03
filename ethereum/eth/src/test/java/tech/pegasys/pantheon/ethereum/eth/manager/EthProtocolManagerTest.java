@@ -108,28 +108,6 @@ public final class EthProtocolManagerTest {
   }
 
   @Test
-  public void disconnectOnUnsolicitedMessage() {
-    try (final EthProtocolManager ethManager =
-        new EthProtocolManager(
-            blockchain,
-            protocolContext.getWorldStateArchive(),
-            1,
-            true,
-            1,
-            1,
-            1,
-            TestClock.fixed(),
-            new NoOpMetricsSystem(),
-            EthereumWireProtocolConfiguration.defaultConfig())) {
-      final MessageData messageData =
-          BlockHeadersMessage.create(Collections.singletonList(blockchain.getBlockHeader(1).get()));
-      final MockPeerConnection peer = setupPeer(ethManager, (cap, msg, conn) -> {});
-      ethManager.processMessage(EthProtocol.ETH63, new DefaultMessage(peer, messageData));
-      assertThat(peer.isDisconnected()).isTrue();
-    }
-  }
-
-  @Test
   public void disconnectOnFailureToSendStatusMessage() {
     try (final EthProtocolManager ethManager =
         new EthProtocolManager(
@@ -200,22 +178,18 @@ public final class EthProtocolManagerTest {
             TestClock.fixed(),
             new NoOpMetricsSystem(),
             EthereumWireProtocolConfiguration.defaultConfig())) {
-      final MessageData messageData =
-          BlockHeadersMessage.create(Collections.singletonList(blockchain.getBlockHeader(1).get()));
       final MockPeerConnection peer =
           setupPeerWithoutStatusExchange(ethManager, (cap, msg, conn) -> {});
 
-      // Send status message with wrong chain
+      // Send status message with wrong genesis hash
       final StatusMessage statusMessage =
           StatusMessage.create(
               EthVersion.V63,
               1,
               blockchain.getChainHead().getTotalDifficulty(),
               gen.hash(),
-              blockchain.getBlockHeader(BlockHeader.GENESIS_BLOCK_NUMBER).get().getHash());
+              gen.hash());
       ethManager.processMessage(EthProtocol.ETH63, new DefaultMessage(peer, statusMessage));
-
-      ethManager.processMessage(EthProtocol.ETH63, new DefaultMessage(peer, messageData));
       assertThat(peer.isDisconnected()).isTrue();
     }
   }

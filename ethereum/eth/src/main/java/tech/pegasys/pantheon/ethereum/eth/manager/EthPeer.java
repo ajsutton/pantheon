@@ -166,13 +166,6 @@ public class EthPeer {
     return sendRequest(nodeDataRequestManager, message);
   }
 
-  boolean validateReceivedMessage(final EthMessage message) {
-    checkArgument(message.getPeer().equals(this), "Mismatched message sent to peer for dispatch");
-    return getRequestManagerForMessageType(message.getData().getCode())
-        .map(requestManager -> requestManager.outstandingRequests() > 0)
-        .orElse(true);
-  }
-
   /**
    * Routes messages originating from this peer to listeners.
    *
@@ -180,25 +173,35 @@ public class EthPeer {
    */
   void dispatch(final EthMessage message) {
     checkArgument(message.getPeer().equals(this), "Mismatched message sent to peer for dispatch");
+    final int requestType;
+    final RequestManager requestManager;
     switch (message.getData().getCode()) {
       case EthPV62.BLOCK_HEADERS:
-        reputation.resetTimeoutCount(EthPV62.GET_BLOCK_HEADERS);
-        headersRequestManager.dispatchResponse(message);
+        requestType = EthPV62.GET_BLOCK_HEADERS;
+        requestManager = headersRequestManager;
         break;
       case EthPV62.BLOCK_BODIES:
-        reputation.resetTimeoutCount(EthPV62.GET_BLOCK_BODIES);
-        bodiesRequestManager.dispatchResponse(message);
+        requestType = EthPV62.GET_BLOCK_BODIES;
+        requestManager = bodiesRequestManager;
         break;
       case EthPV63.RECEIPTS:
-        reputation.resetTimeoutCount(EthPV63.GET_RECEIPTS);
-        receiptsRequestManager.dispatchResponse(message);
+        requestType = EthPV63.GET_RECEIPTS;
+        requestManager = receiptsRequestManager;
         break;
       case EthPV63.NODE_DATA:
-        reputation.resetTimeoutCount(EthPV63.GET_NODE_DATA);
-        nodeDataRequestManager.dispatchResponse(message);
+        requestType = EthPV63.GET_NODE_DATA;
+        requestManager = nodeDataRequestManager;
         break;
       default:
         // Nothing to do
+        return;
+    }
+    if (requestManager.outstandingRequests() > 0) {
+      reputation.resetTimeoutCount(requestType);
+      requestManager.dispatchResponse(message);
+    } else {
+      LOG.debug("Received unsolicited response from {}", this);
+      reputation.recordUnsolicitedResponse(requestType).ifPresent(this::disconnect);
     }
   }
 
