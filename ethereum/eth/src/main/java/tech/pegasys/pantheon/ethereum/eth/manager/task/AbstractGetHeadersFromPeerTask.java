@@ -99,7 +99,7 @@ public abstract class AbstractGetHeadersFromPeerTask
       headersList.add(header);
     }
 
-    LOG.debug("Received {} of {} headers requested from peer.", headersList.size(), count);
+    LOG.debug("Received {} of {} headers requested from peer {}", headersList.size(), count, peer);
     return Optional.of(headersList);
   }
 

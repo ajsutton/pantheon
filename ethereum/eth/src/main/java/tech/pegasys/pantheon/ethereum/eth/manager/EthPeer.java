@@ -35,6 +35,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -104,6 +105,7 @@ public class EthPeer {
 
   public void recordRequestTimeout(final int requestCode) {
     LOG.debug("Timed out while waiting for response from peer {}", this);
+    getRequestManagerForMessageType(requestCode).ifPresent(RequestManager::requestTimedOut);
     reputation.recordRequestTimeout(requestCode).ifPresent(this::disconnect);
   }
 
@@ -117,18 +119,12 @@ public class EthPeer {
   }
 
   public ResponseStream send(final MessageData messageData) throws PeerNotConnected {
-    switch (messageData.getCode()) {
-      case EthPV62.GET_BLOCK_HEADERS:
-        return sendRequest(headersRequestManager, messageData);
-      case EthPV62.GET_BLOCK_BODIES:
-        return sendRequest(bodiesRequestManager, messageData);
-      case EthPV63.GET_RECEIPTS:
-        return sendRequest(receiptsRequestManager, messageData);
-      case EthPV63.GET_NODE_DATA:
-        return sendRequest(nodeDataRequestManager, messageData);
-      default:
-        connection.sendForProtocol(protocolName, messageData);
-        return null;
+    final Optional<RequestManager> manager = getRequestManagerForMessageType(messageData.getCode());
+    if (manager.isPresent()) {
+      return sendRequest(manager.get(), messageData);
+    } else {
+      connection.sendForProtocol(protocolName, messageData);
+      return null;
     }
   }
 
@@ -172,35 +168,9 @@ public class EthPeer {
 
   boolean validateReceivedMessage(final EthMessage message) {
     checkArgument(message.getPeer().equals(this), "Mismatched message sent to peer for dispatch");
-    switch (message.getData().getCode()) {
-      case EthPV62.BLOCK_HEADERS:
-        if (headersRequestManager.outstandingRequests() == 0) {
-          LOG.warn("Unsolicited headers received.");
-          return false;
-        }
-        break;
-      case EthPV62.BLOCK_BODIES:
-        if (bodiesRequestManager.outstandingRequests() == 0) {
-          LOG.warn("Unsolicited bodies received.");
-          return false;
-        }
-        break;
-      case EthPV63.RECEIPTS:
-        if (receiptsRequestManager.outstandingRequests() == 0) {
-          LOG.warn("Unsolicited receipts received.");
-          return false;
-        }
-        break;
-      case EthPV63.NODE_DATA:
-        if (nodeDataRequestManager.outstandingRequests() == 0) {
-          LOG.warn("Unsolicited node data received.");
-          return false;
-        }
-        break;
-      default:
-        // Nothing to do
-    }
-    return true;
+    return getRequestManagerForMessageType(message.getData().getCode())
+        .map(requestManager -> requestManager.outstandingRequests() > 0)
+        .orElse(true);
   }
 
   /**
@@ -229,6 +199,21 @@ public class EthPeer {
         break;
       default:
         // Nothing to do
+    }
+  }
+
+  private Optional<RequestManager> getRequestManagerForMessageType(final int requestCode) {
+    switch (requestCode) {
+      case EthPV62.BLOCK_HEADERS:
+        return Optional.of(headersRequestManager);
+      case EthPV62.BLOCK_BODIES:
+        return Optional.of(bodiesRequestManager);
+      case EthPV63.RECEIPTS:
+        return Optional.of(receiptsRequestManager);
+      case EthPV63.NODE_DATA:
+        return Optional.of(nodeDataRequestManager);
+      default:
+        return Optional.empty();
     }
   }
 

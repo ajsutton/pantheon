@@ -81,6 +81,15 @@ public class RequestManager {
     return responseStreamId.incrementAndGet();
   }
 
+  public void requestTimedOut() {
+    final Collection<ResponseStream> streams = new ArrayList<>(responseStreams.values());
+    final int count = outstandingRequests.decrementAndGet();
+    if (count == 0) {
+      // No possibility of any remaining outstanding messages
+      closeOutstandingStreams(streams);
+    }
+  }
+
   @FunctionalInterface
   public interface RequestSender {
     void send() throws PeerNotConnected;
