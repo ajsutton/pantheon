@@ -196,6 +196,8 @@ public abstract class PantheonControllerBuilder<C> {
             protocolSchedule,
             metricsSystem,
             this::createConsensusContext);
+    validateContext(protocolContext);
+
     final MutableBlockchain blockchain = protocolContext.getBlockchain();
 
     final Pruner pruner =
@@ -311,6 +313,8 @@ public abstract class PantheonControllerBuilder<C> {
       EthProtocolManager ethProtocolManager);
 
   protected abstract ProtocolSchedule<C> createProtocolSchedule();
+
+  protected void validateContext(final ProtocolContext<C> context) {}
 
   protected abstract C createConsensusContext(
       Blockchain blockchain, WorldStateArchive worldStateArchive);
