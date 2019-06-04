@@ -17,6 +17,7 @@ import static tech.pegasys.pantheon.ethereum.eth.manager.MonitoredExecutors.newS
 import tech.pegasys.pantheon.config.IbftConfigOptions;
 import tech.pegasys.pantheon.consensus.common.BlockInterface;
 import tech.pegasys.pantheon.consensus.common.EpochManager;
+import tech.pegasys.pantheon.consensus.common.PoAValidatorMetrics;
 import tech.pegasys.pantheon.consensus.common.VoteProposer;
 import tech.pegasys.pantheon.consensus.common.VoteTallyCache;
 import tech.pegasys.pantheon.consensus.common.VoteTallyUpdater;
@@ -220,6 +221,12 @@ public class IbftPantheonControllerBuilder extends PantheonControllerBuilder<Ibf
     if (blockInterface.validatorsInBlock(genesisBlockHeader).isEmpty()) {
       LOG.warn("Genesis block contains no signers - chain will not progress.");
     }
+
+    context
+        .getBlockchain()
+        .observeBlockAdded(
+            new PoAValidatorMetrics(
+                metricsSystem, context.getConsensusState().getVoteTallyCache(), blockInterface));
   }
 
   @Override

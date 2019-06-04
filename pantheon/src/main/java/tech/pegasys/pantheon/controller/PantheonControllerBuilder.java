@@ -250,6 +250,7 @@ public abstract class PantheonControllerBuilder<C> {
 
     final JsonRpcMethodFactory additionalJsonRpcMethodFactory =
         createAdditionalJsonRpcMethodFactory(protocolContext);
+
     return new PantheonController<>(
         protocolSchedule,
         protocolContext,

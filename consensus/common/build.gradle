@@ -28,6 +28,7 @@ jar {
 dependencies {
   implementation project(':ethereum:core')
   implementation project(':ethereum:jsonrpc')
+  implementation project(':metrics:core')
   implementation project(':util')
 
   implementation 'com.fasterxml.jackson.core:jackson-databind'

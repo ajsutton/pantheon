@@ -28,7 +28,8 @@ public enum MetricCategory {
   KVSTORE_ROCKSDB_STATS("rocksdb", false),
   RPC("rpc"),
   SYNCHRONIZER("synchronizer"),
-  TRANSACTION_POOL("transaction_pool");
+  TRANSACTION_POOL("transaction_pool"),
+  VALIDATORS("validators");
 
   // Why not BIG_QUEUE and ROCKSDB?  They hurt performance under load.
   public static final Set<MetricCategory> DEFAULT_METRIC_CATEGORIES =
