@@ -26,6 +26,7 @@ public enum RpcMethod {
   CLIQUE_GET_SIGNERS_AT_HASH("clique_getSignersAtHash"),
   CLIQUE_GET_PROPOSALS("clique_proposals"),
   CLIQUE_PROPOSE("clique_propose"),
+  CLIQUE_GET_REPORT_VALIDATOR_BLOCK_PRODUCTION("clique_getReportValidatorBlockProduction"),
   DEBUG_METRICS("debug_metrics"),
   DEBUG_STORAGE_RANGE_AT("debug_storageRangeAt"),
   DEBUG_TRACE_BLOCK("debug_traceBlock"),
