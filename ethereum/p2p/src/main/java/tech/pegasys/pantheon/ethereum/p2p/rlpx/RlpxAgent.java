@@ -63,6 +63,8 @@ public class RlpxAgent {
   private final PeerConnectionEvents connectionEvents;
   private final Subscribers<ConnectCallback> connectSubscribers = Subscribers.create();
   private final ConnectionInitializer connectionInitializer;
+  private final boolean limitRemoteWireConnectionsEnabled;
+  private final double fractionRemoteConnectionsAllowed;
 
   private final int maxPeers;
 
@@ -83,28 +85,32 @@ public class RlpxAgent {
       final ConnectionInitializer connectionInitializer,
       final int maxPeers,
       final PeerProperties peerProperties,
-      final MetricsSystem metricsSystem) {
+      final MetricsSystem metricsSystem,
+      final boolean limitRemoteWireConnectionsEnabled,
+      final double fractionRemoteConnectionsAllowed) {
     this.maxPeers = maxPeers;
     this.peerProperties = peerProperties;
     this.localNode = localNode;
     this.peerPermissions = peerPermissions;
     this.connectionEvents = connectionEvents;
     this.connectionInitializer = connectionInitializer;
+    this.limitRemoteWireConnectionsEnabled = limitRemoteWireConnectionsEnabled;
+    this.fractionRemoteConnectionsAllowed = fractionRemoteConnectionsAllowed;
 
     // Setup metrics
     connectedPeersCounter =
         metricsSystem.createCounter(
             PantheonMetricCategory.PEERS, "connected_total", "Total number of peers connected");
 
-    metricsSystem.createGauge(
-        PantheonMetricCategory.PEERS,
-        "peer_count_current",
-        "Number of peers currently connected",
-        () -> (double) getConnectionCount());
     metricsSystem.createIntegerGauge(
-        PantheonMetricCategory.NETWORK,
-        "peers_limit",
-        "Maximum P2P peer connections that can be established",
+        PantheonMetricCategory.ETHEREUM,
+        "peer_count",
+        "The current number of peers connected",
+        this::getConnectionCount);
+    metricsSystem.createIntegerGauge(
+        PantheonMetricCategory.ETHEREUM,
+        "peer_limit",
+        "The maximum number of peers this node allows to connect",
         () -> maxPeers);
   }
 
@@ -329,6 +335,16 @@ public class RlpxAgent {
       return;
     }
 
+    // Disconnect if the fraction of wire connections initiated by peers is too high to protect
+    // against eclipse attacks
+    if (limitRemoteWireConnectionsEnabled && remoteConnectionExceedsLimit()) {
+      LOG.warn(
+          "Fraction of remotely initiated connection is too high, rejecting incoming connection. (max ratio allowed: {})",
+          fractionRemoteConnectionsAllowed);
+      peerConnection.disconnect(DisconnectReason.TOO_MANY_PEERS);
+      return;
+    }
+
     // Track this new connection, deduplicating existing connection if necessary
     final AtomicBoolean newConnectionAccepted = new AtomicBoolean(false);
     final RlpxConnection inboundConnection = RlpxConnection.inboundConnection(peerConnection);
@@ -372,6 +388,18 @@ public class RlpxAgent {
       dispatchConnect(peerConnection);
     }
     enforceConnectionLimits();
+  }
+
+  private boolean remoteConnectionExceedsLimit() {
+    final int remotelyInitiatedConnectionsCount =
+        Math.toIntExact(
+            connectionsById.values().stream()
+                .filter(RlpxConnection::isActive)
+                .filter(RlpxConnection::initiatedRemotely)
+                .count());
+    final double fractionRemoteConnections =
+        (double) (remotelyInitiatedConnectionsCount + 1) / (double) maxPeers;
+    return fractionRemoteConnections > fractionRemoteConnectionsAllowed;
   }
 
   private void enforceConnectionLimits() {
@@ -477,7 +505,9 @@ public class RlpxAgent {
           connectionInitializer,
           config.getMaxPeers(),
           peerProperties,
-          metricsSystem);
+          metricsSystem,
+          config.isLimitRemoteWireConnectionsEnabled(),
+          config.getFractionRemoteWireConnectionsAllowed());
     }
 
     private void validate() {
