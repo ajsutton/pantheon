@@ -68,7 +68,7 @@ public class IbftExtraData implements ParsedExtraData {
     this.validators = validators;
     this.vote = vote;
 
-    Optional.of(header)
+    Optional.ofNullable(header)
         .ifPresent(
             hd ->
                 committerAddresses =
