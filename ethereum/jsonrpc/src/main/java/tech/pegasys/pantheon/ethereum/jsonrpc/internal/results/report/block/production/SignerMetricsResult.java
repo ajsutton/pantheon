@@ -19,13 +19,13 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder({"proposers", "validatorsPresentInLastBlock"})
-public class ReportBlockProductionResult {
+public class SignerMetricsResult {
 
   private final List<ProposerReportBlockProductionResult> proposers;
 
   private final List<ValidatorReportBlockProductionResult> validatorsPresentInLastBlock;
 
-  public ReportBlockProductionResult(
+  public SignerMetricsResult(
       final List<ProposerReportBlockProductionResult> proposerReportBlockProductions,
       final List<ValidatorReportBlockProductionResult> validatorReportBlockProductions) {
     this.proposers = proposerReportBlockProductions;
@@ -36,7 +36,7 @@ public class ReportBlockProductionResult {
   public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ReportBlockProductionResult that = (ReportBlockProductionResult) o;
+    SignerMetricsResult that = (SignerMetricsResult) o;
     return Objects.equals(proposers, that.proposers)
         && Objects.equals(validatorsPresentInLastBlock, that.validatorsPresentInLastBlock);
   }

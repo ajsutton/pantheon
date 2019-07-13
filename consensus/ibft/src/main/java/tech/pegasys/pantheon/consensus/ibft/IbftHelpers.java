@@ -16,6 +16,7 @@ import tech.pegasys.pantheon.consensus.ibft.payload.PreparedCertificate;
 import tech.pegasys.pantheon.consensus.ibft.payload.RoundChangePayload;
 import tech.pegasys.pantheon.consensus.ibft.payload.SignedData;
 import tech.pegasys.pantheon.crypto.SECP256K1.Signature;
+import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.Block;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.core.BlockHeaderBuilder;
@@ -23,12 +24,18 @@ import tech.pegasys.pantheon.ethereum.core.Hash;
 import tech.pegasys.pantheon.ethereum.core.Util;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public class IbftHelpers {
 
   public static final Hash EXPECTED_MIX_HASH =
       Hash.fromHexString("0x63746963616c2062797a616e74696e65206661756c7420746f6c6572616e6365");
+
+  public static List<Address> getCommitterOfBlock(final BlockHeader header) {
+    final IbftExtraData extraData = IbftExtraData.decode(header);
+    return extraData.getCommitterAddresses();
+  }
 
   public static int calculateRequiredValidatorQuorum(final int validatorCount) {
     return Util.fastDivCeiling(2 * validatorCount, 3);
