@@ -10,46 +10,50 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.consensus.clique.jsonrpc.response;
+package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.report.block.production;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import tech.pegasys.pantheon.ethereum.core.Address;
 
 import java.util.Objects;
 
-public class ProposerReportBlockProduction {
+@JsonPropertyOrder({"address", "nbBlockProposed"})
+public class ProposerReportBlockProductionResult {
 
-    private final String address;
-    private long nbBlock;
+    public final String address;
+    public long nbBlockProposed;
 
-    public ProposerReportBlockProduction(Address address) {
+    public ProposerReportBlockProductionResult(final Address address) {
         this.address = address.toString();
-        this.nbBlock = 1;
+        this.nbBlockProposed = 1;
     }
 
     public void incrementeNbBlock() {
-        this.nbBlock++;
+        this.nbBlockProposed++;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ProposerReportBlockProduction that = (ProposerReportBlockProduction) o;
-        return nbBlock == that.nbBlock &&
+        ProposerReportBlockProductionResult that = (ProposerReportBlockProductionResult) o;
+        return nbBlockProposed == that.nbBlockProposed &&
                 Objects.equals(address, that.address);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(nbBlock, address);
+        return Objects.hash(nbBlockProposed, address);
     }
 
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append("Proposer{");
-        sb.append("address=").append(address).append(", ");
-        sb.append("nbBlock=").append(nbBlock);
-        return sb.append("}").toString();
+    @JsonGetter(value = "address")
+    public String getAddress() {
+        return address;
+    }
+
+    @JsonGetter(value = "nbBlockProposed")
+    public long getNbBlockProposed() {
+        return nbBlockProposed;
     }
 }

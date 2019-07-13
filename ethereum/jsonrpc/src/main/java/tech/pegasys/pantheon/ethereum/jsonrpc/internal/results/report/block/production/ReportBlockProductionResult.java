@@ -10,29 +10,33 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.consensus.clique.jsonrpc.response;
+package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.report.block.production;
+
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 import java.util.List;
 import java.util.Objects;
 
-public class GetReportValidatorBlockProductionResponse {
+@JsonPropertyOrder({"proposers", "validatorsPresentInLastBlock"})
+public class ReportBlockProductionResult {
 
-    private final List<ProposerReportBlockProduction> proposers;
+    private final List<ProposerReportBlockProductionResult> proposers;
 
-    private final List<ValidatorReportBlockProduction> validatorsPresentInLastBlock;
+    private final List<ValidatorReportBlockProductionResult> validatorsPresentInLastBlock;
 
-    public GetReportValidatorBlockProductionResponse(
-            List<ProposerReportBlockProduction> proposerReportBlockProductions,
-            List<ValidatorReportBlockProduction> validatorReportBlockProductions) {
+    public ReportBlockProductionResult(
+            final List<ProposerReportBlockProductionResult> proposerReportBlockProductions,
+            final List<ValidatorReportBlockProductionResult> validatorReportBlockProductions) {
         this.proposers = proposerReportBlockProductions;
         this.validatorsPresentInLastBlock = validatorReportBlockProductions;
     }
 
     @Override
-    public boolean equals(Object o) {
+    public boolean equals(final Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        GetReportValidatorBlockProductionResponse that = (GetReportValidatorBlockProductionResponse) o;
+        ReportBlockProductionResult that = (ReportBlockProductionResult) o;
         return Objects.equals(proposers, that.proposers) &&
                 Objects.equals(validatorsPresentInLastBlock, that.validatorsPresentInLastBlock);
     }
@@ -42,12 +46,13 @@ public class GetReportValidatorBlockProductionResponse {
         return Objects.hash(proposers, validatorsPresentInLastBlock);
     }
 
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append("ReportBlockProduction{");
-        sb.append("proposers=").append(proposers).append(", ");
-        sb.append("validatorsPresentInLastBlock=").append(validatorsPresentInLastBlock);
-        return sb.append("}").toString();
+    @JsonGetter(value = "proposers")
+    public List<ProposerReportBlockProductionResult> getProposers() {
+        return proposers;
+    }
+
+    @JsonGetter(value = "validatorsPresentInLastBlock")
+    public List<ValidatorReportBlockProductionResult> getValidatorsPresentInLastBlock() {
+        return validatorsPresentInLastBlock;
     }
 }
