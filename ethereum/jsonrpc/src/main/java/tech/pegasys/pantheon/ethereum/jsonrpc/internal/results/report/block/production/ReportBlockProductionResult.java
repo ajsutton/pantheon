@@ -12,47 +12,47 @@
  */
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.report.block.production;
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
 import java.util.List;
 import java.util.Objects;
+
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
 @JsonPropertyOrder({"proposers", "validatorsPresentInLastBlock"})
 public class ReportBlockProductionResult {
 
-    private final List<ProposerReportBlockProductionResult> proposers;
+  private final List<ProposerReportBlockProductionResult> proposers;
 
-    private final List<ValidatorReportBlockProductionResult> validatorsPresentInLastBlock;
+  private final List<ValidatorReportBlockProductionResult> validatorsPresentInLastBlock;
 
-    public ReportBlockProductionResult(
-            final List<ProposerReportBlockProductionResult> proposerReportBlockProductions,
-            final List<ValidatorReportBlockProductionResult> validatorReportBlockProductions) {
-        this.proposers = proposerReportBlockProductions;
-        this.validatorsPresentInLastBlock = validatorReportBlockProductions;
-    }
+  public ReportBlockProductionResult(
+      final List<ProposerReportBlockProductionResult> proposerReportBlockProductions,
+      final List<ValidatorReportBlockProductionResult> validatorReportBlockProductions) {
+    this.proposers = proposerReportBlockProductions;
+    this.validatorsPresentInLastBlock = validatorReportBlockProductions;
+  }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ReportBlockProductionResult that = (ReportBlockProductionResult) o;
-        return Objects.equals(proposers, that.proposers) &&
-                Objects.equals(validatorsPresentInLastBlock, that.validatorsPresentInLastBlock);
-    }
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ReportBlockProductionResult that = (ReportBlockProductionResult) o;
+    return Objects.equals(proposers, that.proposers)
+        && Objects.equals(validatorsPresentInLastBlock, that.validatorsPresentInLastBlock);
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(proposers, validatorsPresentInLastBlock);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(proposers, validatorsPresentInLastBlock);
+  }
 
-    @JsonGetter(value = "proposers")
-    public List<ProposerReportBlockProductionResult> getProposers() {
-        return proposers;
-    }
+  @JsonGetter(value = "proposers")
+  public List<ProposerReportBlockProductionResult> getProposers() {
+    return proposers;
+  }
 
-    @JsonGetter(value = "validatorsPresentInLastBlock")
-    public List<ValidatorReportBlockProductionResult> getValidatorsPresentInLastBlock() {
-        return validatorsPresentInLastBlock;
-    }
+  @JsonGetter(value = "validatorsPresentInLastBlock")
+  public List<ValidatorReportBlockProductionResult> getValidatorsPresentInLastBlock() {
+    return validatorsPresentInLastBlock;
+  }
 }

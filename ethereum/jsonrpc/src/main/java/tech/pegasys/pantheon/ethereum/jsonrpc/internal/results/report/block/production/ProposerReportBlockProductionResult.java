@@ -12,48 +12,48 @@
  */
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.report.block.production;
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import tech.pegasys.pantheon.ethereum.core.Address;
 
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 @JsonPropertyOrder({"address", "nbBlockProposed"})
 public class ProposerReportBlockProductionResult {
 
-    public final String address;
-    public long nbBlockProposed;
+  public final String address;
+  public long nbBlockProposed;
 
-    public ProposerReportBlockProductionResult(final Address address) {
-        this.address = address.toString();
-        this.nbBlockProposed = 1;
-    }
+  public ProposerReportBlockProductionResult(final Address address) {
+    this.address = address.toString();
+    this.nbBlockProposed = 1;
+  }
 
-    public void incrementeNbBlock() {
-        this.nbBlockProposed++;
-    }
+  public void incrementeNbBlock() {
+    this.nbBlockProposed++;
+  }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ProposerReportBlockProductionResult that = (ProposerReportBlockProductionResult) o;
-        return nbBlockProposed == that.nbBlockProposed &&
-                Objects.equals(address, that.address);
-    }
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ProposerReportBlockProductionResult that = (ProposerReportBlockProductionResult) o;
+    return nbBlockProposed == that.nbBlockProposed && Objects.equals(address, that.address);
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(nbBlockProposed, address);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(nbBlockProposed, address);
+  }
 
-    @JsonGetter(value = "address")
-    public String getAddress() {
-        return address;
-    }
+  @JsonGetter(value = "address")
+  public String getAddress() {
+    return address;
+  }
 
-    @JsonGetter(value = "nbBlockProposed")
-    public long getNbBlockProposed() {
-        return nbBlockProposed;
-    }
+  @JsonGetter(value = "nbBlockProposed")
+  public long getNbBlockProposed() {
+    return nbBlockProposed;
+  }
 }

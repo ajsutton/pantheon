@@ -12,53 +12,54 @@
  */
 package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.report.block.production;
 
-import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import tech.pegasys.pantheon.ethereum.core.Address;
 
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 @JsonPropertyOrder({"address", "lastBlockProposed"})
 public class ValidatorReportBlockProductionResult {
 
-    private final String address;
-    private Long lastBlockProposed;
+  private final String address;
+  private Long lastBlockProposed;
 
-    public ValidatorReportBlockProductionResult(final Address address) {
-        this.address = address.toString();
-    }
+  public ValidatorReportBlockProductionResult(final Address address) {
+    this.address = address.toString();
+  }
 
-    @JsonIgnore
-    public boolean isLastBlockAlreadyFound() {
-        return this.lastBlockProposed != null;
-    }
+  @JsonIgnore
+  public boolean isLastBlockAlreadyFound() {
+    return this.lastBlockProposed != null;
+  }
 
-    public void setLastBlockProposed(final Long lastBlockProposed) {
-        this.lastBlockProposed = lastBlockProposed;
-    }
+  public void setLastBlockProposed(final Long lastBlockProposed) {
+    this.lastBlockProposed = lastBlockProposed;
+  }
 
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ValidatorReportBlockProductionResult that = (ValidatorReportBlockProductionResult) o;
-        return Objects.equals(lastBlockProposed, that.lastBlockProposed) &&
-                address.equals(that.address);
-    }
+  @Override
+  public boolean equals(final Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ValidatorReportBlockProductionResult that = (ValidatorReportBlockProductionResult) o;
+    return Objects.equals(lastBlockProposed, that.lastBlockProposed)
+        && address.equals(that.address);
+  }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(lastBlockProposed, address);
-    }
+  @Override
+  public int hashCode() {
+    return Objects.hash(lastBlockProposed, address);
+  }
 
-    @JsonGetter(value = "address")
-    public String getAddress() {
-        return address;
-    }
+  @JsonGetter(value = "address")
+  public String getAddress() {
+    return address;
+  }
 
-    @JsonGetter(value = "lastBlockProposed")
-    public long getLastBlockProposed() {
-        return lastBlockProposed;
-    }
+  @JsonGetter(value = "lastBlockProposed")
+  public long getLastBlockProposed() {
+    return lastBlockProposed;
+  }
 }
