@@ -118,7 +118,7 @@ public class IbftExtraData implements ParsedExtraData {
     final List<Signature> seals = rlpInput.readList(rlp -> Signature.decode(rlp.readBytesValue()));
     rlpInput.leaveList();
 
-    return new IbftExtraData(vanityData, seals, vote, round, validators);
+    return new IbftExtraData(vanityData, seals, vote, round, validators, header);
   }
 
   public BytesValue encode() {
@@ -195,7 +195,9 @@ public class IbftExtraData implements ParsedExtraData {
   }
 
   public List<Address> getCommitterAddresses() {
-    return Optional.of(this.committerAddresses).map(Supplier::get).orElse(Collections.emptyList());
+    return Optional.ofNullable(this.committerAddresses)
+        .map(Supplier::get)
+        .orElse(Collections.emptyList());
   }
 
   @Override
