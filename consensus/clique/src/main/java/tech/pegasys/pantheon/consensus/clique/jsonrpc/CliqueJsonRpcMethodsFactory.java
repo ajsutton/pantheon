@@ -68,7 +68,7 @@ public class CliqueJsonRpcMethodsFactory implements JsonRpcMethodFactory {
     final Discard discardRpc = new Discard(voteProposer, jsonRpcParameter);
     final CliqueProposals cliqueProposals = new CliqueProposals(voteProposer);
     final CliqueGetSignerMetrics cliqueGetReportValidatorBlockProduction =
-        new CliqueGetSignerMetrics(blockchainQueries, voteTallyCache, jsonRpcParameter);
+        new CliqueGetSignerMetrics(new CliqueBlockInterface(), blockchainQueries, jsonRpcParameter);
 
     rpcMethods.put(cliqueGetSigners.getName(), cliqueGetSigners);
     rpcMethods.put(cliqueGetSignersAtHash.getName(), cliqueGetSignersAtHash);

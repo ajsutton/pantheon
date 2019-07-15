@@ -12,34 +12,24 @@
  */
 package tech.pegasys.pantheon.consensus.ibft.jsonrpc.methods;
 
-import tech.pegasys.pantheon.consensus.common.VoteTallyCache;
+import tech.pegasys.pantheon.consensus.common.BlockInterface;
 import tech.pegasys.pantheon.consensus.common.jsonrpc.AbstractGetSignerMetricsMethod;
-import tech.pegasys.pantheon.consensus.ibft.IbftHelpers;
-import tech.pegasys.pantheon.ethereum.core.Address;
-import tech.pegasys.pantheon.ethereum.core.BlockHeader;
 import tech.pegasys.pantheon.ethereum.jsonrpc.RpcMethod;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.methods.JsonRpcMethod;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.parameters.JsonRpcParameter;
 import tech.pegasys.pantheon.ethereum.jsonrpc.internal.queries.BlockchainQueries;
 
-import java.util.List;
-
 public class IbftGetSignerMetrics extends AbstractGetSignerMetricsMethod implements JsonRpcMethod {
 
   public IbftGetSignerMetrics(
+      final BlockInterface blockInterface,
       final BlockchainQueries blockchainQueries,
-      final VoteTallyCache voteTallyCache,
       final JsonRpcParameter parameter) {
-    super(blockchainQueries, voteTallyCache, parameter);
+    super(blockInterface, blockchainQueries, parameter);
   }
 
   @Override
   public String getName() {
     return RpcMethod.IBFT_GET_SIGNER_METRICS.getMethodName();
-  }
-
-  @Override
-  protected List<Address> getProposersOfBlock(final BlockHeader header) {
-    return IbftHelpers.getCommitterOfBlock(header);
   }
 }

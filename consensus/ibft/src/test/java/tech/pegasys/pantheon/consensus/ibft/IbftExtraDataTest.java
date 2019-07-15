@@ -12,26 +12,20 @@
  */
 package tech.pegasys.pantheon.consensus.ibft;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static tech.pegasys.pantheon.crypto.Hash.keccak256;
 
 import tech.pegasys.pantheon.consensus.common.VoteType;
-import tech.pegasys.pantheon.crypto.SECP256K1;
 import tech.pegasys.pantheon.crypto.SECP256K1.Signature;
 import tech.pegasys.pantheon.ethereum.core.Address;
 import tech.pegasys.pantheon.ethereum.core.BlockHeader;
-import tech.pegasys.pantheon.ethereum.core.BlockHeaderTestFixture;
 import tech.pegasys.pantheon.ethereum.rlp.BytesValueRLPOutput;
 import tech.pegasys.pantheon.ethereum.rlp.RLPException;
 import tech.pegasys.pantheon.ethereum.rlp.RLPInput;
-import tech.pegasys.pantheon.util.bytes.Bytes32;
 import tech.pegasys.pantheon.util.bytes.BytesValue;
 
 import java.math.BigInteger;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -96,12 +90,7 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final IbftExtraData extraData =
-        IbftExtraData.decodeRaw(
-            new BlockHeaderTestFixture()
-                .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-                .extraData(bufferToInject)
-                .buildHeader());
+    final IbftExtraData extraData = IbftExtraData.decodeRaw(bufferToInject);
 
     assertThat(extraData.getVanityData()).isEqualTo(vanity_data);
     assertThat(extraData.getRound()).isEqualTo(round);
@@ -141,13 +130,8 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(bufferToInject)
-            .buildHeader();
-
-    assertThatThrownBy(() -> IbftExtraData.decodeRaw(blockHeader)).isInstanceOf(RLPException.class);
+    assertThatThrownBy(() -> IbftExtraData.decodeRaw(bufferToInject))
+        .isInstanceOf(RLPException.class);
   }
 
   @Test
@@ -175,13 +159,7 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(bufferToInject)
-            .buildHeader();
-
-    final IbftExtraData extraData = IbftExtraData.decodeRaw(blockHeader);
+    final IbftExtraData extraData = IbftExtraData.decodeRaw(bufferToInject);
 
     assertThat(extraData.getVanityData()).isEqualTo(vanity_data);
     assertThat(extraData.getVote().isPresent()).isEqualTo(false);
@@ -204,13 +182,7 @@ public class IbftExtraDataTest {
     IbftExtraData expectedExtraData =
         new IbftExtraData(vanity_data, committerSeals, vote, round, validators);
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(expectedExtraData.encode())
-            .buildHeader();
-
-    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(blockHeader);
+    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(expectedExtraData.encode());
 
     assertThat(actualExtraData).isEqualToComparingFieldByField(expectedExtraData);
   }
@@ -241,13 +213,7 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(bufferToInject)
-            .buildHeader();
-
-    final IbftExtraData extraData = IbftExtraData.decodeRaw(blockHeader);
+    final IbftExtraData extraData = IbftExtraData.decodeRaw(bufferToInject);
 
     assertThat(extraData.getVanityData()).isEqualTo(vanity_data);
     assertThat(extraData.getRound()).isEqualTo(round);
@@ -269,13 +235,7 @@ public class IbftExtraDataTest {
     IbftExtraData expectedExtraData =
         new IbftExtraData(vanity_data, committerSeals, vote, round, validators);
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(expectedExtraData.encode())
-            .buildHeader();
-
-    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(blockHeader);
+    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(expectedExtraData.encode());
 
     assertThat(actualExtraData).isEqualToComparingFieldByField(expectedExtraData);
   }
@@ -313,13 +273,7 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(bufferToInject)
-            .buildHeader();
-
-    final IbftExtraData extraData = IbftExtraData.decodeRaw(blockHeader);
+    final IbftExtraData extraData = IbftExtraData.decodeRaw(bufferToInject);
 
     assertThat(extraData.getVanityData()).isEqualTo(vanity_data);
     assertThat(extraData.getVote())
@@ -347,16 +301,9 @@ public class IbftExtraDataTest {
     IbftExtraData expectedExtraData =
         new IbftExtraData(vanity_data, committerSeals, vote, round, validators);
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(expectedExtraData.encode())
-            .buildHeader();
-    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(blockHeader);
+    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(expectedExtraData.encode());
 
-    assertThat(actualExtraData)
-        .isEqualToComparingOnlyGivenFields(
-            expectedExtraData, "vanityData", "seals", "vote", "round", "validators");
+    assertThat(actualExtraData).isEqualToComparingFieldByField(expectedExtraData);
   }
 
   @Test
@@ -372,18 +319,9 @@ public class IbftExtraDataTest {
     final IbftExtraData expectedExtraData = DECODED_EXTRA_DATA_FOR_RAW_HEX_ENCODING_STRING;
 
     BytesValue rawDecoding = BytesValue.fromHexString(RAW_HEX_ENCODING_STRING);
+    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(rawDecoding);
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(rawDecoding)
-            .buildHeader();
-
-    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(blockHeader);
-
-    assertThat(actualExtraData)
-        .isEqualToComparingOnlyGivenFields(
-            expectedExtraData, "vanityData", "seals", "vote", "round", "validators");
+    assertThat(actualExtraData).isEqualToComparingFieldByField(expectedExtraData);
   }
 
   @Test
@@ -482,89 +420,8 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(bufferToInject)
-            .buildHeader();
-
-    assertThatThrownBy(() -> IbftExtraData.decodeRaw(blockHeader)).isInstanceOf(RLPException.class);
-  }
-
-  @Test
-  public void listOfCommittersIsNotEmptyWhenInitializedWithHeaderAndSignature() {
-    final List<Address> validators =
-        Arrays.asList(Address.fromHexString("1"), Address.fromHexString("2"));
-    final Optional<Vote> vote = Optional.of(Vote.authVote(Address.fromHexString("1")));
-    final int round = 0x00FEDCBA;
-
-    final List<Signature> committerSeals =
-        Arrays.asList(
-            createSignature("c85ef7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4"),
-            createSignature("afcdf7d79691fe79573b1a7064c19c1a9819ebdbd1faaab1a8ec92344438aaf4"));
-
-    // Create a byte buffer with no data.
-    final byte[] vanity_bytes = createNonEmptyVanityData();
-    final BytesValue vanity_data = BytesValue.wrap(vanity_bytes);
-
-    IbftExtraData expectedExtraData =
-        new IbftExtraData(vanity_data, committerSeals, vote, round, validators);
-
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(expectedExtraData.encode())
-            .buildHeader();
-    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(blockHeader);
-
-    assertThat(actualExtraData.getCommitterAddresses()).hasSize(2);
-  }
-
-  @Test
-  public void listOfCommittersIsEmptyWhenInitializedWithHeaderWithoutSignature() {
-    final List<Address> validators =
-        Arrays.asList(Address.fromHexString("1"), Address.fromHexString("2"));
-    final Optional<Vote> vote = Optional.of(Vote.authVote(Address.fromHexString("1")));
-    final int round = 0x00FEDCBA;
-
-    final List<Signature> committerSeals = Collections.emptyList();
-
-    // Create a byte buffer with no data.
-    final byte[] vanity_bytes = createNonEmptyVanityData();
-    final BytesValue vanity_data = BytesValue.wrap(vanity_bytes);
-
-    IbftExtraData expectedExtraData =
-        new IbftExtraData(vanity_data, committerSeals, vote, round, validators);
-
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(expectedExtraData.encode())
-            .buildHeader();
-    IbftExtraData actualExtraData = IbftExtraData.decodeRaw(blockHeader);
-
-    assertThat(actualExtraData.getCommitterAddresses()).isEmpty();
-  }
-
-  @Test
-  public void listOfCommittersIsEmptyWhenInitializedWithoutHeader() {
-    final List<Address> validators =
-        Arrays.asList(Address.fromHexString("1"), Address.fromHexString("2"));
-    final Optional<Vote> vote = Optional.of(Vote.authVote(Address.fromHexString("1")));
-    final int round = 0x00FEDCBA;
-    final List<Signature> committerSeals =
-        Arrays.asList(
-            Signature.create(BigInteger.ONE, BigInteger.TEN, (byte) 0),
-            Signature.create(BigInteger.TEN, BigInteger.ONE, (byte) 0));
-
-    // Create a byte buffer with no data.
-    final byte[] vanity_bytes = createNonEmptyVanityData();
-    final BytesValue vanity_data = BytesValue.wrap(vanity_bytes);
-
-    IbftExtraData expectedExtraData =
-        new IbftExtraData(vanity_data, committerSeals, vote, round, validators);
-
-    assertThat(expectedExtraData.getCommitterAddresses()).isEmpty();
+    assertThatThrownBy(() -> IbftExtraData.decodeRaw(bufferToInject))
+        .isInstanceOf(RLPException.class);
   }
 
   @Test
@@ -601,24 +458,8 @@ public class IbftExtraDataTest {
 
     final BytesValue bufferToInject = encoder.encoded();
 
-    final BlockHeader blockHeader =
-        new BlockHeaderTestFixture()
-            .number(BlockHeader.GENESIS_BLOCK_NUMBER)
-            .extraData(bufferToInject)
-            .buildHeader();
-
-    assertThatThrownBy(() -> IbftExtraData.decodeRaw(blockHeader)).isInstanceOf(RLPException.class);
-  }
-
-  private Signature createSignature(final String privateKeyHex) {
-    final SECP256K1.PrivateKey privateKey =
-        SECP256K1.PrivateKey.create(new BigInteger(privateKeyHex, 16));
-    final SECP256K1.KeyPair keyPair = SECP256K1.KeyPair.create(privateKey);
-
-    final BytesValue data =
-        BytesValue.wrap("This is an example of a signed message.".getBytes(UTF_8));
-    final Bytes32 dataHash = keccak256(data);
-    return SECP256K1.sign(dataHash, keyPair);
+    assertThatThrownBy(() -> IbftExtraData.decodeRaw(bufferToInject))
+        .isInstanceOf(RLPException.class);
   }
 
   private static byte[] createNonEmptyVanityData() {

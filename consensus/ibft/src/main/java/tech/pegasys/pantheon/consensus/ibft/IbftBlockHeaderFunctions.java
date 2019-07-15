@@ -46,6 +46,6 @@ public class IbftBlockHeaderFunctions implements BlockHeaderFunctions {
 
   @Override
   public IbftExtraData parseExtraData(final BlockHeader header) {
-    return IbftExtraData.decodeRaw(header);
+    return IbftExtraData.decodeRaw(header.getExtraData());
   }
 }

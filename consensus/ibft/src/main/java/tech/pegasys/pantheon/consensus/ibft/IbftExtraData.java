@@ -28,9 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.StringJoiner;
-import java.util.function.Supplier;
 
-import com.google.common.base.Suppliers;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -48,15 +46,13 @@ public class IbftExtraData implements ParsedExtraData {
   private final Optional<Vote> vote;
   private final int round;
   private final Collection<Address> validators;
-  private Supplier<List<Address>> committerAddresses;
 
   public IbftExtraData(
       final BytesValue vanityData,
       final Collection<Signature> seals,
       final Optional<Vote> vote,
       final int round,
-      final Collection<Address> validators,
-      final BlockHeader header) {
+      final Collection<Address> validators) {
 
     checkNotNull(vanityData);
     checkNotNull(seals);
@@ -67,21 +63,6 @@ public class IbftExtraData implements ParsedExtraData {
     this.round = round;
     this.validators = validators;
     this.vote = vote;
-
-    Optional.ofNullable(header)
-        .ifPresent(
-            hd ->
-                committerAddresses =
-                    Suppliers.memoize(() -> IbftBlockHashing.recoverCommitterAddresses(hd, this)));
-  }
-
-  public IbftExtraData(
-      final BytesValue vanityData,
-      final Collection<Signature> seals,
-      final Optional<Vote> vote,
-      final int round,
-      final Collection<Address> validators) {
-    this(vanityData, seals, vote, round, validators, null);
   }
 
   public static IbftExtraData fromAddresses(final Collection<Address> addresses) {
@@ -97,11 +78,10 @@ public class IbftExtraData implements ParsedExtraData {
     LOG.warn(
         "Expected a IbftExtraData instance but got {}. Reparsing required.",
         inputExtraData != null ? inputExtraData.getClass().getName() : "null");
-    return decodeRaw(blockHeader);
+    return decodeRaw(blockHeader.getExtraData());
   }
 
-  static IbftExtraData decodeRaw(final BlockHeader header) {
-    final BytesValue input = header.getExtraData();
+  static IbftExtraData decodeRaw(final BytesValue input) {
     final RLPInput rlpInput = new BytesValueRLPInput(input, false);
 
     rlpInput.enterList(); // This accounts for the "root node" which contains IBFT data items.
@@ -118,7 +98,7 @@ public class IbftExtraData implements ParsedExtraData {
     final List<Signature> seals = rlpInput.readList(rlp -> Signature.decode(rlp.readBytesValue()));
     rlpInput.leaveList();
 
-    return new IbftExtraData(vanityData, seals, vote, round, validators, header);
+    return new IbftExtraData(vanityData, seals, vote, round, validators);
   }
 
   public BytesValue encode() {
@@ -192,12 +172,6 @@ public class IbftExtraData implements ParsedExtraData {
 
   public int getRound() {
     return round;
-  }
-
-  public List<Address> getCommitterAddresses() {
-    return Optional.ofNullable(this.committerAddresses)
-        .map(Supplier::get)
-        .orElse(Collections.emptyList());
   }
 
   @Override

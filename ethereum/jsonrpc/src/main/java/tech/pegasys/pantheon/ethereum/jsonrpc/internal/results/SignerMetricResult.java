@@ -10,47 +10,39 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results.report.block.production;
+package tech.pegasys.pantheon.ethereum.jsonrpc.internal.results;
 
 import tech.pegasys.pantheon.ethereum.core.Address;
 
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 
-@JsonPropertyOrder({"address", "lastBlockProposed"})
-public class ValidatorReportBlockProductionResult {
+@JsonPropertyOrder({"address", "proposedBlockCount", "lastProposedBlockNumber"})
+public class SignerMetricResult {
 
   private final String address;
-  private Long lastBlockProposed;
+  private long proposedBlockCount;
+  private long lastProposedBlockNumber;
 
-  public ValidatorReportBlockProductionResult(final Address address) {
+  public SignerMetricResult(final Address address) {
     this.address = address.toString();
-  }
-
-  @JsonIgnore
-  public boolean isLastBlockAlreadyFound() {
-    return this.lastBlockProposed != null;
-  }
-
-  public void setLastBlockProposed(final Long lastBlockProposed) {
-    this.lastBlockProposed = lastBlockProposed;
   }
 
   @Override
   public boolean equals(final Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
-    ValidatorReportBlockProductionResult that = (ValidatorReportBlockProductionResult) o;
-    return Objects.equals(lastBlockProposed, that.lastBlockProposed)
-        && address.equals(that.address);
+    SignerMetricResult that = (SignerMetricResult) o;
+    return proposedBlockCount == that.proposedBlockCount
+        && lastProposedBlockNumber == that.lastProposedBlockNumber
+        && Objects.equals(address, that.address);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(lastBlockProposed, address);
+    return Objects.hash(address, proposedBlockCount, lastProposedBlockNumber);
   }
 
   @JsonGetter(value = "address")
@@ -58,8 +50,21 @@ public class ValidatorReportBlockProductionResult {
     return address;
   }
 
-  @JsonGetter(value = "lastBlockProposed")
-  public long getLastBlockProposed() {
-    return lastBlockProposed;
+  @JsonGetter(value = "proposedBlockCount")
+  public long getProposedBlockCount() {
+    return proposedBlockCount;
+  }
+
+  @JsonGetter(value = "lastProposedBlockNumber")
+  public long getLastProposedBlockNumber() {
+    return lastProposedBlockNumber;
+  }
+
+  public void incrementeNbBlock() {
+    this.proposedBlockCount++;
+  }
+
+  public void setLastProposedBlockNumber(final long lastProposedBlockNumber) {
+    this.lastProposedBlockNumber = lastProposedBlockNumber;
   }
 }
