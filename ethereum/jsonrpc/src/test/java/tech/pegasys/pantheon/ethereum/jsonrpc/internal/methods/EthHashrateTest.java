@@ -66,16 +66,6 @@ public class EthHashrateTest {
     assertThat(actualResponse).isEqualToComparingFieldByField(expectedResponse);
   }
 
-  @Test
-  public void shouldReturnZeroWhenMiningCoordinatorDoesNotSupportHashing() {
-    final JsonRpcRequest request = requestWithParams();
-    final JsonRpcResponse expectedResponse = new JsonRpcSuccessResponse(request.getId(), "0x0");
-    when(miningCoordinator.hashesPerSecond()).thenThrow(UnsupportedOperationException.class);
-
-    final JsonRpcResponse actualResponse = method.response(request);
-    assertThat(actualResponse).isEqualToComparingFieldByField(expectedResponse);
-  }
-
   private JsonRpcRequest requestWithParams() {
     return new JsonRpcRequest(JSON_RPC_VERSION, ETH_METHOD, new Object[] {});
   }

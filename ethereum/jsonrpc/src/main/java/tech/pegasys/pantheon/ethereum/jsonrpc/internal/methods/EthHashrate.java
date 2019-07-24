@@ -36,11 +36,7 @@ public class EthHashrate implements JsonRpcMethod {
 
   @Override
   public JsonRpcResponse response(final JsonRpcRequest req) {
-    try {
-      final Optional<Long> hashesPerSecond = miningCoordinator.hashesPerSecond();
-      return new JsonRpcSuccessResponse(req.getId(), Quantity.create(hashesPerSecond.orElse(0L)));
-    } catch (final UnsupportedOperationException ex) {
-      return new JsonRpcSuccessResponse(req.getId(), Quantity.create(0L));
-    }
+    final Optional<Long> hashesPerSecond = miningCoordinator.hashesPerSecond();
+    return new JsonRpcSuccessResponse(req.getId(), Quantity.create(hashesPerSecond.orElse(0L)));
   }
 }
